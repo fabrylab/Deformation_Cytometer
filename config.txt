@@ -5,3 +5,7 @@ Measurement position from inlet: 10 mm
 Medium: 2 pct alginate
 Cells: NIH-3T3
 Treatment: None
+Camera: AlliedVision
+Microscope: 0
+Objective: 10x
+Pixelsize: 0.36e-6 m

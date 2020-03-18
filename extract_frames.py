@@ -7,8 +7,12 @@ Created on Wed Jun 12 15:34:37 2019
 
 import cv2
 
-source = r'\\131.188.117.96\biophysDS\emirzahossein\selina\free_p1_t9_vid000_2.avi'
-output=r"\\131.188.117.96\biophysDS\emirzahossein\selina\p1_t9\p1_"
+#source = r'\\131.188.117.96\biophysDS\emirzahossein\selina\free_p1_t9_vid000_2.avi'
+#output=r"\\131.188.117.96\biophysDS\emirzahossein\selina\p1_t9\p1_"
+
+source = r'\\131.188.117.96\biophysDS\emirzahossein\data_backup\20200318_alginate2%_3t3nih\p3_t3_vid000_2.avi'
+output= r'G:\Ben\projects\Elham channel\20200318_alginate2%_3t3nih\p3_'
+
 jpg = ".jpg"
 
 vidcap = cv2.VideoCapture(source)
