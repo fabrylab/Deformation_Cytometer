@@ -21,8 +21,9 @@ from scipy.ndimage import morphology
 from skimage.measure import label, regionprops
 from matplotlib.patches import Ellipse #downloaded from Github
 import matplotlib.gridspec as gridspec
+import copy
 
-display = 1 #saet to 1 if you want to see every frame of im, set to 2 if you want to see im2, im3, im4
+display = 0 #saet to 1 if you want to see every frame of im, set to 2 if you want to see im2, im3, im4
 
 # initialization of user interface
 root = Tk()
@@ -39,6 +40,15 @@ def onclick(event):
         good_bad = 2
     else:
         good_bad = 1
+        
+#----------general fonts for plots and figures----------
+font = {'family' : 'sans-serif',
+        'sans-serif':['Arial'],
+        'weight' : 'normal',
+        'size'   : 18}
+plt.rc('font', **font)
+plt.rc('legend', fontsize=12)
+plt.rc('axes', titlesize=18)        
 
 #%%----------read data from a csv (text) file-----------------------------------
 imfile = filedialog.askopenfilename(title="select the image file",filetypes=[("jpg",'*.jpg')]) # show an "Open" dialog box and return the path to the selected file
@@ -64,7 +74,7 @@ angle=[]
 for file in glob.glob("*.jpg"):
      i=i+1
      if i % 1 == 0:
-        print(file)           
+        print(file, ' ', len(frame), '  good cells')           
         im = imageio.imread(file)
         im = im[:,:,0]
         sizes = np.shape(im)  
@@ -83,7 +93,7 @@ for file in glob.glob("*.jpg"):
                 spec = gridspec.GridSpec(ncols=2, nrows=1, figure=fig1)
                 ax1 = fig1.add_subplot(spec[0:1, 0:1])
                 ax2 = fig1.add_subplot(spec[0:1, 1:2])
-        if i > 0:
+        if i > 0: # to "jump" to a higher position
             im = np.asarray(im, dtype = 'float')
             im_mean = np.mean(im)
             im1 = feature.canny(im, sigma=2.5, low_threshold=0.7, high_threshold=0.99, use_quantiles=True) #edge detection
@@ -126,18 +136,19 @@ for file in glob.glob("*.jpg"):
                     b = region.minor_axis_length/2
                     r = np.sqrt(a*b)
                     circum =np.pi*((3*(a+b))-np.sqrt(10*a*b+3*(a**2+b**2)))                   
-                    ellipse = Ellipse(xy=[region.centroid[1],region.centroid[0]], width=region.major_axis_length, height=region.minor_axis_length, angle=np.rad2deg(-region.orientation),
-                               edgecolor='r', fc='None', lw=0.2, zorder = 2)
-        #                yy=region.centroid[0]-channel_width/2
-        #                yy = yy * pixel_size * 1e6
-                    ax1.add_patch(ellipse)
+                    if display > 0:
+                        ellipse = Ellipse(xy=[region.centroid[1],region.centroid[0]], width=region.major_axis_length, height=region.minor_axis_length, angle=np.rad2deg(-region.orientation),
+                                   edgecolor='r', fc='None', lw=0.2, zorder = 2)
+            #                yy=region.centroid[0]-channel_width/2
+            #                yy = yy * pixel_size * 1e6
+                        ax1.add_patch(ellipse)
                     
     #%% compute radial inetensity profile for each ellipse
                     
                     theta = np.arange(0, 2*np.pi, np.pi/4)
                     strain = (a-b)/r
                     
-                    ax2.clear()
+
                     dd = np.arange(0,int(3*r))
                     i_r = np.zeros(int(3*r))
                     for d in range(0,int(3*r)):
@@ -148,12 +159,15 @@ for file in glob.glob("*.jpg"):
                         y = y[~index]    
                         i_r[d] = np.mean(im[y,x])
                     d_max = np.argmax(i_r)
-                    ax2.plot(dd,i_r)
-                    ax2.plot([r,r],[np.min(i_r),np.max(i_r)],'r-')
-                    s = 'd_max at r = ' + '{:0.2f}'.format(d_max/r) + '\n' + 'stdev = ' + '{:0.2f}'.format(np.std(i_r))
-                    plt.text(d_max, int(np.max(i_r)), s)
-                    plt.show()
-                    plt.pause(0.01)
+                    
+                    if display > 0:
+                        ax2.clear()
+                        ax2.plot(dd,i_r)
+                        ax2.plot([r,r],[np.min(i_r),np.max(i_r)],'r-')
+                        s = 'd_max at r = ' + '{:0.2f}'.format(d_max/r) + '\n' + 'stdev = ' + '{:0.2f}'.format(np.std(i_r))
+                        plt.text(d_max, int(np.max(i_r)), s)
+                        plt.show()
+                        plt.pause(0.01)
                     
                     if np.sqrt(structure)/im_mean > 0.0009 and np.sqrt(structure)/im_mean <10.26 and region.mean_intensity/im_mean <10.1 \
                             and region.mean_intensity/im_mean > 0.09 and region.perimeter/circum<10.06 and region.area>500 and np.std(i_r)/im_mean<10.08 and \
@@ -167,11 +181,12 @@ for file in glob.glob("*.jpg"):
                         MinorAxis.append(float(format(region.minor_axis_length)))
                         angle.append(np.rad2deg(-region.orientation))
                         frame.append(file)
-                        ellipse = Ellipse(xy=[region.centroid[1],region.centroid[0]], width=region.major_axis_length, height=region.minor_axis_length, angle=np.rad2deg(-region.orientation),
-                            edgecolor='white', fc='None', lw=0.2, zorder = 2)
-                        ax1.add_patch(ellipse)
+
                     
-                        if display > 0:      
+                        if display > 0:    
+                            ellipse = Ellipse(xy=[region.centroid[1],region.centroid[0]], width=region.major_axis_length, height=region.minor_axis_length, angle=np.rad2deg(-region.orientation),
+                                edgecolor='white', fc='None', lw=0.2, zorder = 2)
+                            ax1.add_patch(ellipse)                            
                             s = 'strain=' + '{:0.2f}'.format((a-b)/r)
                             s = s + '\n struc =' + '{:0.3f}'.format(np.sqrt(structure)/im_mean)
                             s = s + '\n irreg =' + '{:0.3f}'.format(region.perimeter/circum)
@@ -181,14 +196,14 @@ for file in glob.glob("*.jpg"):
                             plt.show()
                             plt.pause(0.01)
                         
-                        
+'''                        
                         good_bad = 0
                         while good_bad ==0:
                              cid = fig1.canvas.mpl_connect('button_press_event', onclick)
                              plt.pause(0.5)
                              if good_bad == 2:
                                  sys.exit() #exit upon double click             
-                           
+'''                           
 #%% store data in file
 R =  np.asarray(radialposition)      
 X =  np.asarray(x_pos)  
@@ -201,7 +216,27 @@ f.write('Frame' + '\t' + 'x_pos' + '\t' +'y_pos' + '\t' + 'RadialPos' +'\t' +'Lo
 for i in range(0,len(radialposition)): 
     f.write(frame[i] + '\t' + str(X[i]) + '\t' + str(Y[i]) + '\t' + str(R[i]) +'\t' + str(LongAxis[i]) +'\t'+str(ShortAxis[i]) + '\t' +str(Angle[i]) +'\n')
 f.close()
+#%% data plotting
 
+#remove bias
+index = (R*Angle>0)
+LA = copy.deepcopy(LongAxis)
+LA[index]=ShortAxis[index]
+SA = copy.deepcopy(ShortAxis)
+SA[index]=LongAxis[index]
+
+strain = (LA - SA)/np.sqrt(LA * SA)
+stress = np.abs(R)
+
+fig2=plt.figure(2, (5, 5))
+border_width = 0.2
+ax_size = [0+border_width, 0+border_width, 
+           1-2*border_width, 1-2*border_width]
+ax1 = fig2.add_axes(ax_size)
+plt.plot(stress, strain, 'o', markerfacecolor='#1f77b4', markersize=6.0,markeredgewidth=0)
+plt.xlabel('channel position ($\mu$m)')
+plt.ylabel('strain')
+plt.show()
 
 
 
