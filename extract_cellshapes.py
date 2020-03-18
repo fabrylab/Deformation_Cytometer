@@ -1,21 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Mar  9 09:22:34 2020
-
-@author: user
-"""
-
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Mar  6 09:03:56 2020
-
-@author: user
+@author: Elham Mirzahossein
 """
 
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-#this program reads data from a text or csv file and plots the data
+# this program analysis images, finds cellextracts the cell shape, 
+# fits an ellipse to the shape, and stores the position and dimensions of the ellipse
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -30,14 +23,13 @@ from matplotlib.patches import Ellipse #downloaded from Github
 import matplotlib.gridspec as gridspec
 
 display = 1 #saet to 1 if you want to see every frame
-#import matplotlib.pyplot as plt
 
 # initialization of user interface
 root = Tk()
 root.withdraw() # we don't want a full GUI, so keep the root window from appearing
 plt.ion()
 
-
+#%%
 def onclick(event):
     global good_bad
     print('%s click: button=%d, x=%d, y=%d, xdata=%f, ydata=%f' %
@@ -71,8 +63,8 @@ if display == 1:
     ax4 = fig1.add_subplot(spec[0:6, 16:21],sharex=ax1,sharey=ax1)
 
 radialposition=[]
-L=[]
-B=[]
+MajorAxis=[]
+MinorAxis=[]
 angle=[]
 for file in glob.glob("*.jpg"):
      i=i+1
@@ -83,11 +75,11 @@ for file in glob.glob("*.jpg"):
         im = np.asarray(im, dtype = 'float')
         im_mean = np.mean(im)
         im1 = feature.canny(im, sigma=2.5, low_threshold=0.7, high_threshold=0.99, use_quantiles=True) #edge detection
-        Axx, Axy, Ayy = feature.structure_tensor(im, sigma=0.5, mode = 'nearest') #structure
-        im1a = feature.structure_tensor_eigvals(Axx, Axy, Ayy)[0]
         im2 = morphology.binary_fill_holes(im1, structure=struct).astype(int) #fill holes
         im3 = morphology.binary_erosion(im2, structure=struct).astype(int) #erode to remove lines and small schmutz
-        im1a = im1a * morphology.binary_erosion(im3, structure=struct, iterations = 4).astype(int)
+        Axx, Axy, Ayy = feature.structure_tensor(im, sigma=0.5, mode = 'nearest') #structure
+        im4 = feature.structure_tensor_eigvals(Axx, Axy, Ayy)[0]   #structure     
+        im4 = im4 * morphology.binary_erosion(im3, structure=struct, iterations = 4).astype(int) #structure
         
         label_image = label(im3)    #label all ellipses (and other objects)
     
@@ -102,7 +94,7 @@ for file in glob.glob("*.jpg"):
             ax3.imshow(im2,cmap='gray')    
             ax4.clear()
             ax4.set_axis_off()
-            ax4.imshow(im1a,cmap='jet', vmin = 0, vmax = 3000 )           
+            ax4.imshow(im4,cmap='jet', vmin = 0, vmax = 3000 )           
             
             ax1.clear()
             ax1.set_axis_off()
@@ -112,15 +104,14 @@ for file in glob.glob("*.jpg"):
             plt.pause(0.1)
         
         for region in regionprops(label_image,im):
-            # take regions with large enough areas
             if region.area >= 100 : #analyze only large, dark ellipses
                 l = region.label
-                structure = np.std(im1a[label_image==l])
+                structure = np.std(im4[label_image==l])
                 a = region.major_axis_length/2
                 b = region.minor_axis_length/2
                 r = np.sqrt(a*b)
                 circum =np.pi*((3*(a+b))-np.sqrt(10*a*b+3*(a**2+b**2)))                   
-                ellipse = Ellipse(xy=[region.centroid[1],region.centroid[0]], width=region.minor_axis_length, height=region.major_axis_length, angle=np.rad2deg(-region.orientation),
+                ellipse = Ellipse(xy=[region.centroid[1],region.centroid[0]], width=region.major_axis_length, height=region.minor_axis_length, angle=np.rad2deg(-region.orientation),
                            edgecolor='r', fc='None', lw=0.5, zorder = 2)
     #                yy=region.centroid[0]-pixel_numb/2
     #                yy = yy * pixel_size * 1e6
@@ -131,11 +122,10 @@ for file in glob.glob("*.jpg"):
                     yy=region.centroid[0]-pixel_numb/2
                     yy = yy * pixel_size * 1e6
                     radialposition.append(yy)
-                    L.append(float(format(region.major_axis_length)))
-                    B.append(float(format(region.minor_axis_length)))
+                    MajorAxis.append(float(format(region.major_axis_length)))
+                    MinorAxis.append(float(format(region.minor_axis_length)))
                     angle.append(np.rad2deg(-region.orientation))
-    #            plt.pause(0.1)
-                    ellipse = Ellipse(xy=[region.centroid[1],region.centroid[0]], width=region.minor_axis_length, height=region.major_axis_length, angle=np.rad2deg(-region.orientation),
+                    ellipse = Ellipse(xy=[region.centroid[1],region.centroid[0]], width=region.major_axis_length, height=region.minor_axis_length, angle=np.rad2deg(-region.orientation),
                         edgecolor='white', fc='None', lw=1, zorder = 2)
                     ax1.add_patch(ellipse)
                 
@@ -149,13 +139,12 @@ for file in glob.glob("*.jpg"):
                     plt.show()
                     plt.pause(0.1)
 
-        #input("Press Enter to continue...")
-        
+        input("Press Enter to continue...")
                 
 #%% store data in file
 R =  np.asarray(radialposition)               
-LongAxis = np.asarray(L)
-ShortAxis = np.asarray(B)
+LongAxis = np.asarray(MajorAxis)
+ShortAxis = np.asarray(MinorAxis)
 Angle = np.asarray(angle)
 f = open('results.txt','w')
 f.write('RadialPos' +'\t' +'LongAxis' +'\t' + 'ShortAxis' +'\t' + 'Angle' +'\n')

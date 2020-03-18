@@ -1,0 +1,7 @@
+Pressure: 1 bar
+Channel length (total): 48 mm
+Channel diameter: 200 um
+Measurement position from inlet: 10 mm
+Medium: 2 pct alginate
+Cells: NIH-3T3
+Treatment: None
