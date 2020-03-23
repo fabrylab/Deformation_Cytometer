@@ -1,45 +1,26 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Mar  9 09:22:34 2020
-@author: Elham Mirzahossein
+Created on Sun Mar 12 09:28:22 2020
+@author: Ben Fabry
 """
+# this program reads the frames of an avi video file to individual jpg images
+# it also averages all images and stores the normalized image as a floating point numpy array 
+# in the same directory as the extracted images, under the name "flatfield.npy"
 
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-
-# this program analysis images, finds cellextracts the cell shape, 
-# fits an ellipse to the shape, and stores the position and dimensions of the ellipse
-
-import matplotlib.pyplot as plt
+import cv2
 import numpy as np
-from tkinter import Tk, filedialog
-import imageio #offers better image read options
-import sys
-import glob, os
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 from skimage import feature
 from scipy.ndimage import morphology
 from skimage.measure import label, regionprops
-from matplotlib.patches import Ellipse #downloaded from Github
-import matplotlib.gridspec as gridspec
-import copy
+from matplotlib.patches import Ellipse 
 import time
-
-display = 2 #saet to 1 if you want to see every frame of im, set to 2 if you want to see im2, im3, im4
-
-# initialization of user interface
-root = Tk()
-root.withdraw() # we don't want a full GUI, so keep the root window from appearing
-plt.ion()
-
-class timeit:
-    def __init__(self, name):
-        self.name = name
-        
-    def __enter__(self):
-        self.start_time = time.time()
-        
-    def __exit__(self, *args):
-        print("Timeit:", self.name, time.time()-self.start_time)
+import copy
+from tkinter import Tk
+from tkinter import filedialog
+import sys
+import os
 
 #%%
 def onclick(event):
@@ -51,30 +32,66 @@ def onclick(event):
         good_bad = 2
     else:
         good_bad = 1
+#%%        
+class timeit:
+    def __init__(self, name):
+        self.name = name
         
-#----------general fonts for plots and figures----------
+    def __enter__(self):
+        self.start_time = time.time()
+        
+    def __exit__(self, *args):
+        print("Timeit:", self.name, time.time()-self.start_time)        
+        
+#%%----------general fonts for plots and figures----------
 font = {'family' : 'sans-serif',
         'sans-serif':['Arial'],
         'weight' : 'normal',
         'size'   : 18}
 plt.rc('font', **font)
 plt.rc('legend', fontsize=12)
-plt.rc('axes', titlesize=18)        
+plt.rc('axes', titlesize=18)    
 
-#%%----------read data from a csv (text) file-----------------------------------
-imfile = filedialog.askopenfilename(title="select the image file",filetypes=[("jpg",'*.jpg')]) # show an "Open" dialog box and return the path to the selected file
-if imfile == '':
+#%% select video file
+root = Tk()
+root.withdraw() # we don't want a full GUI, so keep the root window from appearing
+video = []
+video = filedialog.askopenfilename(title="select the data file",filetypes=[("avi file",'*.avi')]) # show an "Open" dialog box and return the path to the selected file
+if video == '':
     print('empty')
     sys.exit()
-    
-struct = morphology.generate_binary_structure(2, 1)  #structural element for binary erosion
-asp=[]
-impath = os.path.dirname(os.path.abspath(imfile))
-flatfield_file = impath + r'\flatfield.npy'
-os.chdir(impath)
 
-flatfield = np.load(flatfield_file)
-i=0
+name_ex = os.path.basename(video)
+filename_base, file_extension = os.path.splitext(name_ex)
+output_path = os.path.dirname(video)
+flatfield = output_path + r'/flatfield'
+
+vidcap = cv2.VideoCapture(video)
+#%%    
+print("compute average (flatfield) image") 
+count = 0
+while 1:
+    success,image = vidcap.read()
+    if success !=1:
+        break
+    image = image[:,:,0]
+    # rotate counter clockwise
+    image=cv2.transpose(image)
+    image=cv2.flip(image,flipCode=0)         
+    if count == 0:
+        im_av = copy.deepcopy(image)   
+        im_av = np.asarray(im_av) 
+        im_av.astype(float)
+    else:
+        im_av = im_av + image.astype(float) 
+    count += 1 
+im_av = im_av / np.mean(im_av)
+np.save(flatfield, im_av)
+plt.imshow(im_av)
+#%%
+struct = morphology.generate_binary_structure(2, 1)  #structural element for binary erosion
+
+display = 0 #saet to 1 if you want to see every frame of im, set to 2 if you want to see im2, im3, im4
 pixel_size = 0.36e-6 # in m for 20x AlliedVision 
 channel_width = 200e-6/pixel_size #in pixels
 
@@ -85,18 +102,22 @@ y_pos = []
 MajorAxis=[]
 MinorAxis=[]
 angle=[]
-last_time = time.time()        
-for file in glob.glob("*.jpg"):
-     i=i+1
-     if i % 1 == 0:
-        print(file, ' ', len(frame), '  good cells', last_time-time.time())   
-        last_time = time.time()        
-        im = imageio.imread(file)
+count=0
+success = 1
+vidcap = cv2.VideoCapture(video)
+while success:
+    success,im = vidcap.read()
+    im=cv2.transpose(im)
+    im=cv2.flip(im,flipCode=0)  
+    if success !=1:
+        break # break out of the while loop    
+    if count % 1 == 0:
+        print(count, ' ', len(frame), '  good cells')                
         im = im[:,:,0]
         im = im.astype(float)
-        im = im / flatfield #flatfield correction
+        im = im / im_av #flatfield correction
         sizes = np.shape(im)  
-        if i == 1:
+        if count == 0:
             if display == 2: #debug mode
                 plt.close('all')
                 fig1 = plt.figure(1,(28.2 * 300 / 540, 7))
@@ -111,7 +132,7 @@ for file in glob.glob("*.jpg"):
                 spec = gridspec.GridSpec(ncols=30, nrows=10, figure=fig1)
                 ax1 = fig1.add_subplot(spec[0:10, 0:10])
                 ax2 = fig1.add_subplot(spec[1:9, 15:30])
-        if i > 0: # to "jump" to a higher position
+        if count > 0: # to "jump" to a higher position
             im = np.asarray(im, dtype = 'float')
             im_mean = np.mean(im)
             #with timeit("canny"):
@@ -135,8 +156,8 @@ for file in glob.glob("*.jpg"):
                 ax3.clear()
                 ax3.set_axis_off()
                 ax3.imshow(im2,cmap='gray')    
-#                ax4.clear()
-#                ax4.set_axis_off()
+                ax4.clear()
+                ax4.set_axis_off()
 #                ax4.imshow(im4,cmap='jet', vmin = 0, vmax = 3000 )                       
                 ax1.clear()
                 ax1.set_axis_off()
@@ -197,7 +218,7 @@ for file in glob.glob("*.jpg"):
 #                            and region.mean_intensity/im_mean > 0.09 and region.perimeter/circum<10.06 and region.area>500 and np.std(i_r)/im_mean<10.08 and \
 #                            ((d_max/r>1 and d_max/r<1.5) or (d_max/r>1.5 and np.std(i_r)<3)  or  (d_max/r>0.5 and np.std(i_r)<3)):
                     if region.perimeter/circum<1.06 and region.area>500 and \
-                            ((d_max/r>1 and d_max/r<1.5) or (d_max/r>1.5 and np.std(i_r)/im_mean<0.03)  or  (d_max/r>0.5 and np.std(i_r)/im_mean<0.03)):                                
+                            ((d_max/r>1 and d_max/r<1.4) or (d_max/r>1.4 and np.std(i_r)/im_mean<0.03)  or  (d_max/r>0.5 and np.std(i_r)/im_mean<0.03)):                                
                         yy=region.centroid[0]-channel_width/2
                         yy = yy * pixel_size * 1e6
                         radialposition.append(yy)
@@ -206,9 +227,8 @@ for file in glob.glob("*.jpg"):
                         MajorAxis.append(float(format(region.major_axis_length)))
                         MinorAxis.append(float(format(region.minor_axis_length)))
                         angle.append(np.rad2deg(-region.orientation))
-                        frame.append(file)
-
-                    
+                        frame.append(count)
+               
                         if display > 0:    
                             ellipse = Ellipse(xy=[region.centroid[1],region.centroid[0]], width=region.major_axis_length, height=region.minor_axis_length, angle=np.rad2deg(-region.orientation),
                                 edgecolor='white', fc='None', lw=0.5, zorder = 2)
@@ -221,13 +241,14 @@ for file in glob.glob("*.jpg"):
                             ax1.text(int(region.centroid[1]),int(region.centroid[0]),s, color = 'red', fontsize = 10, zorder=100)                    
                             plt.show()
                             plt.pause(0.01)
-                                               
+                            
                             good_bad = 0
                             while good_bad ==0:
                                  cid = fig1.canvas.mpl_connect('button_press_event', onclick)
                                  plt.pause(0.5)
                                  if good_bad == 2:
-                                     sys.exit() #exit upon double click             
+                                     sys.exit() #exit upon double click            
+    count = count + 1 #next image
                            
 #%% store data in file
 R =  np.asarray(radialposition)      
@@ -236,15 +257,16 @@ Y =  np.asarray(y_pos)
 LongAxis = np.asarray(MajorAxis)
 ShortAxis = np.asarray(MinorAxis)
 Angle = np.asarray(angle)
-f = open('results.txt','w')
+result_file = output_path + '/' + filename_base + '_result.txt'
+f = open(result_file,'w')
 f.write('Frame' + '\t' + 'x_pos' + '\t' +'y_pos' + '\t' + 'RadialPos' +'\t' +'LongAxis' +'\t' + 'ShortAxis' +'\t' + 'Angle' +'\n')
 for i in range(0,len(radialposition)): 
-    f.write(frame[i] + '\t' + str(X[i]) + '\t' + str(Y[i]) + '\t' + str(R[i]) +'\t' + str(LongAxis[i]) +'\t'+str(ShortAxis[i]) + '\t' +str(Angle[i]) +'\n')
+    f.write(str(frame[i]) + '\t' + str(X[i]) + '\t' + str(Y[i]) + '\t' + str(R[i]) +'\t' + str(LongAxis[i]) +'\t'+str(ShortAxis[i]) + '\t' +str(Angle[i]) +'\n')
 f.close()
 #%% data plotting
 
 #remove bias
-index = (R*Angle>0)
+index = np.abs(Angle)>45#(R*Angle>0) & (R > 50) 
 LA = copy.deepcopy(LongAxis)
 LA[index]=ShortAxis[index]
 SA = copy.deepcopy(ShortAxis)
@@ -262,6 +284,3 @@ plt.plot(stress, strain, 'o', markerfacecolor='#1f77b4', markersize=6.0,markered
 plt.xlabel('channel position ($\mu$m)')
 plt.ylabel('strain')
 plt.show()
-
-
-
