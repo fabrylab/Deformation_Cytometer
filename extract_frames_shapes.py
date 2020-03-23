@@ -65,9 +65,8 @@ name_ex = os.path.basename(video)
 filename_base, file_extension = os.path.splitext(name_ex)
 output_path = os.path.dirname(video)
 flatfield = output_path + r'/flatfield'
-
-vidcap = cv2.VideoCapture(video)
-#%%    
+#%%  
+vidcap = cv2.VideoCapture(video) 
 print("compute average (flatfield) image") 
 count = 0
 while 1:
@@ -91,7 +90,7 @@ plt.imshow(im_av)
 #%%
 struct = morphology.generate_binary_structure(2, 1)  #structural element for binary erosion
 
-display = 0 #saet to 1 if you want to see every frame of im, set to 2 if you want to see im2, im3, im4
+display = 2 #saet to 1 if you want to see every frame of im, set to 2 if you want to see im2, im3, im4
 pixel_size = 0.36e-6 # in m for 20x AlliedVision 
 channel_width = 200e-6/pixel_size #in pixels
 
@@ -135,9 +134,9 @@ while success:
         if count > 0: # to "jump" to a higher position
             im = np.asarray(im, dtype = 'float')
             im_mean = np.mean(im)
-            #with timeit("canny"):
-            #im1 = feature.canny(im, sigma=2.5, low_threshold=0.7, high_threshold=0.99, use_quantiles=True) #edge detection
-            im1 = feature.canny(im, sigma=2.5, low_threshold=8, high_threshold=10, use_quantiles=False) #edge detection
+            with timeit("canny"):
+                im1 = feature.canny(im, sigma=2.5, low_threshold=0.7, high_threshold=0.99, use_quantiles=True) #edge detection
+            #im1 = feature.canny(im, sigma=2.5, low_threshold=8, high_threshold=10, use_quantiles=False) #edge detection
            
             im2 = morphology.binary_fill_holes(im1, structure=struct).astype(int) #fill holes
                 #im2 = morphology.binary_fill_holes(im1).astype(int) #fill holes
