@@ -3,9 +3,15 @@
 Created on Sun Mar 12 09:28:22 2020
 @author: Ben Fabry
 """
-# this program reads the frames of an avi video file to individual jpg images
-# it also averages all images and stores the normalized image as a floating point numpy array 
+# this program reads the frames of an avi video file, averages all images,
+# and stores the normalized image as a floating point numpy array 
 # in the same directory as the extracted images, under the name "flatfield.npy"
+#
+# The program then loops again through all images of the video file,
+# identifies cells, extracts the cell shape, fits an ellipse to the cell shape,
+# and stores the information on the cell's centroid position, long and short axis,
+# angle (orientation) of the long axis, and bounding box widht and height
+# in a text file (result_file.txt) in the same directory as the video file.
 
 import cv2
 import numpy as np
