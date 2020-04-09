@@ -231,8 +231,8 @@ while success:
                         radialposition.append(yy)
                         y_pos.append(region.centroid[0])
                         x_pos.append(region.centroid[1])
-                        MajorAxis.append(float(format(region.major_axis_length)))
-                        MinorAxis.append(float(format(region.minor_axis_length)))
+                        MajorAxis.append(float(format(region.major_axis_length))* pixel_size * 1e6  )
+                        MinorAxis.append(float(format(region.minor_axis_length))* pixel_size * 1e6  )
                         bbox_w = (region.bbox[3]-region.bbox[1])* pixel_size * 1e6  
                         bbox_width.append(bbox_w)
                         bbox_h = (region.bbox[2]-region.bbox[0])* pixel_size * 1e6  
@@ -277,7 +277,7 @@ for i in range(0,len(radialposition)):
     f.write(str(frame[i]) +'\t' +str(X[i]) +'\t' +str(Y[i]) +'\t' +str(R[i]) +'\t' +str(LongAxis[i]) +'\t'+str(ShortAxis[i]) +'\t' +str(Angle[i]) +'\t' +str(BBox_width[i]) +'\t' +str(BBox_height[i]) +'\n')
 f.close()
 #%% data plotting
-sys.exit()
+
 #remove bias
 index = np.abs(R*Angle>0)# & (R > 50) 
 
