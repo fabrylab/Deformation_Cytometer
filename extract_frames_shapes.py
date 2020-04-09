@@ -3,9 +3,15 @@
 Created on Sun Mar 12 09:28:22 2020
 @author: Ben Fabry
 """
-# this program reads the frames of an avi video file to individual jpg images
-# it also averages all images and stores the normalized image as a floating point numpy array 
+# this program reads the frames of an avi video file, averages all images,
+# and stores the normalized image as a floating point numpy array 
 # in the same directory as the extracted images, under the name "flatfield.npy"
+#
+# The program then loops again through all images of the video file,
+# identifies cells, extracts the cell shape, fits an ellipse to the cell shape,
+# and stores the information on the cell's centroid position, long and short axis,
+# angle (orientation) of the long axis, and bounding box widht and height
+# in a text file (result_file.txt) in the same directory as the video file.
 
 import cv2
 import numpy as np
@@ -90,7 +96,7 @@ plt.imshow(im_av)
 #%%
 struct = morphology.generate_binary_structure(2, 1)  #structural element for binary erosion
 
-display = 2 #saet to 1 if you want to see every frame of im, set to 2 if you want to see im2, im3, im4
+display = 0 #set to 1 if you want to see every frame of im, set to 2 if you want to see im2, im3, im4
 pixel_size = 0.36e-6 # in m for 20x AlliedVision 
 channel_width = 200e-6/pixel_size #in pixels
 
@@ -100,6 +106,8 @@ x_pos = []
 y_pos = []
 MajorAxis=[]
 MinorAxis=[]
+bbox_width = []
+bbox_height = []
 angle=[]
 count=0
 success = 1
@@ -134,8 +142,8 @@ while success:
         if count > 0: # to "jump" to a higher position
             im = np.asarray(im, dtype = 'float')
             im_mean = np.mean(im)
-            with timeit("canny"):
-                im1 = feature.canny(im, sigma=2.5, low_threshold=0.7, high_threshold=0.99, use_quantiles=True) #edge detection
+            #with timeit("canny"):
+            im1 = feature.canny(im, sigma=2.5, low_threshold=0.7, high_threshold=0.99, use_quantiles=True) #edge detection
             #im1 = feature.canny(im, sigma=2.5, low_threshold=8, high_threshold=10, use_quantiles=False) #edge detection
            
             im2 = morphology.binary_fill_holes(im1, structure=struct).astype(int) #fill holes
@@ -217,14 +225,18 @@ while success:
 #                            and region.mean_intensity/im_mean > 0.09 and region.perimeter/circum<10.06 and region.area>500 and np.std(i_r)/im_mean<10.08 and \
 #                            ((d_max/r>1 and d_max/r<1.5) or (d_max/r>1.5 and np.std(i_r)<3)  or  (d_max/r>0.5 and np.std(i_r)<3)):
                     if region.perimeter/circum<1.06 and region.area>500 and \
-                            ((d_max/r>1 and d_max/r<1.4) or (d_max/r>1.4 and np.std(i_r)/im_mean<0.03)  or  (d_max/r>0.5 and np.std(i_r)/im_mean<0.03)):                                
+                            ((d_max/r>1 and d_max/r<1.4)  or  (d_max/r>0.5 and np.std(i_r)/im_mean<0.03)):                                
                         yy=region.centroid[0]-channel_width/2
-                        yy = yy * pixel_size * 1e6
+                        yy = yy * pixel_size * 1e6                
                         radialposition.append(yy)
                         y_pos.append(region.centroid[0])
                         x_pos.append(region.centroid[1])
                         MajorAxis.append(float(format(region.major_axis_length)))
                         MinorAxis.append(float(format(region.minor_axis_length)))
+                        bbox_w = (region.bbox[3]-region.bbox[1])* pixel_size * 1e6  
+                        bbox_width.append(bbox_w)
+                        bbox_h = (region.bbox[2]-region.bbox[0])* pixel_size * 1e6  
+                        bbox_height.append(bbox_h)
                         angle.append(np.rad2deg(-region.orientation))
                         frame.append(count)
                
@@ -256,16 +268,19 @@ Y =  np.asarray(y_pos)
 LongAxis = np.asarray(MajorAxis)
 ShortAxis = np.asarray(MinorAxis)
 Angle = np.asarray(angle)
+BBox_width = np.asarray(bbox_width)
+BBox_height = np.asarray(bbox_height)
 result_file = output_path + '/' + filename_base + '_result.txt'
 f = open(result_file,'w')
-f.write('Frame' + '\t' + 'x_pos' + '\t' +'y_pos' + '\t' + 'RadialPos' +'\t' +'LongAxis' +'\t' + 'ShortAxis' +'\t' + 'Angle' +'\n')
+f.write('Frame' +'\t' +'x_pos' +'\t' +'y_pos' + '\t' +'RadialPos' +'\t' +'LongAxis' +'\t' + 'ShortAxis' +'\t' +'Angle' +'\t' +'BBOx_width' +'\t' +'BBox_height' +'\n')
 for i in range(0,len(radialposition)): 
-    f.write(str(frame[i]) + '\t' + str(X[i]) + '\t' + str(Y[i]) + '\t' + str(R[i]) +'\t' + str(LongAxis[i]) +'\t'+str(ShortAxis[i]) + '\t' +str(Angle[i]) +'\n')
+    f.write(str(frame[i]) +'\t' +str(X[i]) +'\t' +str(Y[i]) +'\t' +str(R[i]) +'\t' +str(LongAxis[i]) +'\t'+str(ShortAxis[i]) +'\t' +str(Angle[i]) +'\t' +str(BBox_width[i]) +'\t' +str(BBox_height[i]) +'\n')
 f.close()
 #%% data plotting
-
+sys.exit()
 #remove bias
-index = np.abs(Angle)>45#(R*Angle>0) & (R > 50) 
+index = np.abs(R*Angle>0)# & (R > 50) 
+
 LA = copy.deepcopy(LongAxis)
 LA[index]=ShortAxis[index]
 SA = copy.deepcopy(ShortAxis)
@@ -279,7 +294,7 @@ border_width = 0.2
 ax_size = [0+border_width, 0+border_width, 
            1-2*border_width, 1-2*border_width]
 ax1 = fig2.add_axes(ax_size)
-plt.plot(stress, strain, 'o', markerfacecolor='#1f77b4', markersize=6.0,markeredgewidth=0)
-plt.xlabel('channel position ($\mu$m)')
+plt.plot(stress, strain, 'o', markerfacecolor='#1f77b4', markersize=3.0,markeredgewidth=0)
+plt.xlabel('distance from channel center ($\mu$m)')
 plt.ylabel('strain')
 plt.show()
