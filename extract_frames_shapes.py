@@ -27,6 +27,17 @@ from tkinter import Tk
 from tkinter import filedialog
 import sys
 import os
+import configparser
+
+#%% open the config file
+config = configparser.ConfigParser()
+config.read('example.ini') 
+
+pressure=float(config['SETUP']['pressure'].split()[0])
+magnification=config['MICROSCOPE']['objective']  
+counpler=config['MICROSCOPE']['coupler'] 
+pixel_size=float(config['CAMERA']['pixel size'] .split()[0])# in m for 20x AlliedVision
+channel_width=float(config['SETUP']['channel width'].split()[0])/pixel_size#in pixels
 
 #%%
 def onclick(event):
@@ -97,8 +108,7 @@ plt.imshow(im_av)
 struct = morphology.generate_binary_structure(2, 1)  #structural element for binary erosion
 
 display = 0 #set to 1 if you want to see every frame of im, set to 2 if you want to see im2, im3, im4
-pixel_size = 0.36e-6 # in m for 20x AlliedVision 
-channel_width = 200e-6/pixel_size #in pixels
+
 
 frame = []
 radialposition=[]
