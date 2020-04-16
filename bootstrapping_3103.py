@@ -4,13 +4,6 @@ Created on Tue Mar  3 16:31:17 2020
 
 @author: user
 """
-
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Jan 15 09:54:42 2020
-
-@author: user
-"""
 	
 # scikit-learn bootstrap
 import numpy as np
