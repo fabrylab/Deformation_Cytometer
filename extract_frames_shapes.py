@@ -29,15 +29,7 @@ import sys
 import os
 import configparser
 
-#%% open the config file
-config = configparser.ConfigParser()
-config.read('example.ini') 
 
-pressure=float(config['SETUP']['pressure'].split()[0])
-magnification=config['MICROSCOPE']['objective']  
-counpler=config['MICROSCOPE']['coupler'] 
-pixel_size=float(config['CAMERA']['pixel size'] .split()[0])# in m for 20x AlliedVision
-channel_width=float(config['SETUP']['channel width'].split()[0])/pixel_size#in pixels
 
 #%%
 def onclick(event):
@@ -84,7 +76,18 @@ output_path = os.path.dirname(video)
 flatfield = output_path + r'/flatfield'
 #%%  
 vidcap = cv2.VideoCapture(video) 
+
 print("compute average (flatfield) image") 
+#%% open the config file
+config = configparser.ConfigParser()
+config.read('Config.txt') 
+
+magnification=float(config['MICROSCOPE']['objective'].split()[0])
+coupler=float(config['MICROSCOPE']['coupler'] .split()[0])
+camera_pixel_size=float(config['CAMERA']['camera pixel size'] .split()[0])
+pixel_size=(camera_pixel_size/magnification)*coupler # in meter
+pixel_size=pixel_size *1e-6 # in um
+channel_width=float(config['SETUP']['channel width'].split()[0])*1e-6/pixel_size #in pixels
 count = 0
 while 1:
     success,image = vidcap.read()
