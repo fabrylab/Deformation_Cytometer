@@ -1,0 +1,28 @@
+[Default]
+version  = 1
+video file = 
+
+[SETUP]
+channel width = 200 um
+bioink = alginate 2 pc
+imaging position after inlet = 1 cm
+
+[MICROSCOPE]
+microscope = Leica
+objective = 20 x
+na = 0.4 
+coupler = 1 x
+condensor aperture = 2
+
+[CAMERA]
+exposure time = 28 ms
+gain = 0
+camera = camera GE680, Allied Vision 
+camera pixel size = 7.4 um
+
+[CELL]
+cell type = NIH-3T3
+cell passage number = 10
+time after havest = 20 min 
+treatment = CytoD 2 uM 30 min
+
