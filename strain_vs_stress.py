@@ -112,8 +112,8 @@ ax3 = fig3.add_axes(ax_size)
 fit=[]
 
 pmax = 50*np.ceil(np.max(stress)//50)
-ax3.set_xticks(np.arange(0,pmax+1,50))
-ax3.set_xlim((-10,pmax))
+ax3.set_xticks(np.arange(0,pmax+50,50))
+ax3.set_xlim((-10,pmax+50))
 ax3.set_ylim((-0.2,1.0))
 
 xy = np.vstack([stress,strain])
