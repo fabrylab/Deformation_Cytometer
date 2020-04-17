@@ -43,6 +43,22 @@ def fitfunc(x, p1,p2): #for curve_fit
 pstart=(1,0.1) #initial guess
 def gaussian(x, mu, sig):
     return 1/(sig* np.sqrt(2*np.pi)) * np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+#%% computing p_value of bootstrapping
+def pvalue_bootstrap(pool1, pool2, nr=10000):
+    count=0
+    for n in np.arange(0,nr):
+        id1 = np.random.randint(0,len(pool1))
+        id2 = np.random.randint(0, len(pool2))
+
+        if pool1[id1]>pool2[id2]:
+            count=count+1
+    p_value=count/nr        
+    if p_value >= 0.5:
+        p_value=  1- p_value
+
+    print("{:.4f}".format(p_value))
+    return float("{:.4f}".format(p_value))
+
 
 #  bootstrap sample1
 for k in range(0,100):
