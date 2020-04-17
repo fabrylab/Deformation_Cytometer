@@ -92,11 +92,13 @@ if nof>1:
 fig = plt.figure(1,(7, 4))
 spec = gridspec.GridSpec(ncols=10, nrows=10, figure=fig)
 ax1 = fig.add_subplot(spec[1:8, 1:5])
-
+p_value_alpha=pvalue_bootstrap(p0_2, p0_1, nr=10000)
+p_value_sigmap=pvalue_bootstrap(p1_2, p1_1, nr=10000)
 # alpha
 ax1.hist(p0_1,50,density=True) 
 ax1.set_xlabel(r'$\alpha$')  
-ax1.set_ylabel('Probability density')     
+ax1.set_ylabel('Probability density')  
+ax1.set_title('p = '+str(p_value_alpha)) 
 x_values_1 = np.linspace(min(p0_1)-0.1, max(p0_1)+0.1, 120)
 ax1.plot(x_values_1, gaussian(x_values_1, np.mean(p0_1), p0_1.std()),'--',color='black',linewidth=1)
 #ax1.set_xticks([0,int(np.mean(p0_1)),np.round((np.mean(p0_2)),0)])
@@ -108,7 +110,8 @@ if nof>1:
 #pre-stress
 ax2 = fig.add_subplot(spec[1:8, 6:10])
 ax2.hist(p1_1,50,density=True) 
-ax2.set_xlabel(r'pre-stress')  
+ax2.set_xlabel(r'pre-stress') 
+ax1.set_title('p = '+str(p_value_sigmap)) 
 x_values_1 = np.linspace(min(p1_1)-0.1, max(p1_1)+0.1, 120)
 #ax2.set_xticks([0,25,50])
 ax2.plot(x_values_1, gaussian(x_values_1, np.mean(p1_1), p1_1.std()),'--',color='black',linewidth=1)
