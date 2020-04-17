@@ -17,7 +17,7 @@ condensor aperture = 2
 [CAMERA]
 exposure time = 28 ms
 gain = 0
-camera = camera GE680, Allied Vision 
+camera =  Leica DM IL
 camera pixel size = 7.4 um
 
 [CELL]
