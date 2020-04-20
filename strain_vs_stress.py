@@ -70,14 +70,27 @@ def fitfunc2(x, p1,p2): #for stress versus RP
     return p1*np.abs(x+p2)
 
 #%% import raw data
-data =np.genfromtxt(datafile,dtype=float,skip_header= 1)
+data =np.genfromtxt(datafile,dtype=float,skip_header= 2)
 
 #%% experimental raw data
 RP=data[:,3] #radial position 
 longaxis=data[:,4] #Longaxis of ellipse
 shortaxis=data[:,5] #Shortaxis of ellipse
 Angle=data[:,6] #Shortaxis of ellipse
-BBox_height=data[:,8] #Shortaxis of ellipse
+Irregularity=data[:,7] #ratio of circumference of the binarized image to the circumference of the ellipse 
+Solidity=data[:,8] #percentage of binary pixels within convex hull polygon
+
+l_before = len(RP)
+index = (Solidity>0.95) & (Irregularity < 1.06) #select only the nices cells
+RP = RP[index]
+longaxis = longaxis[index]
+shortaxis = shortaxis[index]
+Angle = Angle[index]
+Solidity = Solidity[index]
+Irregularity = Irregularity[index]
+l_after = len(RP)
+print('# cells before sorting out =', l_before, '   #cells after = ', l_after)
+
 stress=stressfunc(RP*1e-6,-pressure)# analytical stress profile
 #%%remove bias
 
@@ -89,7 +102,6 @@ SA[index]=longaxis[index]
 
 #%%  deformation (True strain)
 D = np.sqrt(LA * SA) #diameter of undeformed (circular) cell
-sigma_corr =  BBox_height / D
 strain = (LA - SA) / D
 
 #%% center channel

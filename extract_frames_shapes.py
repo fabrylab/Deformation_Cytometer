@@ -134,8 +134,8 @@ x_pos = []
 y_pos = []
 MajorAxis=[]
 MinorAxis=[]
-bbox_width = []
-bbox_height = []
+solidity = [] #percentage of binary pixels within convex hull polygon
+irregularity = [] #ratio of circumference of the binarized image to the circumference of the ellipse 
 angle=[]
 count=0
 success = 1
@@ -175,11 +175,17 @@ while success:
             im4_low = gaussian(im, sigma=2.5)
             im4 = im4_high - im4_low            
             #with timeit("canny"):
+            # canny filter on band-passed image
             im1 = feature.canny(im4, sigma=2.5, low_threshold=0.6, high_threshold=0.99, use_quantiles=True) #edge detection           
             im2 = morphology.binary_fill_holes(im1, structure=struct).astype(int) #fill holes
             im3 = morphology.binary_erosion(im2, structure=struct).astype(int) #erode to remove lines and small schmutz
-
-            label_image = label(im3)    #label all ellipses (and other objects)
+            #label_image = label(im3)    #label all ellipses (and other objects)
+            
+            # canny filter the original image
+            im1o = feature.canny(im, sigma=2.5, low_threshold=0.6, high_threshold=0.99, use_quantiles=True) #edge detection           
+            im2o = morphology.binary_fill_holes(im1o, structure=struct).astype(int) #fill holes
+            im3o = morphology.binary_erosion(im2o, structure=struct).astype(int) #erode to remove lines and small schmutz
+            label_imageo = label(im3o)    #label all ellipses (and other objects)
             
             if display == 2: #debug mode
                 ax2.clear()
@@ -198,12 +204,14 @@ while success:
             elif display == 1:
                 ax1.clear()
                 ax1.set_axis_off()
-                ax1.imshow(im4)            
+                ax1.imshow(im)            
                 plt.show()
                 plt.pause(0.01)
             
-            for region in regionprops(label_image,im):
-                if region.area >= 100 : #analyze only regions larger than 100 pixels
+            for region in regionprops(label_imageo,im): #region props are based on the original image
+                imslice = region.slice
+                if region.area >= 100 and np.sum(im3[imslice])>100: #analyze only regions larger than 100 pixels,
+                                                                    #and only of the canny filtered band-passed image returend an object
                     l = region.label
                     
                     a = region.major_axis_length/2
@@ -257,12 +265,10 @@ while success:
                         y_pos.append(region.centroid[0])
                         x_pos.append(region.centroid[1])
                         MajorAxis.append(float(format(region.major_axis_length))* pixel_size * 1e6  )
-                        MinorAxis.append(float(format(region.minor_axis_length))* pixel_size * 1e6  )
-                        bbox_w = (region.bbox[3]-region.bbox[1])* pixel_size * 1e6  
-                        bbox_width.append(bbox_w)
-                        bbox_h = (region.bbox[2]-region.bbox[0])* pixel_size * 1e6  
-                        bbox_height.append(bbox_h)
+                        MinorAxis.append(float(format(region.minor_axis_length))* pixel_size * 1e6  )                        
                         angle.append(np.rad2deg(-region.orientation))
+                        irregularity.append(region.perimeter/circum)
+                        solidity.append(region.solidity)
                         frame.append(count)
                
                         if display > 0 and display < 3:    
@@ -301,13 +307,12 @@ Y =  np.asarray(y_pos)
 LongAxis = np.asarray(MajorAxis)
 ShortAxis = np.asarray(MinorAxis)
 Angle = np.asarray(angle)
-BBox_width = np.asarray(bbox_width)
-BBox_height = np.asarray(bbox_height)
 result_file = output_path + '/' + filename_base + '_result.txt'
 f = open(result_file,'w')
-f.write('Frame' +'\t' +'x_pos' +'\t' +'y_pos' + '\t' +'RadialPos' +'\t' +'LongAxis' +'\t' + 'ShortAxis' +'\t' +'Angle' +'\t' +'BBOx_width' +'\t' +'BBox_height' +'\n')
+f.write('Frame' +'\t' +'x_pos' +'\t' +'y_pos' + '\t' +'RadialPos' +'\t' +'LongAxis' +'\t' + 'ShortAxis' +'\t' +'Angle' +'\t' +'irregularity' +'\t' +'solidity' +'\n')
+f.write('Pathname' +'\t' + output_path + '\n')
 for i in range(0,len(radialposition)): 
-    f.write(str(frame[i]) +'\t' +str(X[i]) +'\t' +str(Y[i]) +'\t' +str(R[i]) +'\t' +str(LongAxis[i]) +'\t'+str(ShortAxis[i]) +'\t' +str(Angle[i]) +'\t' +str(BBox_width[i]) +'\t' +str(BBox_height[i]) +'\n')
+    f.write(str(frame[i]) +'\t' +str(X[i]) +'\t' +str(Y[i]) +'\t' +str(R[i]) +'\t' +str(LongAxis[i]) +'\t'+str(ShortAxis[i]) +'\t' +str(Angle[i]) +'\t' +str(irregularity[i])+'\t' +str(solidity[i]) +'\n')
 f.close()
 #%% data plotting
 
