@@ -8,7 +8,7 @@ bioink = alginate 2 pc
 imaging position after inlet = 1 cm
 
 [MICROSCOPE]
-microscope = Leica
+microscope = Leica DM IL
 objective = 20 x
 na = 0.4 
 coupler = 1 x

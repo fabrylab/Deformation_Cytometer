@@ -78,11 +78,12 @@ if video == '':
 name_ex = os.path.basename(video)
 filename_base, file_extension = os.path.splitext(name_ex)
 output_path = os.path.dirname(video)
-flatfield = output_path + r'/flatfield'
+flatfield = output_path + r'/' + filename_base + '.npy'
+
 
 #%% open and read the config file
 config = configparser.ConfigParser()
-config.read('Config.txt') 
+config.read('config.txt') 
 magnification=float(config['MICROSCOPE']['objective'].split()[0])
 coupler=float(config['MICROSCOPE']['coupler'] .split()[0])
 camera_pixel_size=float(config['CAMERA']['camera pixel size'] .split()[0])
@@ -91,26 +92,29 @@ pixel_size=pixel_size *1e-6 # in um
 channel_width=float(config['SETUP']['channel width'].split()[0])*1e-6/pixel_size #in pixels
 
 #%%  compute average (flatfield) image
-vidcap = cv2.VideoCapture(video) 
-print("compute average (flatfield) image") 
-count = 0
-while 1:
-    success,image = vidcap.read()
-    if success !=1:
-        break
-    image = image[:,:,0]
-    # rotate counter clockwise
-    image=cv2.transpose(image)
-    image=cv2.flip(image,flipCode=0)         
-    if count == 0:
-        im_av = copy.deepcopy(image)   
-        im_av = np.asarray(im_av) 
-        im_av.astype(float)
-    else:
-        im_av = im_av + image.astype(float) 
-    count += 1 
-im_av = im_av / np.mean(im_av)
-np.save(flatfield, im_av)
+if os.path.exists(flatfield):
+    im_av = np.load(flatfield)
+else:
+    vidcap = cv2.VideoCapture(video) 
+    print("compute average (flatfield) image") 
+    count = 0
+    while 1:
+        success,image = vidcap.read()
+        if success !=1:
+            break
+        image = image[:,:,0]
+        # rotate counter clockwise
+        image=cv2.transpose(image)
+        image=cv2.flip(image,flipCode=0)         
+        if count == 0:
+            im_av = copy.deepcopy(image)   
+            im_av = np.asarray(im_av) 
+            im_av.astype(float)
+        else:
+            im_av = im_av + image.astype(float) 
+        count += 1 
+    im_av = im_av / np.mean(im_av)
+    np.save(flatfield, im_av)
 plt.imshow(im_av)
 #%% go through every frame and look for cells
 struct = morphology.generate_binary_structure(2, 1)  #structural element for binary erosion

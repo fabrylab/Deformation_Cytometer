@@ -43,6 +43,7 @@ if datafile == '':
 filename_ex = os.path.basename(datafile)
 filename_base, file_extension = os.path.splitext(filename_ex)
 output_path = os.path.dirname(datafile)
+pressure = float(filename_base[1])*1e5 # deduce applied pressure from file name (in Pa)
 
 #%% stress profile in channel
 L=0.058 #length of the microchannel in meter
@@ -62,6 +63,12 @@ def stressfunc(R,P): # imputs (radial position and pressure)
     stress= np.sqrt((u_primy)**2)
     return stress #output atress profile
 
+def fitfunc(x, p1,p2): #for stress versus strain
+    return (1/p1)*np.log((x/p2)+1)
+
+def fitfunc2(x, p1,p2): #for stress versus RP
+    return p1*np.abs(x+p2)
+
 #%% import raw data
 data =np.genfromtxt(datafile,dtype=float,skip_header= 1)
 
@@ -71,7 +78,7 @@ longaxis=data[:,4] #Longaxis of ellipse
 shortaxis=data[:,5] #Shortaxis of ellipse
 Angle=data[:,6] #Shortaxis of ellipse
 BBox_height=data[:,8] #Shortaxis of ellipse
-stress=stressfunc(RP*1e-6,-3*1e5)# analytical stress profile
+stress=stressfunc(RP*1e-6,-pressure)# analytical stress profile
 #%%remove bias
 
 index = np.abs(RP*Angle>0) 
@@ -84,6 +91,10 @@ SA[index]=longaxis[index]
 D = np.sqrt(LA * SA) #diameter of undeformed (circular) cell
 sigma_corr =  BBox_height / D
 strain = (LA - SA) / D
+
+#%% center channel
+pstart=(0.01,0) #initial guess
+p, pcov = curve_fit(fitfunc2, RP, strain, pstart) #do the curve fitting
 
 '''
 #%% plotig of deformation versus radial position
@@ -99,21 +110,20 @@ ax1.set_ylabel('strain')
 ax1.set_xlim(-100,100)
 plt.show()
 '''
+
+
 #%% fitting deformation with stress stiffening equation, combining different pressures
 
-def fitfunc(x, p1,p2): #for curve_fit
-    return (1/p1)*np.log((x/p2)+1)
-
-fig3=plt.figure(3, (8, 8))
-border_width = 0.2
-ax_size = [0+border_width, 0+border_width, 
-           1-2*border_width, 1-2*border_width]
+fig3=plt.figure(3, (6, 6))
+border_width = 0.1
+ax_size = [0+2*border_width, 0+2*border_width, 
+           1-3*border_width, 1-3*border_width]
 ax3 = fig3.add_axes(ax_size)
 fit=[]
 
 pmax = 50*np.ceil(np.max(stress)//50)
-ax3.set_xticks(np.arange(0,pmax+50,50))
-ax3.set_xlim((-10,pmax+50))
+ax3.set_xticks(np.arange(0,pmax+1,50))
+ax3.set_xlim((-10,pmax+30))
 ax3.set_ylim((-0.2,1.0))
 
 xy = np.vstack([stress,strain])
@@ -138,14 +148,43 @@ ax3.plot(xx,y1, '--', color = 'black',   linewidth=1, zorder=3)
 ax3.plot(xx,y2, '--', color = 'black',   linewidth=1, zorder=3)
 plt.fill_between(xx, y1, y2, facecolor='gray', edgecolor= "none", linewidth = 0, alpha = 0.2)
 
-ax3.set_xlabel('$\u03C3$ (Pa)')
-ax3.set_ylabel('strain')
+ax3.set_xlabel('fluid shear stress $\u03C3$ (Pa)')
+ax3.set_ylabel('cell strain  $\u03B5$')
 plt.show()
 
+#%% plot strain versus radial position in channel
+fig4=plt.figure(4, (6, 6))
+border_width = 0.12
+ax_size = [0+2*border_width, 0+2*border_width, 
+           1-3*border_width, 1-3*border_width]
+ax4 = fig4.add_axes(ax_size)
+xy = np.vstack([RP,strain])
+kd = gaussian_kde(xy)(xy)  
+idx = kd.argsort()
+x, y, z = RP[idx], strain[idx], kd[idx]
+ax4.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis') #plot in kernel density colors
+ax4.set_xticks(np.arange(-100,101,25))
+ax3.set_ylim((-0.2,1.0))
+ax4.set_xlabel('radial position in channel ($\u03BC m$)')
+ax4.set_ylabel('cell strain  $\u03B5$')
 
-
-
-
+#%% plot histogram of cell density in channel (margination)
+fig5=plt.figure(5, (6, 3))
+border_width = 0.12
+ax_size = [0+2*border_width, 0+2*border_width, 
+           1-3*border_width, 1-4*border_width]
+ax5 = fig5.add_axes(ax_size)
+bin_width = 25
+hist, bin_edges = np.histogram(RP, bins=np.arange(-100 + bin_width/2, 101 - bin_width/2, bin_width), density=False)
+plt.bar(bin_edges[:-1]+bin_width/2, hist, width=bin_width*0.8, edgecolor = 'black')
+ax5.set_xlabel('radial position in channel ($\u03BC m$)')
+ticks = np.arange(-100,101,bin_width)
+ax5.set_xlim((-100,100))
+labels = ticks.astype(int)
+labels = labels.astype(str)
+ax5.set_xticks(ticks)
+ax5.set_xticklabels(labels) 
+ax5.set_ylabel('# of cells')
 
 
 
