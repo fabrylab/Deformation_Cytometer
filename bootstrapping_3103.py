@@ -4,13 +4,6 @@ Created on Tue Mar  3 16:31:17 2020
 
 @author: user
 """
-
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Jan 15 09:54:42 2020
-
-@author: user
-"""
 	
 # scikit-learn bootstrap
 import numpy as np
@@ -50,6 +43,22 @@ def fitfunc(x, p1,p2): #for curve_fit
 pstart=(1,0.1) #initial guess
 def gaussian(x, mu, sig):
     return 1/(sig* np.sqrt(2*np.pi)) * np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+#%% computing p_value of bootstrapping
+def pvalue_bootstrap(pool1, pool2, nr=10000):
+    count=0
+    for n in np.arange(0,nr):
+        id1 = np.random.randint(0,len(pool1))
+        id2 = np.random.randint(0, len(pool2))
+
+        if pool1[id1]>pool2[id2]:
+            count=count+1
+    p_value=count/nr        
+    if p_value >= 0.5:
+        p_value=  1- p_value
+
+    print("{:.4f}".format(p_value))
+    return float("{:.4f}".format(p_value))
+
 
 #  bootstrap sample1
 for k in range(0,100):
@@ -83,11 +92,13 @@ if nof>1:
 fig = plt.figure(1,(7, 4))
 spec = gridspec.GridSpec(ncols=10, nrows=10, figure=fig)
 ax1 = fig.add_subplot(spec[1:8, 1:5])
-
+p_value_alpha=pvalue_bootstrap(p0_2, p0_1, nr=10000)
+p_value_sigmap=pvalue_bootstrap(p1_2, p1_1, nr=10000)
 # alpha
 ax1.hist(p0_1,50,density=True) 
 ax1.set_xlabel(r'$\alpha$')  
-ax1.set_ylabel('Probability density')     
+ax1.set_ylabel('Probability density')  
+ax1.set_title('p = '+str(p_value_alpha)) 
 x_values_1 = np.linspace(min(p0_1)-0.1, max(p0_1)+0.1, 120)
 ax1.plot(x_values_1, gaussian(x_values_1, np.mean(p0_1), p0_1.std()),'--',color='black',linewidth=1)
 #ax1.set_xticks([0,int(np.mean(p0_1)),np.round((np.mean(p0_2)),0)])
@@ -99,7 +110,8 @@ if nof>1:
 #pre-stress
 ax2 = fig.add_subplot(spec[1:8, 6:10])
 ax2.hist(p1_1,50,density=True) 
-ax2.set_xlabel(r'pre-stress')  
+ax2.set_xlabel(r'pre-stress') 
+ax1.set_title('p = '+str(p_value_sigmap)) 
 x_values_1 = np.linspace(min(p1_1)-0.1, max(p1_1)+0.1, 120)
 #ax2.set_xticks([0,25,50])
 ax2.plot(x_values_1, gaussian(x_values_1, np.mean(p1_1), p1_1.std()),'--',color='black',linewidth=1)
