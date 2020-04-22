@@ -18,6 +18,8 @@ from tkinter import Tk
 from tkinter import filedialog
 from scipy.stats import gaussian_kde
 import sys, os
+from scipy import stats
+
 #----------general fonts for plots and figures----------
 font = {'family' : 'sans-serif',
         'sans-serif':['Arial'],
@@ -190,8 +192,8 @@ bin_width = 25
 hist, bin_edges = np.histogram(RP, bins=np.arange(-100 + bin_width/2, 101 - bin_width/2, bin_width), density=False)
 plt.bar(bin_edges[:-1]+bin_width/2, hist, width=bin_width*0.8, edgecolor = 'black')
 ax5.set_xlabel('radial position in channel ($\u03BC m$)')
-ticks = np.arange(-100,101,bin_width)
 ax5.set_xlim((-100,100))
+ticks = np.arange(-100,101,bin_width)
 labels = ticks.astype(int)
 labels = labels.astype(str)
 ax5.set_xticks(ticks)
@@ -200,5 +202,52 @@ ax5.set_ylabel('# of cells')
 
 
 
+#%% plot histogram of cell radius in channel (margination)
+fig6=plt.figure(6, (6, 3))
+border_width = 0.12
+ax_size = [0+2*border_width, 0+2*border_width, 
+           1-3*border_width, 1-4*border_width]
+ax6 = fig6.add_axes(ax_size)
+radius = np.sqrt(LA * SA / 4)  # radius is sqrt(a*b)
+bin_width = 10
+bins=np.arange(0, 101 - bin_width/2, bin_width)
+bin_means, bin_edges, binnumber = stats.binned_statistic(abs(RP),radius, statistic='mean', bins=bins)
+bin_std, bin_edges, binnumber = stats.binned_statistic(abs(RP),radius, statistic='std', bins=bins)
+plt.bar(bin_edges[:-1]+bin_width/2,bin_means, width=bin_width*0.8, yerr=bin_std, edgecolor = 'black',label='binned statistic of data')
+#plt.plot(abs(RP),radius, 'o', markerfacecolor='#1f77b4', markersize=3.0,markeredgewidth=0)
+ax6.set_xlabel('radial position in channel ($\u03BC m$)')
+ticks = np.arange(0 + bin_width/2,101,bin_width)
+ax6.set_xlim((0,100))
+labels = ticks.astype(int)
+labels = labels.astype(str)
+ax6.set_xticks(ticks)
+ax6.set_xticklabels(labels) 
+ax6.set_ylabel('Radius of cells')
+#ax6.set_title('Bandpass image')
+ax6.set_title('Original image')
+
+#%% plot mean strain for position in channel
+fig7=plt.figure(7, (6, 3))
+border_width = 0.12
+ax_size = [0+2*border_width, 0+2*border_width, 
+           1-3*border_width, 1-4*border_width]
+ax7 = fig7.add_axes(ax_size)
+radius = np.sqrt(LA * SA/ 4)
+bin_width = 10
+bins=np.arange(0, 101 - bin_width/2, bin_width)
+bin_means, bin_edges, binnumber = stats.binned_statistic(abs(RP),strain, statistic='mean', bins=bins)
+bin_std, bin_edges, binnumber = stats.binned_statistic(abs(RP),strain, statistic='std', bins=bins)
+plt.bar(bin_edges[:-1]+bin_width/2,bin_means, width=bin_width*0.8, yerr=bin_std, edgecolor = 'black',label='binned statistic of data')
+#plt.plot(abs(RP),radius, 'o', markerfacecolor='#1f77b4', markersize=3.0,markeredgewidth=0)
+ax7.set_xlabel('radial position in channel ($\u03BC m$)')
+ticks = np.arange(0 + bin_width/2,101,bin_width)
+ax7.set_xlim((0,100))
+labels = ticks.astype(int)
+labels = labels.astype(str)
+ax7.set_xticks(ticks)
+ax7.set_xticklabels(labels) 
+ax7.set_ylabel('Mean Strain of cells')
+ax7.set_title('Original image')
+#ax7.set_title('Bandpass image')
 
 
