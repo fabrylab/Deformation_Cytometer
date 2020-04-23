@@ -43,6 +43,7 @@ if datafile == '':
     sys.exit()
 
 filename_ex = os.path.basename(datafile)
+print(filename_ex)
 filename_base, file_extension = os.path.splitext(filename_ex)
 output_path = os.path.dirname(datafile)
 pressure = float(filename_base[1])*1e5 # deduce applied pressure from file name (in Pa)
@@ -75,6 +76,7 @@ def fitfunc2(x, p1,p2): #for stress versus RP
 data =np.genfromtxt(datafile,dtype=float,skip_header= 2)
 
 #%% experimental raw data
+Frames=data[:,0] #frame number 
 RP=data[:,3] #radial position 
 longaxis=data[:,4] #Longaxis of ellipse
 shortaxis=data[:,5] #Shortaxis of ellipse
@@ -91,7 +93,8 @@ Angle = Angle[index]
 Solidity = Solidity[index]
 Irregularity = Irregularity[index]
 l_after = len(RP)
-print('# cells before sorting out =', l_before, '   #cells after = ', l_after)
+print('# frames =', Frames[-1], '   # cells total =', l_before, '   #cells sorted = ', l_after)
+print('ratio #cells/#frames = ',l_before/Frames[-1])
 
 stress=stressfunc(RP*1e-6,-pressure)# analytical stress profile
 #%%remove bias
@@ -109,6 +112,8 @@ strain = (LA - SA) / D
 #%% center channel
 pstart=(0.01,0) #initial guess
 p, pcov = curve_fit(fitfunc2, RP, strain, pstart) #do the curve fitting
+y_center = p[1]
+print('center of channel is at psotion x = %.3f' % y_center)
 
 '''
 #%% plotig of deformation versus radial position
@@ -149,6 +154,7 @@ ax3.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis') #plot in k
 
 pstart=(1,.017) #initial guess
 p, pcov = curve_fit(fitfunc, stress, strain, pstart) #do the curve fitting
+#p, pcov = curve_fit(fitfunc, stress[RP<0], strain[RP<0], pstart) #do the curve fitting for one side only
 err = (np.diag(pcov))**0.5 #estimate 1 standard error of the fit parameters
 
 print("Fit Parameter: p1=%.3f +- %.3f       p2=%.3f +- %.3f" %(p[0],err[0],p[1],err[1]))  
@@ -177,6 +183,7 @@ kd = gaussian_kde(xy)(xy)
 idx = kd.argsort()
 x, y, z = RP[idx], strain[idx], kd[idx]
 ax4.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis') #plot in kernel density colors
+#ax4.plot([y_center, y_center],[np.min(strain),np.max(strain)],'--', color = 'black') #fitted center line
 ax4.set_xticks(np.arange(-100,101,25))
 ax3.set_ylim((-0.2,1.0))
 ax4.set_xlabel('radial position in channel ($\u03BC m$)')

@@ -30,7 +30,7 @@ import sys
 import os
 import configparser
 
-display = 0 #set to 1 if you want to see every frame of im and the radial intensity profile around each cell, 
+display = 3 #set to 1 if you want to see every frame of im and the radial intensity profile around each cell, 
             #set to 2 if you want to see the result of the morphological operation in the binary images im2, im3, im4
             #set to 3 if you want to see which cells have been selected (compound image of the last 100 cells that were detected)
 r_min = 6   #cells smaller than r_min (in um) will not be analyzed
@@ -115,7 +115,7 @@ else:
         count += 1 
     im_av = im_av / np.mean(im_av)
     np.save(flatfield, im_av)
-plt.imshow(im_av)
+#plt.imshow(im_av)
 #%% go through every frame and look for cells
 struct = morphology.generate_binary_structure(2, 1)  #structural element for binary erosion
 
@@ -137,6 +137,7 @@ MinorAxis=[]
 solidity = [] #percentage of binary pixels within convex hull polygon
 irregularity = [] #ratio of circumference of the binarized image to the circumference of the ellipse 
 angle=[]
+sharpness=[] # computed from the radial intensity profile
 count=0
 success = 1
 vidcap = cv2.VideoCapture(video)
@@ -210,55 +211,65 @@ while success:
             
             for region in regionprops(label_imageo,im): #region props are based on the original image
                 imslice = region.slice
-                if region.area >= 100 and np.sum(im3[imslice])>100: #analyze only regions larger than 100 pixels,
+                a = region.major_axis_length/2
+                b = region.minor_axis_length/2
+                r = np.sqrt(a*b)
+                Amin_pixels = np.pi*(r_min/pixel_size/1e6)**2 # minimum region area based on minimum radius               
+                
+                if region.area >= Amin_pixels and np.sum(im3[imslice])>Amin_pixels: #analyze only regions larger than 100 pixels,
                                                                     #and only of the canny filtered band-passed image returend an object
                     l = region.label
-                    
-                    a = region.major_axis_length/2
-                    b = region.minor_axis_length/2
-                    r = np.sqrt(a*b)
-                    
+                   
                     [min_row, min_col, max_row, max_col] = region.bbox
                     min_row = np.max([0, min_row - 10])
                     max_row = np.min([sizes[0], max_row + 10])
                     min_col = np.max([0, min_col - 10])
                     max_col = np.min([sizes[1], max_col + 10])   
+                    
                     structure = np.std(im4[min_row:max_row, min_col:max_col])
                     
-                    circum =np.pi*((3*(a+b))-np.sqrt(10*a*b+3*(a**2+b**2)))                   
+                    circum =np.pi*((3*(a+b))-np.sqrt(10*a*b+3*(a**2+b**2)))  
+                    
+#%% compute radial intensity profile around each ellipse                    
+                    theta = np.arange(0, 2*np.pi, np.pi/8)
+                    strain = (a-b)/r  
+                    dd = np.arange(0,int(3*r))
+                    i_r = np.zeros(int(3*r))
+                    for d in range(0,int(3*r)):
+                        x = d/r*a*np.cos(theta)
+                        y = d/r*b*np.sin(theta)
+                        t = -region.orientation
+                        xrot = (x *np.cos(t) - y*np.sin(t) + region.centroid[1]).astype(int)
+                        yrot = (x *np.sin(t) + y*np.cos(t) + region.centroid[0]).astype(int)                    
+                        index = (xrot<0)|(xrot>=im.shape[1])|(yrot<0)|(yrot>=im.shape[0])                        
+                        x = xrot[~index]
+                        y = yrot[~index]    
+                        #if d == int(r):
+                            #ax1.plot(x,y,'w.')
+                        i_r[d] = np.mean(im[y,x])
+                    d_max = np.argmax(i_r)
+                    sharp = (i_r[int(r+2)]-i_r[int(r-2)])/5/np.std(i_r)     
+                    
                     if display > 0 and display < 3:
                         ellipse = Ellipse(xy=[region.centroid[1],region.centroid[0]], width=region.major_axis_length, height=region.minor_axis_length, angle=np.rad2deg(-region.orientation),
                                    edgecolor='r', fc='None', lw=0.5, zorder = 2)
-                        ax1.add_patch(ellipse)
-                    
-#%% compute radial intensity profile around each ellipse
-                    if display ==1:
-                        theta = np.arange(0, 2*np.pi, np.pi/4)
-                        strain = (a-b)/r  
-    
-                        dd = np.arange(0,int(3*r))
-                        i_r = np.zeros(int(3*r))
-                        for d in range(0,int(3*r)):
-                            x = np.round(d*(np.cos(theta) + strain*np.sin(theta)) + region.centroid[1]).astype(int)
-                            y = np.round(d*np.sin(theta) + region.centroid[0]).astype(int)                
-                            index = (x<0)|(x>=im.shape[1])|(y<0)|(y>=im.shape[0])
-                            x = x[~index]
-                            y = y[~index]    
-                            i_r[d] = np.mean(im[y,x])
-                        d_max = np.argmax(i_r)
-                                        
+                        ax1.add_patch(ellipse)                    
+
+                    if display ==1:                                     
                         ax2.clear()
                         ax2.plot(dd,i_r)
                         ax2.plot([r,r],[np.min(i_r),np.max(i_r)],'r--')
                         ax2.plot([dd[0],dd[-1]],[im_mean,im_mean],'r--')
-                        s = 'd_max at r = ' + '{:0.2f}'.format(d_max/r) + '\n' + 'stdev = ' + '{:0.3f}'.format(np.std(i_r)/im_mean) + \
-                            '\n' + 'slope = ' + '{:0.2f}'.format(0.2*np.abs(i_r[int(r+2)]-i_r[int(r-2)]))
+                        s = 'd_max at r = ' + '{:0.2f}'.format(d_max/r) + \
+                            '\n' + 'stdev = ' + '{:0.3f}'.format(np.std(i_r)/im_mean) + \
+                            '\n' + 'slope = ' + '{:0.2f}'.format(np.abs(i_r[int(r+2)]-i_r[int(r-2)])/5) + \
+                            '\n' + 'sharp = ' + '{:0.2f}'.format(sharp)
                         plt.text(d_max, int(np.max(i_r)), s, fontsize = 12)
                         plt.show()
                         plt.pause(0.01)
                     
  #%% select the "good" cells
-                    if region.perimeter/circum<1.06 and  r*pixel_size*1e6 > r_min and region.solidity > 0.95 :                         
+                    if region.perimeter/circum<1.06 and  r*pixel_size*1e6 > r_min and region.solidity > 0.95:                         
                         yy=region.centroid[0]-channel_width/2
                         yy = yy * pixel_size * 1e6                
                         radialposition.append(yy)
@@ -269,6 +280,7 @@ while success:
                         angle.append(np.rad2deg(-region.orientation))
                         irregularity.append(region.perimeter/circum)
                         solidity.append(region.solidity)
+                        sharpness.append(sharp)
                         frame.append(count)
                
                         if display > 0 and display < 3:    
@@ -294,8 +306,8 @@ while success:
                             pos = (len(x_pos)-1) % 100
                             ax3[pos].cla()
                             ax3[pos].set_axis_off()
-                            ax3[pos].imshow(im4[min_row:max_row, min_col:max_col],cmap='gray', interpolation = 'bicubic')
-                            ax3[pos].text(0,0,str(count),fontsize = 10)#0,0,'{:0.3f}'.format(structure),fontsize = 10)
+                            ax3[pos].imshow(im[min_row:max_row, min_col:max_col],cmap='gray', interpolation = 'bicubic')
+                            ax3[pos].text(0,0,'{:0.2f}'.format(sharp),fontsize = 10)#0,0,'{:0.3f}'.format(structure),fontsize = 10)
                             plt.plot()
                             plt.pause(0.01)
     count = count + 1 #next image
@@ -309,10 +321,10 @@ ShortAxis = np.asarray(MinorAxis)
 Angle = np.asarray(angle)
 result_file = output_path + '/' + filename_base + '_result.txt'
 f = open(result_file,'w')
-f.write('Frame' +'\t' +'x_pos' +'\t' +'y_pos' + '\t' +'RadialPos' +'\t' +'LongAxis' +'\t' + 'ShortAxis' +'\t' +'Angle' +'\t' +'irregularity' +'\t' +'solidity' +'\n')
+f.write('Frame' +'\t' +'x_pos' +'\t' +'y_pos' + '\t' +'RadialPos' +'\t' +'LongAxis' +'\t' + 'ShortAxis' +'\t' +'Angle' +'\t' +'irregularity' +'\t' +'solidity' +'\t' +'sharpness' +'\n')
 f.write('Pathname' +'\t' + output_path + '\n')
 for i in range(0,len(radialposition)): 
-    f.write(str(frame[i]) +'\t' +str(X[i]) +'\t' +str(Y[i]) +'\t' +str(R[i]) +'\t' +str(LongAxis[i]) +'\t'+str(ShortAxis[i]) +'\t' +str(Angle[i]) +'\t' +str(irregularity[i])+'\t' +str(solidity[i]) +'\n')
+    f.write(str(frame[i]) +'\t' +str(X[i]) +'\t' +str(Y[i]) +'\t' +str(R[i]) +'\t' +str(LongAxis[i]) +'\t'+str(ShortAxis[i]) +'\t' +str(Angle[i]) +'\t' +str(irregularity[i]) +'\t' +str(solidity[i]) +'\t' +str(sharpness[i]) +'\n')
 f.close()
 #%% data plotting
 
