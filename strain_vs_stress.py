@@ -81,18 +81,20 @@ shortaxis=data[:,5] #Shortaxis of ellipse
 Angle=data[:,6] #Shortaxis of ellipse
 Irregularity=data[:,7] #ratio of circumference of the binarized image to the circumference of the ellipse 
 Solidity=data[:,8] #percentage of binary pixels within convex hull polygon
-
+Sharpness=data[:,9] #percentage of binary pixels within convex hull polygon
+#%% select suitable cells
 l_before = len(RP)
-index = (Solidity>0.95) & (Irregularity < 1.06) #select only the nices cells
+index = (Solidity>0.98) & (Irregularity < 1.05) & (np.abs(Sharpness) > 0.3)#select only the nices cells
 RP = RP[index]
 longaxis = longaxis[index]
 shortaxis = shortaxis[index]
 Angle = Angle[index]
 Solidity = Solidity[index]
 Irregularity = Irregularity[index]
+Sharpness = Sharpness[index]
 l_after = len(RP)
 print('# frames =', Frames[-1], '   # cells total =', l_before, '   #cells sorted = ', l_after)
-print('ratio #cells/#frames = ',l_before/Frames[-1])
+print('ratio #cells/#frames before sorting out = ',l_before/Frames[-1])
 
 stress=stressfunc(RP*1e-6,-pressure)# analytical stress profile
 #%%remove bias
@@ -113,22 +115,6 @@ p, pcov = curve_fit(fitfunc2, RP, strain, pstart) #do the curve fitting
 y_center = p[1]
 print('center of channel is at psotion x = %.3f' % y_center)
 
-'''
-#%% plotig of deformation versus radial position
-fig1=plt.figure(1, (8, 8))
-border_width = 0.2
-ax_size = [0+border_width, 0+border_width, 
-           1-2*border_width, 1-2*border_width]
-ax1 = fig1.add_axes(ax_size)
-
-ax1.plot(RP,strain,'o')
-ax1.set_xlabel('Distance from channel center ($\mu m$)')
-ax1.set_ylabel('strain')
-ax1.set_xlim(-100,100)
-plt.show()
-'''
-
-
 #%% fitting deformation with stress stiffening equation, combining different pressures
 
 fig3=plt.figure(3, (6, 6))
@@ -136,6 +122,8 @@ border_width = 0.1
 ax_size = [0+2*border_width, 0+2*border_width, 
            1-3*border_width, 1-3*border_width]
 ax3 = fig3.add_axes(ax_size)
+ax3.set_xlabel('fluid shear stress $\u03C3$ (Pa)')
+ax3.set_ylabel('cell strain  $\u03B5$')
 fit=[]
 
 pmax = 50*np.ceil(np.max(stress)//50)
@@ -143,11 +131,12 @@ ax3.set_xticks(np.arange(0,pmax+1,50))
 ax3.set_xlim((-10,pmax+30))
 ax3.set_ylim((-0.2,1.0))
 
+# ----------plot strain versus stress data points----------
 xy = np.vstack([stress,strain])
 kd = gaussian_kde(xy)(xy)  
 idx = kd.argsort()
 x, y, z = stress[idx], strain[idx], kd[idx]
-ax3.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis') #plot in kernel density colors
+ax3.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis') #plot in kernel density colors e.g. viridis
 #ax3.plot(stress,strain,'o', color = C1) #plot the data without kernel density colors
 
 pstart=(1,.017) #initial guess
@@ -156,6 +145,7 @@ p, pcov = curve_fit(fitfunc, stress, strain, pstart) #do the curve fitting
 err = (np.diag(pcov))**0.5 #estimate 1 standard error of the fit parameters
 
 print("Fit Parameter: p1=%.3f +- %.3f       p2=%.3f +- %.3f" %(p[0],err[0],p[1],err[1]))  
+# ----------plot the fit curve----------
 xx = np.arange(np.min(stress),np.max(stress),0.1) # generates an extended array 
 fit_real=fitfunc(xx,p[0],p[1])
 ax3.plot(xx,(fitfunc(xx,p[0],p[1])), '--', color = 'black',   linewidth=2, zorder=3)
@@ -166,8 +156,20 @@ ax3.plot(xx,y1, '--', color = 'black',   linewidth=1, zorder=3)
 ax3.plot(xx,y2, '--', color = 'black',   linewidth=1, zorder=3)
 plt.fill_between(xx, y1, y2, facecolor='gray', edgecolor= "none", linewidth = 0, alpha = 0.2)
 
-ax3.set_xlabel('fluid shear stress $\u03C3$ (Pa)')
-ax3.set_ylabel('cell strain  $\u03B5$')
+# ----------plot the binned (averaged) strain versus stress data points----------
+binwidth = 10 #Pa
+bins = np.arange(0,pmax,binwidth)
+bins = [0,10,20,30,40,50,75,100,125,150,200,250]
+strain_av = []
+stress_av = []
+strain_err = []
+for i in range(len(bins)-1):
+    index = (stress > bins[i]) & (stress < bins[i+1])
+    strain_av.append(np.mean(strain[index]))
+    strain_err.append(np.std(strain[index])/np.sqrt(np.sum(index)))
+    stress_av.append(np.mean(stress[index]))
+ax3.errorbar(stress_av, strain_av,yerr = strain_err, marker='s', mfc='white', \
+             mec='black', ms=7, mew=1, lw = 0, ecolor = 'black', elinewidth = 1, capsize = 3)    
 plt.show()
 
 #%% plot strain versus radial position in channel
