@@ -96,50 +96,47 @@ l_after = len(RP)
 print('# frames =', Frames[-1], '   # cells total =', l_before, '   #cells sorted = ', l_after)
 print('ratio #cells/#frames before sorting out = ',l_before/Frames[-1])
 
-stress=stressfunc(RP*1e-6,-pressure)# analytical stress profile
-#%%remove bias
-
+stress=stressfunc(RP*1e-6,-pressure)# compute analytical stress profile
+#%%remove bias for nearly round cells (otherwise the cell strain is always positive)
 index = np.abs(RP*Angle>0) 
 LA = copy.deepcopy(longaxis)
 LA[index]=shortaxis[index]
 SA = copy.deepcopy(shortaxis)
 SA[index]=longaxis[index]
 
-#%%  deformation (True strain)
+#%%  compute cell deformation (true strain)
 D = np.sqrt(LA * SA) #diameter of undeformed (circular) cell
 strain = (LA - SA) / D
 
-#%% center channel
+#%% find center of the channel 
 pstart=(0.01,0) #initial guess
 p, pcov = curve_fit(fitfunc2, RP, strain, pstart) #do the curve fitting
 y_center = p[1]
 print('center of channel is at psotion x = %.3f' % y_center)
-
-#%% fitting deformation with stress stiffening equation, combining different pressures
-
-fig3=plt.figure(3, (6, 6))
+#%% fitting deformation with stress stiffening equation
+fig1=plt.figure(1, (6, 6))
 border_width = 0.1
 ax_size = [0+2*border_width, 0+2*border_width, 
            1-3*border_width, 1-3*border_width]
-ax3 = fig3.add_axes(ax_size)
-ax3.set_xlabel('fluid shear stress $\u03C3$ (Pa)')
-ax3.set_ylabel('cell strain  $\u03B5$')
+ax1 = fig1.add_axes(ax_size)
+ax1.set_xlabel('fluid shear stress $\u03C3$ (Pa)')
+ax1.set_ylabel('cell strain  $\u03B5$')
 fit=[]
 
 pmax = 50*np.ceil(np.max(stress)//50)
-ax3.set_xticks(np.arange(0,pmax+1,50))
-ax3.set_xlim((-10,pmax+30))
-ax3.set_ylim((-0.2,1.0))
+ax1.set_xticks(np.arange(0,pmax+1,50))
+ax1.set_xlim((-10,pmax+30))
+ax1.set_ylim((-0.2,1.0))
 
 # ----------plot strain versus stress data points----------
 xy = np.vstack([stress,strain])
 kd = gaussian_kde(xy)(xy)  
 idx = kd.argsort()
 x, y, z = stress[idx], strain[idx], kd[idx]
-ax3.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis') #plot in kernel density colors e.g. viridis
-#ax3.plot(stress,strain,'o', color = C1) #plot the data without kernel density colors
+ax1.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis') #plot in kernel density colors e.g. viridis
+#ax2.plot(stress,strain,'o', color = C1) #plot the data without kernel density colors
 
-pstart=(1,.017) #initial guess
+pstart=(3,8) #initial guess
 p, pcov = curve_fit(fitfunc, stress, strain, pstart) #do the curve fitting
 #p, pcov = curve_fit(fitfunc, stress[RP<0], strain[RP<0], pstart) #do the curve fitting for one side only
 err = (np.diag(pcov))**0.5 #estimate 1 standard error of the fit parameters
@@ -148,15 +145,15 @@ print("Fit Parameter: p1=%.3f +- %.3f       p2=%.3f +- %.3f" %(p[0],err[0],p[1],
 # ----------plot the fit curve----------
 xx = np.arange(np.min(stress),np.max(stress),0.1) # generates an extended array 
 fit_real=fitfunc(xx,p[0],p[1])
-ax3.plot(xx,(fitfunc(xx,p[0],p[1])), '--', color = 'black',   linewidth=2, zorder=3)
+ax1.plot(xx,(fitfunc(xx,p[0],p[1])), '--', color = 'black',   linewidth=2, zorder=3)
 # ----------plot standard error of the fit function----------
 y1 = fitfunc(xx,p[0]-err[0],p[1]-err[1])
 y2 = fitfunc(xx,p[0]+err[0],p[1]+err[1])
-ax3.plot(xx,y1, '--', color = 'black',   linewidth=1, zorder=3)
-ax3.plot(xx,y2, '--', color = 'black',   linewidth=1, zorder=3)
+ax1.plot(xx,y1, '--', color = 'black',   linewidth=1, zorder=3)
+ax1.plot(xx,y2, '--', color = 'black',   linewidth=1, zorder=3)
 plt.fill_between(xx, y1, y2, facecolor='gray', edgecolor= "none", linewidth = 0, alpha = 0.2)
 
-# ----------plot the binned (averaged) strain versus stress data points----------
+#%% ----------plot the binned (averaged) strain versus stress data points----------
 binwidth = 10 #Pa
 bins = np.arange(0,pmax,binwidth)
 bins = [0,10,20,30,40,50,75,100,125,150,200,250]
@@ -168,9 +165,72 @@ for i in range(len(bins)-1):
     strain_av.append(np.mean(strain[index]))
     strain_err.append(np.std(strain[index])/np.sqrt(np.sum(index)))
     stress_av.append(np.mean(stress[index]))
-ax3.errorbar(stress_av, strain_av,yerr = strain_err, marker='s', mfc='white', \
+ax1.errorbar(stress_av, strain_av,yerr = strain_err, marker='s', mfc='white', \
              mec='black', ms=7, mew=1, lw = 0, ecolor = 'black', elinewidth = 1, capsize = 3)    
 plt.show()
+
+#%% fitting alpha with stress stiffening equation up to a maximum shear stress
+fig2=plt.figure(2, (6, 3))
+border_width = 0.1
+ax_size = [0+2*border_width, 0+2*border_width, 
+           1-3*border_width, 1-3*border_width]
+ax2 = fig2.add_axes(ax_size)
+ax2.set_xlabel('stress fit range $\u03C3$ (Pa)')
+ax2.set_ylabel('stiffening factor $\u03B1$')
+fit=[]
+
+pmax = 50*np.ceil(np.max(stress)//50)
+ax2.set_xticks(np.arange(0,pmax+1,50))
+ax2.set_xlim((-10,pmax+30))
+ax2.set_ylim((-0.2,6))
+
+p0 = []
+p0err = []
+p1 = []
+p1err = []
+stressmax = np.arange(35,np.max(stress),1)
+pstart=(3,8) #initial guess
+for i in range(len(stressmax)):
+    p, pcov = curve_fit(fitfunc, stress[stress<stressmax[i]], strain[stress<stressmax[i]], pstart) #do the curve fitting for one side only
+    err = (np.diag(pcov))**0.5 #estimate 1 standard error of the fit parameters
+    p0.append(p[0])
+    p0err.append(err[0])
+    p1.append(p[1])
+    p1err.append(err[1])
+    #pstart = (p[0],p[1])
+    print("stressmax=p1=%.3f  Fit Parameter: p1=%.3f +- %.3f       p2=%.3f +- %.3f" %(stressmax[i], p[0],err[0],p[1],err[1]))  
+# ----------plot the parameters----------
+ax2.plot(stressmax,p0, '-', color = C1,   linewidth=3, zorder=3)
+# ----------plot standard error of the fit function----------
+y1 = np.asarray(p0) - np.asarray(p0err)
+y2 = np.asarray(p0) + np.asarray(p0err)
+#ax2.plot(stressmax,y1, '--', color = 'black',   linewidth=1, zorder=3)
+#ax2.plot(stressmax,y2, '--', color = 'black',   linewidth=1, zorder=3)
+plt.fill_between(stressmax, y1, y2, facecolor='gray', edgecolor= "none", linewidth = 0, alpha = 0.5)
+
+
+#%% fitting sigma_p with stress stiffening equation up to a maximum shear stress
+fig3=plt.figure(3, (6, 3))
+border_width = 0.1
+ax_size = [0+2*border_width, 0+2*border_width, 
+           1-3*border_width, 1-3*border_width]
+ax3 = fig3.add_axes(ax_size)
+ax3.set_xlabel('stress fit range $\u03C3$ (Pa)')
+ax3.set_ylabel('prestress $\sigma_p$ (Pa)')
+fit=[]
+
+pmax = 50*np.ceil(np.max(stress)//50)
+ax3.set_xticks(np.arange(0,pmax+1,50))
+ax3.set_xlim((-10,pmax+30))
+ax3.set_ylim((-0.2,50))
+
+ax3.plot(stressmax,p1, '-', color = C2,   linewidth=3, zorder=3)
+# ----------plot standard error of the fit function----------
+y1 = np.asarray(p1) - np.asarray(p1err)
+y2 = np.asarray(p1) + np.asarray(p1err)
+#ax3.plot(stressmax,y1, '--', color = 'black',   linewidth=1, zorder=3)
+#ax3.plot(stressmax,y2, '--', color = 'black',   linewidth=1, zorder=3)
+plt.fill_between(stressmax, y1, y2, facecolor='gray', edgecolor= "none", linewidth = 0, alpha = 0.5, zorder=0)
 
 #%% plot strain versus radial position in channel
 fig4=plt.figure(4, (6, 6))
@@ -185,7 +245,7 @@ x, y, z = RP[idx], strain[idx], kd[idx]
 ax4.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis') #plot in kernel density colors
 #ax4.plot([y_center, y_center],[np.min(strain),np.max(strain)],'--', color = 'black') #fitted center line
 ax4.set_xticks(np.arange(-100,101,25))
-ax3.set_ylim((-0.2,1.0))
+ax4.set_ylim((-0.2,1.0))
 ax4.set_xlabel('radial position in channel ($\u03BC m$)')
 ax4.set_ylabel('cell strain  $\u03B5$')
 
@@ -207,7 +267,39 @@ ax5.set_xticks(ticks)
 ax5.set_xticklabels(labels) 
 ax5.set_ylabel('# of cells')
 
+#%% plot angle versus radial position in channel
+fig6=plt.figure(6, (6, 6))
+border_width = 0.12
+ax_size = [0+2*border_width, 0+2*border_width, 
+           1-3*border_width, 1-3*border_width]
+ax6 = fig6.add_axes(ax_size)
+xy = np.vstack([RP,Angle])
+kd = gaussian_kde(xy)(xy)  
+idx = kd.argsort()
+x, y, z = RP[idx], Angle[idx], kd[idx]
+ax6.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis') #plot in kernel density colors
+ax6.set_xticks(np.arange(-100,101,25))
+ax6.set_yticks(np.arange(-60,61,20))
+ax6.set_ylim((-60,60))
+ax6.set_xlabel('radial position in channel ($\u03BC m$)')
+ax6.set_ylabel('angle (deg)')
 
+#%% plot undeformed cell diamter versus radial position in channel
+fig7=plt.figure(7, (6, 6))
+border_width = 0.12
+ax_size = [0+2*border_width, 0+2*border_width, 
+           1-3*border_width, 1-3*border_width]
+ax7 = fig7.add_axes(ax_size)
+xy = np.vstack([RP,D])
+kd = gaussian_kde(xy)(xy)  
+idx = kd.argsort()
+x, y, z = RP[idx], D[idx], kd[idx]
+ax7.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis') #plot in kernel density colors
+ax7.set_xticks(np.arange(-100,101,25))
+ax7.set_yticks(np.arange(0,31,5))
+ax7.set_ylim((0,30))
+ax7.set_xlabel('radial position in channel ($\u03BC m$)')
+ax7.set_ylabel('undeformed cell diameter ($\u03BC m$)')
 
 
 
