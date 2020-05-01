@@ -26,10 +26,10 @@ font = {'family' : 'sans-serif',
 plt.rc('font', **font)
 plt.rc('legend', fontsize=12)
 plt.rc('axes', titlesize=18)
-C1 = '#1f77b4'
-C2 = '#ff7f0e'
-C3 = '#9fc5e8'
-C4='navajowhite'
+C0 = '#1f77b4'
+C1 = '#ff7f0e'
+C2 = '#2ca02c'
+C3 = '#d62728'
 
 #%% select result.txt file
 root = Tk()
@@ -137,9 +137,10 @@ ax1.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis') #plot in k
 #ax2.plot(stress,strain,'o', color = C1) #plot the data without kernel density colors
 
 pstart=(3,8) #initial guess
-p, pcov = curve_fit(fitfunc, stress, strain, pstart) #do the curve fitting
+p, pcov = curve_fit(fitfunc, stress[stress<950], strain[stress<950], pstart) #do the curve fitting
 #p, pcov = curve_fit(fitfunc, stress[RP<0], strain[RP<0], pstart) #do the curve fitting for one side only
 err = (np.diag(pcov))**0.5 #estimate 1 standard error of the fit parameters
+cov = pcov[0,1]
 
 print("Fit Parameter: p1=%.3f +- %.3f       p2=%.3f +- %.3f" %(p[0],err[0],p[1],err[1]))  
 # ----------plot the fit curve----------
@@ -147,11 +148,15 @@ xx = np.arange(np.min(stress),np.max(stress),0.1) # generates an extended array
 fit_real=fitfunc(xx,p[0],p[1])
 ax1.plot(xx,(fitfunc(xx,p[0],p[1])), '--', color = 'black',   linewidth=2, zorder=3)
 # ----------plot standard error of the fit function----------
-y1 = fitfunc(xx,p[0]-err[0],p[1]-err[1])
-y2 = fitfunc(xx,p[0]+err[0],p[1]+err[1])
-ax1.plot(xx,y1, '--', color = 'black',   linewidth=1, zorder=3)
-ax1.plot(xx,y2, '--', color = 'black',   linewidth=1, zorder=3)
-plt.fill_between(xx, y1, y2, facecolor='gray', edgecolor= "none", linewidth = 0, alpha = 0.2)
+dyda = -1/p[0]**2*np.log(xx/p[1]+1)
+dyds = -1/p[0]*xx/(xx*p[1]+p[1]**2)
+vary = (dyda*err[0])**2 + (dyds*err[1])**2 + 2*dyda*dyds*cov
+y1 = fitfunc(xx,p[0],p[1])-np.sqrt(vary)
+y2 = fitfunc(xx,p[0],p[1])+np.sqrt(vary)
+#ax1.plot(xx,y1, '--', color = 'black',   linewidth=1, zorder=3)
+#ax1.plot(xx,y2, '--', color = 'black',   linewidth=1, zorder=3)
+plt.fill_between(xx, y1, y2, facecolor='gray', edgecolor= "none", linewidth = 0, alpha = 0.5)
+#plt.fill_between([-10,50], [-0.2, -0.2], [1,1], facecolor='C0', edgecolor= "none", linewidth = 0, alpha = 0.2)
 
 #%% ----------plot the binned (averaged) strain versus stress data points----------
 binwidth = 10 #Pa
@@ -200,7 +205,7 @@ for i in range(len(stressmax)):
     #pstart = (p[0],p[1])
     print("stressmax=p1=%.3f  Fit Parameter: p1=%.3f +- %.3f       p2=%.3f +- %.3f" %(stressmax[i], p[0],err[0],p[1],err[1]))  
 # ----------plot the parameters----------
-ax2.plot(stressmax,p0, '-', color = C1,   linewidth=3, zorder=3)
+ax2.plot(stressmax,p0, '-', color = C3,   linewidth=3, zorder=3)
 # ----------plot standard error of the fit function----------
 y1 = np.asarray(p0) - np.asarray(p0err)
 y2 = np.asarray(p0) + np.asarray(p0err)
@@ -224,7 +229,7 @@ ax3.set_xticks(np.arange(0,pmax+1,50))
 ax3.set_xlim((-10,pmax+30))
 ax3.set_ylim((-0.2,50))
 
-ax3.plot(stressmax,p1, '-', color = C2,   linewidth=3, zorder=3)
+ax3.plot(stressmax,p1, '-', color = C3,   linewidth=3, zorder=3)
 # ----------plot standard error of the fit function----------
 y1 = np.asarray(p1) - np.asarray(p1err)
 y2 = np.asarray(p1) + np.asarray(p1err)
