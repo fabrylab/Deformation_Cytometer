@@ -79,11 +79,11 @@ name_ex = os.path.basename(video)
 filename_base, file_extension = os.path.splitext(name_ex)
 output_path = os.path.dirname(video)
 flatfield = output_path + r'/' + filename_base + '.npy'
-
+configfile = output_path + r'/' + filename_base + '_config.txt'
 
 #%% open and read the config file
 config = configparser.ConfigParser()
-config.read('config.txt') 
+config.read(configfile) 
 magnification=float(config['MICROSCOPE']['objective'].split()[0])
 coupler=float(config['MICROSCOPE']['coupler'] .split()[0])
 camera_pixel_size=float(config['CAMERA']['camera pixel size'] .split()[0])
