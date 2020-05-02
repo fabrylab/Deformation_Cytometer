@@ -18,6 +18,7 @@ from tkinter import Tk
 from tkinter import filedialog
 from scipy.stats import gaussian_kde
 import sys, os
+import configparser
 #----------general fonts for plots and figures----------
 font = {'family' : 'sans-serif',
         'sans-serif':['Arial'],
@@ -35,7 +36,7 @@ C3 = '#d62728'
 root = Tk()
 root.withdraw() # we don't want a full GUI, so keep the root window from appearing
 
-datafile = filedialog.askopenfilename(title="select the data file",filetypes=[("txt file",'*.txt')]) # show an "Open" dialog box and return the path to the selected file
+datafile = filedialog.askopenfilename(title="select the data file",filetypes=[("txt file",'*_result.txt')]) # show an "Open" dialog box and return the path to the selected file
 if datafile == '':
     print('empty')
     sys.exit()
@@ -44,11 +45,18 @@ filename_ex = os.path.basename(datafile)
 print(filename_ex)
 filename_base, file_extension = os.path.splitext(filename_ex)
 output_path = os.path.dirname(datafile)
-pressure = float(filename_base[1])*1e5 # deduce applied pressure from file name (in Pa)
+#pressure = float(filename_base[1])*1e5 # deduce applied pressure from file name (in Pa)
+filename_config = output_path + '/'+ filename_base[:-7] + '_config.txt' #remove _result from the filename and add _config.txt
+#%% open and read the config file
+config = configparser.ConfigParser()
+config.read(filename_config) 
+pressure=float(config['SETUP']['pressure'].split()[0])*1000 #applied pressure (in Pa)
+channel_width=float(config['SETUP']['channel width'].split()[0])*1e-6 #in m
+channel_length=float(config['SETUP']['channel length'].split()[0])*1e-2 #in m
 
 #%% stress profile in channel
-L=0.058 #length of the microchannel in meter
-H= 200*1e-6 #height(and width) of the channel 
+L=channel_length #length of the microchannel in meter
+H= channel_width #height(and width) of the channel 
 def stressfunc(R,P): # imputs (radial position and pressure)
     G=P/L #  pressure gradient
     pre_factor=(4*(H**2)*G)/(np.pi)**3
@@ -141,6 +149,7 @@ p, pcov = curve_fit(fitfunc, stress[stress<950], strain[stress<950], pstart) #do
 #p, pcov = curve_fit(fitfunc, stress[RP<0], strain[RP<0], pstart) #do the curve fitting for one side only
 err = (np.diag(pcov))**0.5 #estimate 1 standard error of the fit parameters
 cov = pcov[0,1]
+print('correlation between fit parameters is ',cov/err[0]/err[1])
 
 print("Fit Parameter: p1=%.3f +- %.3f       p2=%.3f +- %.3f" %(p[0],err[0],p[1],err[1]))  
 # ----------plot the fit curve----------
@@ -202,8 +211,7 @@ for i in range(len(stressmax)):
     p0err.append(err[0])
     p1.append(p[1])
     p1err.append(err[1])
-    #pstart = (p[0],p[1])
-    print("stressmax=p1=%.3f  Fit Parameter: p1=%.3f +- %.3f       p2=%.3f +- %.3f" %(stressmax[i], p[0],err[0],p[1],err[1]))  
+    #print("stressmax=p1=%.3f  Fit Parameter: p1=%.3f +- %.3f       p2=%.3f +- %.3f" %(stressmax[i], p[0],err[0],p[1],err[1]))  
 # ----------plot the parameters----------
 ax2.plot(stressmax,p0, '-', color = C3,   linewidth=3, zorder=3)
 # ----------plot standard error of the fit function----------
