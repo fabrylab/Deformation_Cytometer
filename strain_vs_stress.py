@@ -117,10 +117,15 @@ D = np.sqrt(LA * SA) #diameter of undeformed (circular) cell
 strain = (LA - SA) / D
 
 #%% find center of the channel 
-pstart=(0.01,0) #initial guess
-p, pcov = curve_fit(fitfunc2, RP, strain, pstart) #do the curve fitting
-y_center = p[1]
-print('center of channel is at psotion x = %.3f' % y_center)
+no_right_cells = 0
+center = 0
+for i in np.arange(-20,20,0.1):
+    n = np.sum(np.sign(-(RP+i)*Angle))
+    if n>no_right_cells:
+        center = i
+        no_right_cells = n
+print('center channel position at y = %.1f  \u03BCm' % -center)
+RP = RP + center
 #%% fitting deformation with stress stiffening equation
 fig1=plt.figure(1, (6, 6))
 border_width = 0.1
@@ -144,18 +149,21 @@ x, y, z = stress[idx], strain[idx], kd[idx]
 ax1.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis') #plot in kernel density colors e.g. viridis
 #ax2.plot(stress,strain,'o', color = C1) #plot the data without kernel density colors
 
-pstart=(3,8) #initial guess
-p, pcov = curve_fit(fitfunc, stress[stress<950], strain[stress<950], pstart) #do the curve fitting
+
+stress_subset = stress[D<np.percentile(D,100)] 
+strain_subset = strain[D<np.percentile(D,100)] 
+pstart=(3.5,8) #initial guess
+p, pcov = curve_fit(fitfunc, stress_subset, strain_subset, pstart) #do the curve fitting
 #p, pcov = curve_fit(fitfunc, stress[RP<0], strain[RP<0], pstart) #do the curve fitting for one side only
 err = (np.diag(pcov))**0.5 #estimate 1 standard error of the fit parameters
 cov = pcov[0,1]
-print('correlation between fit parameters is ',cov/err[0]/err[1])
-
-print("Fit Parameter: p1=%.3f +- %.3f       p2=%.3f +- %.3f" %(p[0],err[0],p[1],err[1]))  
+#print('correlation p0 vs. p1 =%.3f' % (cov/err[0]/err[1]))
+print("p1=%.2f +- %.2f   p2=%.1f +- %.1f   p1*p2=%.1f +- %.1f" %(p[0],err[0],p[1],err[1], p[0]*p[1], \
+                                                                 np.sqrt((p[1]*err[0])**2 + (p[0]*err[1])**2 + 2*p[0]*p[1]*cov)))  
 # ----------plot the fit curve----------
 xx = np.arange(np.min(stress),np.max(stress),0.1) # generates an extended array 
 fit_real=fitfunc(xx,p[0],p[1])
-ax1.plot(xx,(fitfunc(xx,p[0],p[1])), '--', color = 'black',   linewidth=2, zorder=3)
+ax1.plot(xx,(fitfunc(xx,p[0],p[1])), '--', color = 'C3',   linewidth=2, zorder=3)
 # ----------plot standard error of the fit function----------
 dyda = -1/p[0]**2*np.log(xx/p[1]+1)
 dyds = -1/p[0]*xx/(xx*p[1]+p[1]**2)
@@ -164,7 +172,7 @@ y1 = fitfunc(xx,p[0],p[1])-np.sqrt(vary)
 y2 = fitfunc(xx,p[0],p[1])+np.sqrt(vary)
 #ax1.plot(xx,y1, '--', color = 'black',   linewidth=1, zorder=3)
 #ax1.plot(xx,y2, '--', color = 'black',   linewidth=1, zorder=3)
-plt.fill_between(xx, y1, y2, facecolor='gray', edgecolor= "none", linewidth = 0, alpha = 0.5)
+plt.fill_between(xx, y1, y2, facecolor='C3', edgecolor= "none", linewidth = 0, alpha = 0.5)
 #plt.fill_between([-10,50], [-0.2, -0.2], [1,1], facecolor='C0', edgecolor= "none", linewidth = 0, alpha = 0.2)
 
 #%% ----------plot the binned (averaged) strain versus stress data points----------
@@ -175,14 +183,105 @@ strain_av = []
 stress_av = []
 strain_err = []
 for i in range(len(bins)-1):
-    index = (stress > bins[i]) & (stress < bins[i+1])
-    strain_av.append(np.mean(strain[index]))
-    strain_err.append(np.std(strain[index])/np.sqrt(np.sum(index)))
-    stress_av.append(np.mean(stress[index]))
+    index = (stress_subset > bins[i]) & (stress_subset < bins[i+1])
+    strain_av.append(np.mean(strain_subset[index]))
+    strain_err.append(np.std(strain_subset[index])/np.sqrt(np.sum(index)))
+    stress_av.append(np.mean(stress_subset[index]))
 ax1.errorbar(stress_av, strain_av,yerr = strain_err, marker='s', mfc='white', \
              mec='black', ms=7, mew=1, lw = 0, ecolor = 'black', elinewidth = 1, capsize = 3)    
 plt.show()
+'''
 
+
+
+stress_subset = stress[(D<np.percentile(D,66)) & (D>np.percentile(D,33))] 
+strain_subset = strain[(D<np.percentile(D,66)) & (D>np.percentile(D,33))] 
+pstart=(3.5,8) #initial guess
+p, pcov = curve_fit(fitfunc, stress_subset, strain_subset, pstart) #do the curve fitting
+#p, pcov = curve_fit(fitfunc, stress[RP<0], strain[RP<0], pstart) #do the curve fitting for one side only
+err = (np.diag(pcov))**0.5 #estimate 1 standard error of the fit parameters
+cov = pcov[0,1]
+#print('correlation p0 vs. p1 =%.3f' % (cov/err[0]/err[1]))
+print("p1=%.2f +- %.2f   p2=%.1f +- %.1f   p1*p2=%.1f +- %.1f" %(p[0],err[0],p[1],err[1], p[0]*p[1], \
+                                                                 np.sqrt((p[1]*err[0])**2 + (p[0]*err[1])**2 + 2*p[0]*p[1]*cov)))  
+# ----------plot the fit curve----------
+xx = np.arange(np.min(stress),np.max(stress),0.1) # generates an extended array 
+fit_real=fitfunc(xx,p[0],p[1])
+ax1.plot(xx,(fitfunc(xx,p[0],p[1])), '--', color = 'C2',   linewidth=2, zorder=3)
+# ----------plot standard error of the fit function----------
+dyda = -1/p[0]**2*np.log(xx/p[1]+1)
+dyds = -1/p[0]*xx/(xx*p[1]+p[1]**2)
+vary = (dyda*err[0])**2 + (dyds*err[1])**2 + 2*dyda*dyds*cov
+y1 = fitfunc(xx,p[0],p[1])-np.sqrt(vary)
+y2 = fitfunc(xx,p[0],p[1])+np.sqrt(vary)
+#ax1.plot(xx,y1, '--', color = 'black',   linewidth=1, zorder=3)
+#ax1.plot(xx,y2, '--', color = 'black',   linewidth=1, zorder=3)
+plt.fill_between(xx, y1, y2, facecolor='C2', edgecolor= "none", linewidth = 0, alpha = 0.5)
+#plt.fill_between([-10,50], [-0.2, -0.2], [1,1], facecolor='C0', edgecolor= "none", linewidth = 0, alpha = 0.2)
+
+#%% ----------plot the binned (averaged) strain versus stress data points----------
+binwidth = 10 #Pa
+bins = np.arange(0,pmax,binwidth)
+bins = [0,10,20,30,40,50,75,100,125,150,200,250]
+strain_av = []
+stress_av = []
+strain_err = []
+for i in range(len(bins)-1):
+    index = (stress_subset > bins[i]) & (stress_subset < bins[i+1])
+    strain_av.append(np.mean(strain_subset[index]))
+    strain_err.append(np.std(strain_subset[index])/np.sqrt(np.sum(index)))
+    stress_av.append(np.mean(stress_subset[index]))
+ax1.errorbar(stress_av, strain_av,yerr = strain_err, marker='s', mfc='C2', \
+             mec='black', ms=7, mew=1, lw = 0, ecolor = 'black', elinewidth = 1, capsize = 3)    
+plt.show()
+
+
+
+
+stress_subset = stress[D>np.percentile(D,66)] 
+strain_subset = strain[D>np.percentile(D,66)] 
+pstart=(3.5,8) #initial guess
+p, pcov = curve_fit(fitfunc, stress_subset, strain_subset, pstart) #do the curve fitting
+#p, pcov = curve_fit(fitfunc, stress[RP<0], strain[RP<0], pstart) #do the curve fitting for one side only
+err = (np.diag(pcov))**0.5 #estimate 1 standard error of the fit parameters
+cov = pcov[0,1]
+#print('correlation p0 vs. p1 =%.3f' % (cov/err[0]/err[1]))
+print("p1=%.2f +- %.2f   p2=%.1f +- %.1f   p1*p2=%.1f +- %.1f" %(p[0],err[0],p[1],err[1], p[0]*p[1], \
+                                                                 np.sqrt((p[1]*err[0])**2 + (p[0]*err[1])**2 + 2*p[0]*p[1]*cov)))  
+# ----------plot the fit curve----------
+xx = np.arange(np.min(stress),np.max(stress),0.1) # generates an extended array 
+fit_real=fitfunc(xx,p[0],p[1])
+ax1.plot(xx,(fitfunc(xx,p[0],p[1])), '--', color = 'C1',   linewidth=2, zorder=3)
+# ----------plot standard error of the fit function----------
+dyda = -1/p[0]**2*np.log(xx/p[1]+1)
+dyds = -1/p[0]*xx/(xx*p[1]+p[1]**2)
+vary = (dyda*err[0])**2 + (dyds*err[1])**2 + 2*dyda*dyds*cov
+y1 = fitfunc(xx,p[0],p[1])-np.sqrt(vary)
+y2 = fitfunc(xx,p[0],p[1])+np.sqrt(vary)
+#ax1.plot(xx,y1, '--', color = 'black',   linewidth=1, zorder=3)
+#ax1.plot(xx,y2, '--', color = 'black',   linewidth=1, zorder=3)
+plt.fill_between(xx, y1, y2, facecolor='C1', edgecolor= "none", linewidth = 0, alpha = 0.5)
+#plt.fill_between([-10,50], [-0.2, -0.2], [1,1], facecolor='C0', edgecolor= "none", linewidth = 0, alpha = 0.2)
+
+#%% ----------plot the binned (averaged) strain versus stress data points----------
+binwidth = 10 #Pa
+bins = np.arange(0,pmax,binwidth)
+bins = [0,10,20,30,40,50,75,100,125,150,200,250]
+strain_av = []
+stress_av = []
+strain_err = []
+for i in range(len(bins)-1):
+    index = (stress_subset > bins[i]) & (stress_subset < bins[i+1])
+    strain_av.append(np.mean(strain_subset[index]))
+    strain_err.append(np.std(strain_subset[index])/np.sqrt(np.sum(index)))
+    stress_av.append(np.mean(stress_subset[index]))
+ax1.errorbar(stress_av, strain_av,yerr = strain_err, marker='s', mfc='C1', \
+             mec='black', ms=7, mew=1, lw = 0, ecolor = 'black', elinewidth = 1, capsize = 3)    
+plt.show()
+
+
+
+'''
 #%% fitting alpha with stress stiffening equation up to a maximum shear stress
 fig2=plt.figure(2, (6, 3))
 border_width = 0.1
@@ -313,6 +412,5 @@ ax7.set_yticks(np.arange(0,31,5))
 ax7.set_ylim((0,30))
 ax7.set_xlabel('radial position in channel ($\u03BC m$)')
 ax7.set_ylabel('undeformed cell diameter ($\u03BC m$)')
-
 
 
