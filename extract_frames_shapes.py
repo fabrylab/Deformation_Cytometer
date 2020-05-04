@@ -66,14 +66,21 @@ plt.rc('legend', fontsize=12)
 plt.rc('axes', titlesize=18)    
 plt.rcParams['axes.linewidth'] = 0.1 #set the value globally
 
-#%% select video file
-root = Tk()
-root.withdraw() # we don't want a full GUI, so keep the root window from appearing
-video = []
-video = filedialog.askopenfilename(title="select the data file",filetypes=[("avi file",'*.avi')]) # show an "Open" dialog box and return the path to the selected file
-if video == '':
-    print('empty')
-    sys.exit()
+# if there is a command line parameter...
+if len(sys.argv) >= 2:
+    # ... we just use this file
+    video = sys.argv[1]
+# if not, we ask the user to provide us a filename
+else:
+    #%% select video file
+    root = Tk()
+    root.withdraw() # we don't want a full GUI, so keep the root window from appearing
+    video = []
+    video = filedialog.askopenfilename(title="select the data file",filetypes=[("avi file",'*.avi')]) # show an "Open" dialog box and return the path to the selected file
+    if video == '':
+        print('empty')
+        sys.exit()
+
 
 name_ex = os.path.basename(video)
 filename_base, file_extension = os.path.splitext(name_ex)
@@ -164,7 +171,7 @@ while success:
                 ax4 = fig1.add_subplot(spec[0:6, 16:21],sharex=ax1,sharey=ax1)
             elif display == 1:
                 plt.close('all')
-                fig1 = plt.figure(1,(21 * sizes[1]/sizes[0], 7))        
+                fig1 = plt.figure(1,(21 * sizes[1]/sizes[0], 7))
                 spec = gridspec.GridSpec(ncols=30, nrows=10, figure=fig1)
                 ax1 = fig1.add_subplot(spec[0:10, 0:10])
                 ax2 = fig1.add_subplot(spec[1:9, 15:30])
