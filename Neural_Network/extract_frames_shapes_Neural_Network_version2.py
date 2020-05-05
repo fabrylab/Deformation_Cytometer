@@ -38,7 +38,7 @@ unet = UNet().create_model((540,300,1),1, d=8)
 # change path for weights
 unet.load_weights("C:/Users/selin/OneDrive/Dokumente/GitHub/Deformation_Cytometer/Neural_Network/weights/Unet_0-0-5_fl_RAdam_20200426-134706.h5")
 
-#%%
+#%% Type of input data
 type_data = 2   # set to 0 if video
                 # set to 1 if flatfield corrected images
                 # set to 2 if raw images
@@ -73,7 +73,6 @@ plt.rc('legend', fontsize=12)
 plt.rc('axes', titlesize=18)    
 plt.rcParams['axes.linewidth'] = 0.1 #set the value globally
 
-
 #%% select video file
 if type_data == 0:
     root = Tk()
@@ -101,6 +100,7 @@ pixel_size=(camera_pixel_size/magnification)*coupler # in meter
 pixel_size=pixel_size *1e-6 # in um
 channel_width=float(config['SETUP']['channel width'].split()[0])*1e-6/pixel_size #in pixels
 '''
+# Selelected arbitrary values, so that program runs...
 channel_width = 1
 pixel_size = 1
 r_min = 6   #cells smaller than r_min (in um) will not be analyzed
