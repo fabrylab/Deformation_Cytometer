@@ -3,23 +3,20 @@
 Created on Sun Mar 12 09:28:22 2020
 @author: Ben Fabry, Selina Sonntag
 """
-# this program reads the frames of an avi video file, averages all images,
-# and stores the normalized image as a floating point numpy array 
-# in the same directory as the extracted images, under the name "flatfield.npy"
+# this program reads the frames of an avi video file/ images as jpg, 
+# averages all images, and stores the normalized image as a floating 
+# point numpy array in the same directory as the extracted images, 
+# under the name "flatfield.npy"
 #
-# The program then loops again through all images of the video file,
-# identifies cells, extracts the cell shape, fits an ellipse to the cell shape,
-# and stores the information on the cell's centroid position, long and short axis,
-# angle (orientation) of the long axis, and bounding box widht and height
-# in a text file (result_file.txt) in the same directory as the video file.
+# The trained UNet is loaded, the images are preprocessed and a prediction
+# is made for every image. Ellipses can be fitted into the image, as well 
+# as the parameters of the fitted ellipse calculated (here only good cells are
+# selected for regionprops). Those are stored in result.txt files in the 
+# previous directory.
 
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-from skimage import feature
-from skimage.filters import gaussian
-from scipy.ndimage import morphology
 from skimage.measure import label, regionprops
 from matplotlib.patches import Ellipse 
 import time
@@ -28,7 +25,6 @@ from tkinter import Tk
 from tkinter import filedialog
 import sys
 import os
-import configparser
 
 # New code
 from includes.UNETmodel import UNet
@@ -43,12 +39,8 @@ unet = UNet().create_model((540,300,1),1, d=8)
 unet.load_weights("C:/Users/selin/OneDrive/Dokumente/GitHub/Deformation_Cytometer/Neural_Network/weights/Unet_0-0-5_fl_RAdam_20200426-134706.h5")
 
 #%%
-display = 3 #set to 1 if you want to see every frame of im and the radial intensity profile around each cell, 
-            #set to 2 if you want to see the result of the morphological operation in the binary images im2, im3, im4
-            #set to 3 if you want to see which cells have been selected (compound image of the last 100 cells that were detected)
-r_min = 6   #cells smaller than r_min (in um) will not be analyzed
 type_data = 2   # set to 0 if video
-                # set to 1 if flatfield corrected imgaes
+                # set to 1 if flatfield corrected images
                 # set to 2 if raw images
 #%%
 def onclick(event):
@@ -98,6 +90,8 @@ if type_data == 0:
     flatfield = output_path + r'/' + filename_base + '.npy'
 '''
 #%% open and read the config file
+# TODO: Parameters for camera have to be added (config file)
+
 config = configparser.ConfigParser()
 config.read('config.txt') 
 magnification=float(config['MICROSCOPE']['objective'].split()[0])
@@ -109,6 +103,8 @@ channel_width=float(config['SETUP']['channel width'].split()[0])*1e-6/pixel_size
 '''
 channel_width = 1
 pixel_size = 1
+r_min = 6   #cells smaller than r_min (in um) will not be analyzed
+# Amin_pixels = np.pi*(r_min/pixel_size/1e6)**2 # minimum region area based on minimum radius
 
 #%% Preprocessing of image
 # Flatfiled instead of np.mean?
@@ -119,7 +115,7 @@ def preprocess(img):
 def preprocess_flatfield(img):
     return ((img / im_av) - np.mean(img)) / np.std(img).astype(np.float32)
 
-#%%  compute average (flatfield) image
+#%%  compute average (flatfield) for video
 if type_data == 0:
     if os.path.exists(flatfield):
         im_av = np.load(flatfield)
@@ -163,7 +159,6 @@ if type_data > 0:
 
 if type_data == 2:
     flatfield = output_path + r'/flatfield'    
-
     print("compute average (flatfield) image")
     count = 0
     for root, dirs, files in os.walk(search_path):
@@ -215,6 +210,7 @@ def fit_ellipses_regionprops(p):
     return out
 
 
+#%% Get parameters of ellipse
 def ellipse_parameters_cv2(prediction,id):
     pred = prediction[id]
     p = (pred.squeeze() > 0.5)
@@ -244,10 +240,7 @@ def ellipse_parameters_cv2(prediction,id):
         parameters = [id,xpos,ypos,RP,b,a,Angle]
         out.extend(parameters)
     return out                
-
-
-# Amin_pixels = np.pi*(r_min/pixel_size/1e6)**2 # minimum region area based on minimum radius
-# Parameters for camera have to be added (config file)
+    
 def ellipse_parameters(prediction,id):
     pred = prediction[id]
     p = (pred.squeeze() > 0.5)
@@ -255,6 +248,7 @@ def ellipse_parameters(prediction,id):
     out = []
     for region in regionprops(labeled,p):                
         if region.area >= 100: #analyze only regions larger than 100 pixels
+        #if region.area >= Amin_pixels:
             a = region.major_axis_length / 2
             b = region.minor_axis_length / 2
             r = np.sqrt(a * b)
@@ -308,11 +302,11 @@ if type_data == 0:
         im=cv2.flip(im,flipCode=0)  
         if success !=1:
             break # break out of the while loop
-        images.append(preprocess_flatfield(im[:,:,0]))
+        images.append(preprocess(im[:,:,0]))
     images = np.asarray(images)[:,:,:,None]
     print(images.shape)
 
-###### New: make prediciton image-wise... takes longer ####
+###### New: make prediciton image-wise... takes longer, maybe useful later on? ####
 '''
 file_list = []
 for root, dirs, files in os.walk(search_path):
@@ -386,7 +380,7 @@ prediction=unet.predict(images[id:id+batch_size])
 #%% Calculate ellipse parameters
 parameters_total = []
 parameters_total_cv2 = []
-
+print('Get ellipse parameters')
 for id in range(prediction.shape[0]):
     print(id)
     pred = prediction[id]
@@ -413,18 +407,33 @@ print(np.shape(parameters_total))
 
 X = parameters_total
 result_file = output_path + '/' + 'result.txt'
-f = open(result_file,'w')
-f.write('Frame' +'\t' +'x_pos' +'\t' +'y_pos' + '\t' +'RadialPos' +'\t' +'LongAxis' +'\t' + 'ShortAxis' +'\t' +'Angle' +'\t' +'irregularity' +'\t' +'solidity' +'\t' + 'sharpness' +'\n')
-f.write('Pathname' +'\t' + output_path + '\n')
-for i in range(np.shape(X)[0]): 
-    f.write(str(np.array(X)[i,0]) +'\t' +str(np.array(X)[i,1]) +'\t' +str(np.array(X)[i,2]) +'\t' +str(np.array(X)[i,3]) +'\t' +str(np.array(X)[i,4]) +'\t'+str(np.array(X)[i,5]) +'\t' +str(np.array(X)[i,6]) +'\t' +str(np.array(X)[i,7]) +'\t' +str(np.array(X)[i,8]) + '\t' + str(np.array(X)[i,9]) +'\n')
+with open(result_file, "w") as f:
+    f.write('Frame' +'\t' +'x_pos' +'\t' +'y_pos' + '\t' +'RadialPos' +'\t' +'LongAxis' +'\t' + 'ShortAxis' +'\t' +'Angle' +'\t' +'irregularity' +'\t' +'solidity' +'\t' + 'sharpness' +'\n')
+    f.write('Pathname' +'\t' + output_path + '\n')
+    for i in range(np.shape(X)[0]):
+        for s in range(np.shape(X)[1] - 1):
+            f.write(str(np.array(X)[i,s]) +"\t")
+        f.write(str(np.array(X)[i,-1]) +"\n")  
 f.close() 
+
+Y = parameters_total
+result_file = output_path + '/' + 'result_cv2.txt'
+with open(result_file,'w') as g:
+    g.write('Frame' +'\t' +'x_pos' +'\t' +'y_pos' + '\t' +'RadialPos' +'\t' +'LongAxis' +'\t' + 'ShortAxis' +'\t' +'Angle' +'\n')
+    g.write('Pathname' +'\t' + output_path + '\n')
+    for i in range(np.shape(Y)[0]): 
+        for s in range(np.shape(Y)[1] - 1):
+            g.write(str(np.array(Y)[i,s]) +"\t")
+        g.write(str(np.array(Y)[i,-1]) +"\n")  
+g.close()
 
 #%% Plot predictions
 fig, axes = plt.subplots(1,4,figsize=[16,5],)
 print('Start making graphs')
 id = 42  # change id to see different plot
 pred = prediction[id]
+p = (pred.squeeze() > 0.5)
+
 ax=axes[0]
 ax.set_title("original")
 ax.imshow(images[id].squeeze())
@@ -437,7 +446,7 @@ ax.set_axis_off()
 
 ax=axes[2]
 ax.set_title("prediction mask [binary]")
-ax.imshow(pred.squeeze()>0.5)
+ax.imshow(p)
 ax.set_axis_off()
 
 ax=axes[3]
@@ -455,10 +464,9 @@ for el in ellis:
     #draw_el = Ellipse([el[0][0], el[0][1]], el[1][1], el[1][0], el[2], fill=False, edgecolor='red')
     ax.add_patch(draw_el)
 for el in ellis_ellipse:
-#print(el)
-    draw_el = Ellipse([el[0][1], el[0][0]], el[1][1], el[1][0], 180-el[2], fill=False, edgecolor='blue')        
+    draw_el = Ellipse([el[0][1], el[0][0]], el[1][1], el[1][0], 180-el[2], fill=False, edgecolor='blue',linestyle=':')        
     #draw_el = Ellipse([el[0][0], el[0][1]], el[1][1], el[1][0], el[2], fill=False, edgecolor='red')
-    #ax.add_patch(draw_el)
+    ax.add_patch(draw_el)
 
 #%% plot strain vs. stress    
 #remove bias
