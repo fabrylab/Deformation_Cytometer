@@ -95,8 +95,8 @@ config.read(configfile)
 magnification=float(config['MICROSCOPE']['objective'].split()[0])
 coupler=float(config['MICROSCOPE']['coupler'] .split()[0])
 camera_pixel_size=float(config['CAMERA']['camera pixel size'] .split()[0])
-pixel_size=(camera_pixel_size/magnification)*coupler # in meter
-pixel_size=pixel_size *1e-6 # in um
+pixel_size=camera_pixel_size/(magnification*coupler) # in micrometer
+pixel_size=pixel_size *1e-6 # in m
 channel_width=float(config['SETUP']['channel width'].split()[0])*1e-6/pixel_size #in pixels
 
 #%%  compute average (flatfield) image

@@ -93,7 +93,7 @@ Solidity=data[:,8] #percentage of binary pixels within convex hull polygon
 Sharpness=data[:,9] #percentage of binary pixels within convex hull polygon
 #%% select suitable cells
 l_before = len(RP)
-index = (Solidity>0.98) & (Irregularity < 1.05) & (np.abs(Sharpness) > 0.3)#select only the nices cells
+index = (Solidity>0.98) & (Irregularity < 1.05) & (np.abs(Sharpness) > 0.5)#select only the nices cells
 RP = RP[index]
 longaxis = longaxis[index]
 shortaxis = shortaxis[index]
@@ -105,7 +105,19 @@ l_after = len(RP)
 print('# frames =', Frames[-1], '   # cells total =', l_before, '   #cells sorted = ', l_after)
 print('ratio #cells/#frames before sorting out = ',l_before/Frames[-1])
 
+#%% find center of the channel 
+no_right_cells = 0
+center = 0
+for i in np.arange(-50,50,0.1):
+    n = np.sum(np.sign(-(RP+i)*Angle))
+    if n>no_right_cells:
+        center = i
+        no_right_cells = n
+print('center channel position at y = %.1f  \u03BCm' % -center)
+RP = RP + center
+
 stress=stressfunc(RP*1e-6,-pressure)# compute analytical stress profile
+
 #%%remove bias for nearly round cells (otherwise the cell strain is always positive)
 index = np.abs(RP*Angle>0) 
 LA = copy.deepcopy(longaxis)
@@ -117,16 +129,6 @@ SA[index]=longaxis[index]
 D = np.sqrt(LA * SA) #diameter of undeformed (circular) cell
 strain = (LA - SA) / D
 
-#%% find center of the channel 
-no_right_cells = 0
-center = 0
-for i in np.arange(-20,20,0.1):
-    n = np.sum(np.sign(-(RP+i)*Angle))
-    if n>no_right_cells:
-        center = i
-        no_right_cells = n
-print('center channel position at y = %.1f  \u03BCm' % -center)
-RP = RP + center
 #%% fitting deformation with stress stiffening equation
 fig1=plt.figure(1, (6, 6))
 border_width = 0.1
@@ -137,9 +139,9 @@ ax1.set_xlabel('fluid shear stress $\u03C3$ (Pa)')
 ax1.set_ylabel('cell strain  $\u03B5$')
 fit=[]
 
-pmax = 50*np.ceil(np.max(stress)//50)
-ax1.set_xticks(np.arange(0,pmax+1,50))
-ax1.set_xlim((-10,pmax+30))
+pmax = 50*np.ceil((np.max(stress)+50)//50)
+ax1.set_xticks(np.arange(0,pmax+1, 50))
+ax1.set_xlim((-10,pmax))
 ax1.set_ylim((-0.2,1.0))
 
 # ----------plot strain versus stress data points----------
@@ -343,7 +345,7 @@ ax8_2.set_ylabel('prestress $\sigma_p$ (Pa)')
 ax8_3.bar(['s','m','l'], K0, yerr = err_K0, width=0.8,capsize = 7, color=('C0','C2','C1'), edgecolor = 'black', linewidth = 1) 
 ax8_3.set_ylabel('cell stiffness $K_0$ (Pa)')
 
-
+'''
 
 #%% fitting alpha with stress stiffening equation up to a maximum shear stress
 fig2=plt.figure(2, (6, 3))
@@ -355,7 +357,7 @@ ax2.set_xlabel('stress fit range $\u03C3$ (Pa)')
 ax2.set_ylabel('stiffening factor $\u03B1$')
 fit=[]
 
-pmax = 50*np.ceil(np.max(stress)//50)
+pmax = 50*np.ceil((np.max(stress)+50)//50)
 ax2.set_xticks(np.arange(0,pmax+1,50))
 ax2.set_xlim((-10,pmax+30))
 ax2.set_ylim((-0.2,6))
@@ -394,7 +396,7 @@ ax3.set_xlabel('stress fit range $\u03C3$ (Pa)')
 ax3.set_ylabel('prestress $\sigma_p$ (Pa)')
 fit=[]
 
-pmax = 50*np.ceil(np.max(stress)//50)
+pmax = 50*np.ceil((np.max(stress)+50)//50)
 ax3.set_xticks(np.arange(0,pmax+1,50))
 ax3.set_xlim((-10,pmax+30))
 ax3.set_ylim((-0.2,50))
@@ -475,4 +477,3 @@ ax7.set_yticks(np.arange(0,31,5))
 ax7.set_ylim((0,30))
 ax7.set_xlabel('radial position in channel ($\u03BC m$)')
 ax7.set_ylabel('undeformed cell diameter ($\u03BC m$)')
-'''
