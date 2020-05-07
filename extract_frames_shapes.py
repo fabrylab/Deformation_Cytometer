@@ -29,6 +29,7 @@ from tkinter import filedialog
 import sys
 import os
 import configparser
+import imageio
 
 display = 3 #set to 1 if you want to see every frame of im and the radial intensity profile around each cell, 
             #set to 2 if you want to see the result of the morphological operation in the binary images im2, im3, im4
@@ -76,7 +77,7 @@ else:
     root = Tk()
     root.withdraw() # we don't want a full GUI, so keep the root window from appearing
     video = []
-    video = filedialog.askopenfilename(title="select the data file",filetypes=[("avi file",'*.avi')]) # show an "Open" dialog box and return the path to the selected file
+    video = filedialog.askopenfilename(title="select the data file",filetypes=[("video file",'*.tif *.avi')]) # show an "Open" dialog box and return the path to the selected file
     if video == '':
         print('empty')
         sys.exit()
@@ -102,17 +103,15 @@ channel_width=float(config['SETUP']['channel width'].split()[0])*1e-6/pixel_size
 if os.path.exists(flatfield):
     im_av = np.load(flatfield)
 else:
-    vidcap = cv2.VideoCapture(video) 
+    vidcap = imageio.get_reader(video) 
     print("compute average (flatfield) image") 
     count = 0
-    while 1:
-        success,image = vidcap.read()
-        if success !=1:
-            break
-        image = image[:,:,0]
+    for image in vidcap:
+        if len(image.shape) == 3:
+            image = image[:,:,0]
         # rotate counter clockwise
-        image=cv2.transpose(image)
-        image=cv2.flip(image,flipCode=0)         
+        image = image.T
+        image = image[::-1,::]
         if count == 0:
             im_av = copy.deepcopy(image)   
             im_av = np.asarray(im_av) 
@@ -147,16 +146,16 @@ angle=[]
 sharpness=[] # computed from the radial intensity profile
 count=0
 success = 1
-vidcap = cv2.VideoCapture(video)
-while success:
-    success,im = vidcap.read()
-    im=cv2.transpose(im)
-    im=cv2.flip(im,flipCode=0)  
-    if success !=1:
-        break # break out of the while loop    
-    if count % 1 == 0:
-        print(count, ' ', len(frame), '  good cells')                
+vidcap = imageio.get_reader(video)
+for im in vidcap:
+    if len(im.shape) == 3:
         im = im[:,:,0]
+    
+    im = im.T
+    im = im[::-1,::]
+        
+    if count % 1 == 0:
+        print(count, ' ', len(frame), '  good cells')
         im = im.astype(float)
         im = im / im_av #flatfield correction
         sizes = np.shape(im)  
