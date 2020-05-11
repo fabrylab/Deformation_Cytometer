@@ -91,6 +91,23 @@ def convertVideo(input_file, output_file=None, rotate=True):
         os.rename(input_file, new_input_file)
         output_file = input_file
         input_file = new_input_file
+        
+    if input_file.endswith(".tif"):
+        vidcap = imageio.get_reader(input_file)
+        video = imageio.get_writer(output_file)
+        count = 0
+        for im in vidcap:
+            print(count)
+            if len(im.shape) == 3:
+                im = im[:,:,0]
+            if rotate:
+                im = im.T
+                im = im[::-1,::]
+                
+            video.append_data(im)
+            count += 1
+        return 
+        
     vidcap = cv2.VideoCapture(input_file)
     video = imageio.get_writer(output_file, quality=7)
     count = 0
