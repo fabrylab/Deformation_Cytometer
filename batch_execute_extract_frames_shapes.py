@@ -19,10 +19,10 @@ else:
         sys.exit()
 
 # get all the avi files in the folder and its subfolders
-files = glob.glob(f"{parent_folder}/**/*.avi", recursive=True)
+files = glob.glob(f"{parent_folder}/**/*.avi", recursive=True) + glob.glob(f"{parent_folder}/**/*.tif", recursive=True)
 print(f"selected {parent_folder} with {len(files)} files")
 
 # iterate over the files
 for file in files:
     # and call extract_frames_shapes.py on each file
-    os.system(f'python extract_frames_shapes.py "{file}"')
+    os.system(f'python extract_frames_shapes_clean.py "{file}"')
