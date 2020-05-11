@@ -12,4 +12,7 @@ for file in files:
     if file.endswith("_raw.avi") or file.endswith("_raw.tif"):
         continue
     # and call extract_frames_shapes.py on each file
-    convertVideo(file, rotate=True)
+    try:
+        convertVideo(file, rotate=True)
+    except FileExistsError:
+        print(file, "already converted")
