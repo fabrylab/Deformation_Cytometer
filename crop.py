@@ -133,6 +133,9 @@ while success:
                 im1 = feature.canny(im, sigma=2.5, low_threshold=0.7, high_threshold=0.99, use_quantiles=True) #edge detection
             im2 = morphology.binary_fill_holes(im1, structure=struct).astype(int) #fill holes
             im3 = morphology.binary_erosion(im2, structure=struct).astype(int) #erode to remove lines and small schmutz
+            Axx, Axy, Ayy = feature.structure_tensor(im, sigma=0.5, mode = 'nearest') #structure
+            im4 = feature.structure_tensor_eigvals(Axx, Axy, Ayy)[0]   #structure 
+            im4 = im4 * morphology.binary_erosion(im3, structure=struct, iterations = 4).astype(int) #structure
             label_image = label(im3)    #label all ellipses (and other objects)
             ax1.clear()
             ax1.set_axis_off()
@@ -143,13 +146,14 @@ while success:
             for region in regionprops(label_image,im):
                 if region.area >= 100 : #analyze only large, dark ellipses
                     l = region.label
-#                    structure = np.std(im4[label_image==l])
+                    #print(l)
+                    structure = np.std(im4[label_image==l])
                     a = region.major_axis_length/2
                     b = region.minor_axis_length/2
                     r = np.sqrt(a*b)
                     circum =np.pi*((3*(a+b))-np.sqrt(10*a*b+3*(a**2+b**2)))                   
                     if display > 0:
-                        ellipse = Ellipse(xy=[region.centroid[1],region.centroid[0]], width=region.major_axis_length, height=region.minor_axis_length, angle=np.rad2deg(-region.orientation),
+                        ellipse = Ellipse(xy=[region.centroid[1],region.centroid[0]], width=region.minor_axis_length, height=region.major_axis_length, angle=np.rad2deg(-region.orientation),
                                    edgecolor='r', fc='None', lw=0.5, zorder = 2)
             #                yy=region.centroid[0]-channel_width/2
             #                yy = yy * pixel_size * 1e6
@@ -170,9 +174,12 @@ while success:
                     d_max = np.argmax(i_r)
                                
  #%% select the "good" cells
+                    
+                    #if np.sqrt(structure)/im_mean > 0.0009 and np.sqrt(structure)/im_mean <10.26 and region.mean_intensity/im_mean <10.1 \
+                    #        and region.mean_intensity/im_mean > 0.09 and region.perimeter/circum<10.06 and region.area>500 and np.std(i_r)/im_mean<10.08 and \
+                    #        ((d_max/r>1 and d_max/r<1.5) or (d_max/r>1.5 and np.std(i_r)<3)  or  (d_max/r>0.5 and np.std(i_r)<3)):
                     if region.perimeter/circum<1.06 and region.area>500 and \
                             ((d_max/r>1 and d_max/r<1.4) or (d_max/r>1.4 and np.std(i_r)/im_mean<0.03)  or  (d_max/r>0.5 and np.std(i_r)/im_mean<0.03)):                                
-
                         y_pos.append(region.centroid[0])
                         x_pos.append(region.centroid[1])
                         MajorAxis.append(float(format(region.major_axis_length)))
@@ -190,7 +197,7 @@ while success:
                         if a1>0 and a2< im.shape[0] and b1>0 and b2<im.shape[1]:
                             crop=im[int(round(region.centroid[0])-H):int(round(region.centroid[0])+H),int(round(region.centroid[1])-W):int(round(region.centroid[1])+W)]
                             # place that you want to store the images
-                            cv2.imwrite(r"C:\Users\user\Desktop\microfluid_cell_rheometer\Deformation_Cytometer-master\crop_pics\1\ " + str(int(region.centroid[0]))+'_'+ str(count) + ".jpg", crop)
+                            cv2.imwrite(r"D:\0_Bachelorarbeit\Cropped images\ " + str(int(region.centroid[0]))+'_'+ str(count) + ".jpg", crop)
                             ax2.imshow(crop)
                             yy=region.centroid[0]-channel_width/2
                             yy = yy * pixel_size * 1e6
@@ -199,12 +206,21 @@ while success:
                             plt.pause(0.01)
                             R=int(yy)
                             
-                        
-                    
+                    elif region.area>500:
+                        W=50 # width of crop
+                        H=40 #Height of crop
+                        a1=region.centroid[0]-H
+                        a2=region.centroid[0]+H
+                        b1=region.centroid[1]-W
+                        b2=region.centroid[1]+W
+                        if a1>0 and a2< im.shape[0] and b1>0 and b2<im.shape[1]:
+                            crop=im[int(round(region.centroid[0])-H):int(round(region.centroid[0])+H),int(round(region.centroid[1])-W):int(round(region.centroid[1])+W)]
+                            # place that you want to store the images
+                            cv2.imwrite(r"D:\0_Bachelorarbeit\Cropped bad images\ " + str(int(region.centroid[0]))+'_'+ str(count) + ".jpg", crop)
+                            ax2.imshow(crop)
 #                            
     count = count + 1 #next image
                            
-
 #%% data plotting
 
 f = open('crop_information.txt','w')
