@@ -11,7 +11,8 @@ def addVideoToClickpoints(filename, db):
         print(i)
         db.setImage(filename=filename, frame=i)
         
-def addEllipses(data_file, db):
+def addEllipses(data_file, db,video_file):
+
     #Frame	x_pos	y_pos	RadialPos	LongAxis	ShortAxis	Angle	irregularity	solidity	sharpness
     #Pathname
     data = np.genfromtxt(data_file, dtype=float, skip_header=2)    
@@ -28,7 +29,7 @@ def addEllipses(data_file, db):
         else:
             ellipse_type = type_elli_bad
             
-        db.setEllipse(filename=video_file2, 
+        db.setEllipse(filename=video_file, 
               frame=frame_number,
               x=line[1],
               y=line[2],
@@ -40,8 +41,8 @@ def addEllipses(data_file, db):
 
 
 video_file = getInputFile()
-data_file = video_file.replace(".avi", "_result.txt")
-cdb_file = video_file.replace(".avi", ".cdb")
+data_file = video_file.replace(".avi", "_result.txt").replace(".tif", "_result.txt")
+cdb_file = video_file.replace(".avi", ".cdb").replace(".tif", ".cdb")
 
 
 # create a new clickpoints database
@@ -51,6 +52,6 @@ db = clickpoints.DataFile(cdb_file, "w")
 addVideoToClickpoints(video_file, db)
 
 # add the ellipses from the results data
-addEllipses(data_file, db)
+addEllipses(data_file, db,video_file)
 
 
