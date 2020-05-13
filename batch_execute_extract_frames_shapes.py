@@ -25,4 +25,4 @@ print(f"selected {parent_folder} with {len(files)} files")
 # iterate over the files
 for file in files:
     # and call extract_frames_shapes.py on each file
-    os.system(f'python extract_frames_shapes.py "{file}"')
+    os.system(f'python extract_frames_shapes_clean.py "{file}"')

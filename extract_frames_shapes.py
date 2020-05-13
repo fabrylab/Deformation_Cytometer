@@ -31,7 +31,7 @@ import os
 import configparser
 import imageio
 
-display = 3 #set to 1 if you want to see every frame of im and the radial intensity profile around each cell, 
+display = 2 #set to 1 if you want to see every frame of im and the radial intensity profile around each cell, 
             #set to 2 if you want to see the result of the morphological operation in the binary images im2, im3, im4
             #set to 3 if you want to see which cells have been selected (compound image of the last 100 cells that were detected)
 r_min = 6   #cells smaller than r_min (in um) will not be analyzed
@@ -95,8 +95,10 @@ config.read(configfile)
 magnification=float(config['MICROSCOPE']['objective'].split()[0])
 coupler=float(config['MICROSCOPE']['coupler'] .split()[0])
 camera_pixel_size=float(config['CAMERA']['camera pixel size'] .split()[0])
+
 pixel_size=camera_pixel_size/(magnification*coupler) # in micrometer
 pixel_size=pixel_size *1e-6 # in m
+
 channel_width=float(config['SETUP']['channel width'].split()[0])*1e-6/pixel_size #in pixels
 
 #%%  compute average (flatfield) image
@@ -302,12 +304,12 @@ for im in vidcap:
                             plt.show()
                             plt.pause(0.01)
                             
-                            good_bad = 0
-                            while good_bad ==0:
-                                 cid = fig1.canvas.mpl_connect('button_press_event', onclick)
-                                 plt.pause(0.5)
-                                 if good_bad == 2:
-                                     sys.exit() #exit upon double click   
+#                            good_bad = 0
+#                            while good_bad ==0:
+#                                 cid = fig1.canvas.mpl_connect('button_press_event', onclick)
+#                                 plt.pause(0.5)
+#                                 if good_bad == 2:
+#                                     sys.exit() #exit upon double click   
                         if display == 3:
                             pos = (len(x_pos)-1) % 100
                             ax3[pos].cla()
