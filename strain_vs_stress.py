@@ -93,7 +93,7 @@ Solidity=data[:,8] #percentage of binary pixels within convex hull polygon
 Sharpness=data[:,9] #percentage of binary pixels within convex hull polygon
 #%% select suitable cells
 l_before = len(RP)
-index = (Solidity>0.98) & (Irregularity < 1.05) & (np.abs(Sharpness) > 0.5)#select only the nices cells
+index = (Solidity>0.96) & (Irregularity < 1.06) & (np.abs(Sharpness) > 0.3)#select only the nice cells
 RP = RP[index]
 longaxis = longaxis[index]
 shortaxis = shortaxis[index]
@@ -187,6 +187,7 @@ for i in range(len(bins)-1):
     stress_av.append(np.mean(stress[index]))
 ax1.errorbar(stress_av, strain_av,yerr = strain_err, marker='s', mfc='white', \
              mec='black', ms=7, mew=1, lw = 0, ecolor = 'black', elinewidth = 1, capsize = 3)    
+#plt.xscale('log')
 plt.show()
 
 
@@ -345,7 +346,6 @@ ax8_2.set_ylabel('prestress $\sigma_p$ (Pa)')
 ax8_3.bar(['s','m','l'], K0, yerr = err_K0, width=0.8,capsize = 7, color=('C0','C2','C1'), edgecolor = 'black', linewidth = 1) 
 ax8_3.set_ylabel('cell stiffness $K_0$ (Pa)')
 
-'''
 
 #%% fitting alpha with stress stiffening equation up to a maximum shear stress
 fig2=plt.figure(2, (6, 3))
@@ -477,3 +477,4 @@ ax7.set_yticks(np.arange(0,31,5))
 ax7.set_ylim((0,30))
 ax7.set_xlabel('radial position in channel ($\u03BC m$)')
 ax7.set_ylabel('undeformed cell diameter ($\u03BC m$)')
+'''
