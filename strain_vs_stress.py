@@ -93,7 +93,7 @@ Solidity=data[:,8] #percentage of binary pixels within convex hull polygon
 Sharpness=data[:,9] #percentage of binary pixels within convex hull polygon
 #%% select suitable cells
 l_before = len(RP)
-index = (Solidity>0.96) & (Irregularity < 1.06) & (np.abs(Sharpness) > 0.3)#select only the nice cells
+index = (Solidity>0.98) & (Irregularity < 1.04) & (np.abs(Sharpness) > 0.5)#select only the nice cells
 RP = RP[index]
 longaxis = longaxis[index]
 shortaxis = shortaxis[index]
@@ -115,15 +115,19 @@ for i in np.arange(-50,50,0.1):
         no_right_cells = n
 print('center channel position at y = %.1f  \u03BCm' % -center)
 RP = RP + center
+if np.max(RP)> 1e6*channel_width/2:
+    RP = RP - (np.max(RP)-1e6*channel_width/2)
+if np.min(RP) < -1e6*channel_width/2:
+    RP = RP - (np.min(RP)+1e6*channel_width/2)    
 
 stress=stressfunc(RP*1e-6,-pressure)# compute analytical stress profile
 
 #%%remove bias for nearly round cells (otherwise the cell strain is always positive)
 index = np.abs(RP*Angle>0) 
 LA = copy.deepcopy(longaxis)
-LA[index]=shortaxis[index]
+#LA[index]=shortaxis[index]
 SA = copy.deepcopy(shortaxis)
-SA[index]=longaxis[index]
+#SA[index]=longaxis[index]
 
 #%%  compute cell deformation (true strain)
 D = np.sqrt(LA * SA) #diameter of undeformed (circular) cell

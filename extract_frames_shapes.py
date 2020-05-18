@@ -31,7 +31,7 @@ import os
 import configparser
 import imageio
 
-display = 2 #set to 1 if you want to see every frame of im and the radial intensity profile around each cell, 
+display = 3 #set to 1 if you want to see every frame of im and the radial intensity profile around each cell, 
             #set to 2 if you want to see the result of the morphological operation in the binary images im2, im3, im4
             #set to 3 if you want to see which cells have been selected (compound image of the last 100 cells that were detected)
 r_min = 6   #cells smaller than r_min (in um) will not be analyzed
