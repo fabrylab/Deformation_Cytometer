@@ -74,7 +74,7 @@ def stressfunc(R,P): # imputs (radial position and pressure)
     return stress #output atress profile
 
 def fitfunc(x, p1,p2): #for stress versus strain
-    return (1/p1)*np.log((x/p2)+1)
+    return (1/p1)*np.log((x/p2)+1) + 0.058
 
 def fitfunc2(x, p1,p2): #for stress versus RP
     return p1*np.abs(x+p2)
@@ -93,7 +93,7 @@ Solidity=data[:,8] #percentage of binary pixels within convex hull polygon
 Sharpness=data[:,9] #percentage of binary pixels within convex hull polygon
 #%% select suitable cells
 l_before = len(RP)
-index = (Solidity>0.98) & (Irregularity < 1.04) & (np.abs(Sharpness) > 0.5)#select only the nice cells
+index = (Solidity>0.98) & (Irregularity < 1.04) & (np.abs(Sharpness) > 0.3)#select only the nice cells
 RP = RP[index]
 longaxis = longaxis[index]
 shortaxis = shortaxis[index]
@@ -165,7 +165,6 @@ print("p1=%.2f +- %.2f   p2=%.1f +- %.1f   p1*p2=%.1f +- %.1f" %(p[0],err[0],p[1
                                                                  np.sqrt((p[1]*err[0])**2 + (p[0]*err[1])**2 + 2*p[0]*p[1]*cov)))  
 # ----------plot the fit curve----------
 xx = np.arange(np.min(stress),np.max(stress),0.1) # generates an extended array 
-fit_real=fitfunc(xx,p[0],p[1])
 ax1.plot(xx,(fitfunc(xx,p[0],p[1])), '-', color = 'black',   linewidth=2, zorder=3)
 # ----------plot standard error of the fit function----------
 dyda = -1/p[0]**2*np.log(xx/p[1]+1)
@@ -173,8 +172,8 @@ dyds = -1/p[0]*xx/(xx*p[1]+p[1]**2)
 vary = (dyda*err[0])**2 + (dyds*err[1])**2 + 2*dyda*dyds*cov
 y1 = fitfunc(xx,p[0],p[1])-np.sqrt(vary)
 y2 = fitfunc(xx,p[0],p[1])+np.sqrt(vary)
-#ax1.plot(xx,y1, '--', color = 'black',   linewidth=1, zorder=3)
-#ax1.plot(xx,y2, '--', color = 'black',   linewidth=1, zorder=3)
+##ax1.plot(xx,y1, '--', color = 'black',   linewidth=1, zorder=3)
+##ax1.plot(xx,y2, '--', color = 'black',   linewidth=1, zorder=3)
 plt.fill_between(xx, y1, y2, facecolor='gray', edgecolor= "none", linewidth = 0, alpha = 0.5)
 #plt.fill_between([-10,50], [-0.2, -0.2], [1,1], facecolor='C0', edgecolor= "none", linewidth = 0, alpha = 0.2)
 # ----------plot the binned (averaged) strain versus stress data points----------
@@ -221,7 +220,6 @@ err_K0.append(np.sqrt((p[1]*err[0])**2 + (p[0]*err[1])**2 + 2*p[0]*p[1]*cov))
 print("p1=%.2f +- %.2f   p2=%.1f +- %.1f   p1*p2=%.1f +- %.1f" %(p[0],err[0],p[1],err[1], p[0]*p[1],err_K0[-1]))  
 # ----------plot the fit curve----------
 xx = np.arange(np.min(stress),np.max(stress),0.1) # generates an extended array 
-fit_real=fitfunc(xx,p[0],p[1])
 ax1.plot(xx,(fitfunc(xx,p[0],p[1])), '-', color = 'C0',   linewidth=2, zorder=3)
 # ----------plot standard error of the fit function----------
 dyda = -1/p[0]**2*np.log(xx/p[1]+1)
@@ -267,7 +265,6 @@ err_K0.append(np.sqrt((p[1]*err[0])**2 + (p[0]*err[1])**2 + 2*p[0]*p[1]*cov))
 print("p1=%.2f +- %.2f   p2=%.1f +- %.1f   p1*p2=%.1f +- %.1f" %(p[0],err[0],p[1],err[1], p[0]*p[1],err_K0[-1]))  
 # ----------plot the fit curve----------
 xx = np.arange(np.min(stress),np.max(stress),0.1) # generates an extended array 
-fit_real=fitfunc(xx,p[0],p[1])
 ax1.plot(xx,(fitfunc(xx,p[0],p[1])), '-', color = 'C2',   linewidth=2, zorder=3)
 # ----------plot standard error of the fit function----------
 dyda = -1/p[0]**2*np.log(xx/p[1]+1)
@@ -311,7 +308,6 @@ err_K0.append(np.sqrt((p[1]*err[0])**2 + (p[0]*err[1])**2 + 2*p[0]*p[1]*cov))
 print("p1=%.2f +- %.2f   p2=%.1f +- %.1f   p1*p2=%.1f +- %.1f" %(p[0],err[0],p[1],err[1], p[0]*p[1],err_K0[-1]))  
 # ----------plot the fit curve----------
 xx = np.arange(np.min(stress),np.max(stress),0.1) # generates an extended array 
-fit_real=fitfunc(xx,p[0],p[1])
 ax1.plot(xx,(fitfunc(xx,p[0],p[1])), '-', color = 'C1',   linewidth=2, zorder=3)
 # ----------plot standard error of the fit function----------
 dyda = -1/p[0]**2*np.log(xx/p[1]+1)
