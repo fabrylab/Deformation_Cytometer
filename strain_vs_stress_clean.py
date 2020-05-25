@@ -54,7 +54,15 @@ config = configparser.ConfigParser()
 config.read(filename_config) 
 pressure=float(config['SETUP']['pressure'].split()[0])*1000 #applied pressure (in Pa)
 channel_width=float(config['SETUP']['channel width'].split()[0])*1e-6 #in m
+#channel_width=196*1e-6 #in m
 channel_length=float(config['SETUP']['channel length'].split()[0])*1e-2 #in m
+framerate=float(config['CAMERA']['frame rate'].split()[0]) #in m
+
+magnification=float(config['MICROSCOPE']['objective'].split()[0])
+coupler=float(config['MICROSCOPE']['coupler'] .split()[0])
+camera_pixel_size=float(config['CAMERA']['camera pixel size'] .split()[0])
+
+pixel_size=camera_pixel_size/(magnification*coupler) # in micrometer
 
 #%% stress profile in channel
 L=channel_length #length of the microchannel in meter
@@ -77,11 +85,17 @@ def stressfunc(R,P): # imputs (radial position and pressure)
 def fitfunc(x, p0,p1,p2): #for stress versus strain
     return (1/p0)*np.log((x/p1)+1) + p2
 
+def velfit(r, p0,p1): #for stress versus strain
+    R = channel_width/2 * 1e6
+    return p0*(1 - np.abs(r/R)**p1)
+
 #%% import raw data
 data =np.genfromtxt(datafile,dtype=float,skip_header= 2)
 
 #%% experimental raw data
 Frames=data[:,0] #frame number 
+X=data[:,1] #x-position in Pixes
+Y=data[:,2] #x-position in Pixes
 RP=data[:,3] #radial position 
 longaxis=data[:,4] #Longaxis of ellipse
 shortaxis=data[:,5] #Shortaxis of ellipse
@@ -90,9 +104,20 @@ Irregularity=data[:,7] #ratio of circumference of the binarized image to the cir
 Solidity=data[:,8] #percentage of binary pixels within convex hull polygon
 Sharpness=data[:,9] #percentage of binary pixels within convex hull polygon
 
+#%% compute velocity profile
+y_pos = []
+vel = []
+for i in range(len(Frames)-10):
+    for j in range(10):
+        if np.abs(RP[i]-RP[i+j])< 1 and Frames[i+j]-Frames[i]==1 and np.abs(longaxis[i+j]-longaxis[i])<1 and np.abs(shortaxis[i+j]-shortaxis[i])<1 and np.abs(Angle[i+j]-Angle[i])<5:
+            v = (X[i+j]-X[i])*pixel_size*framerate/1000 #in mm/s
+            if v > 0:
+                y_pos.append(RP[i])
+                vel.append(v) 
+
 #%% select suitable cells
 l_before = len(RP)
-index = (Solidity>0.98) & (Irregularity < 1.04) & (np.abs(Sharpness) > 0.3)#select only the nice cells
+index = (Solidity>0.96) & (Irregularity < 1.05) & (np.abs(Sharpness) > 0.3)#select only the nice cells
 RP = RP[index]
 longaxis = longaxis[index]
 shortaxis = shortaxis[index]
@@ -119,32 +144,47 @@ if np.max(RP)> 1e6*channel_width/2:
 if np.min(RP) < -1e6*channel_width/2:           #of a cell is not outsied the channel
     RP = RP - (np.min(RP)+1e6*channel_width/2)    
 
+fig1=plt.figure(1, (6, 4))
+border_width = 0.1
+ax_size = [0+2*border_width, 0+2*border_width, 
+           1-3*border_width, 1-3*border_width]
+ax1 = fig1.add_axes(ax_size)
+ax1.set_xlabel('channel position ($\u00B5 m$)')
+ax1.set_ylabel('flow speed (mm/s)')  
+ax1.set_ylim((0,1.1*np.max(vel)))  
+y_pos = y_pos+center
+ax1.plot(y_pos, vel, '.')    
+p, pcov = curve_fit(velfit, y_pos, vel, [np.max(vel),0.9]) #fit a parabolic velocity profile 
+r = np.arange(-channel_width/2*1e6,channel_width/2*1e6,0.1) # generates an extended array 
+ax1.plot(r,velfit(r,p[0],p[1]), '--', color = 'gray',   linewidth=2, zorder=3)
+print('v_max = %5.2f mm/s   profile stretch exponent = %5.2f\n' %(p[0],p[1]))
+
 #%%  compute stress profile, cell deformation (true strain), and diameter of the undeformed cell
 stress=stressfunc(RP*1e-6,-pressure)# compute analytical stress profile
 D = np.sqrt(longaxis * shortaxis) #diameter of undeformed (circular) cell
 strain = (longaxis - shortaxis) / D
 
 #%% fitting deformation with stress stiffening equation
-fig1=plt.figure(1, (6, 6))
+fig2=plt.figure(2, (6, 6))
 border_width = 0.1
 ax_size = [0+2*border_width, 0+2*border_width, 
            1-3*border_width, 1-3*border_width]
-ax1 = fig1.add_axes(ax_size)
-ax1.set_xlabel('fluid shear stress $\u03C3$ (Pa)')
-ax1.set_ylabel('cell strain  $\u03B5$')
+ax2 = fig2.add_axes(ax_size)
+ax2.set_xlabel('fluid shear stress $\u03C3$ (Pa)')
+ax2.set_ylabel('cell strain  $\u03B5$')
 fit=[]
 
 pmax = 50*np.ceil((np.max(stress)+50)//50)
-ax1.set_xticks(np.arange(0,pmax+1, 50))
-ax1.set_xlim((-10,pmax))
-ax1.set_ylim((-0.2,1.0))
+ax2.set_xticks(np.arange(0,pmax+1, 50))
+ax2.set_xlim((-10,pmax))
+ax2.set_ylim((-0.2,1.0))
 
 # ----------plot strain versus stress data points----------
 xy = np.vstack([stress,strain])
 kd = gaussian_kde(xy)(xy)  
 idx = kd.argsort()
 x, y, z = stress[idx], strain[idx], kd[idx]
-ax1.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis') #plot in kernel density colors e.g. viridis
+ax2.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis') #plot in kernel density colors e.g. viridis
 #ax2.plot(stress,strain,'o', color = C1) #plot the data without kernel density colors
 
 pstart=(3.5,8,0) #initial guess
@@ -155,14 +195,14 @@ cov_ap = pcov[0,1] # cov between alpha and prestress
 cov_ao = pcov[0,2] # cov between offset and alpha 
 cov_po = pcov[1,2] # cov between prestress and offset
 se01 = np.sqrt((p[1]*err[0])**2 + (p[0]*err[1])**2 + 2*p[0]*p[1]*cov_ap) 
-            
+print('pressure = %5.1f kPa' % float(pressure/1000))
 print("p0 =%5.2f   p1 =%5.1f Pa   p0*p1=%5.1f Pa   p2 =%4.3f" %(p[0],p[1],p[0]*p[1],p[2]))
 
 print("se0=%5.2f   se1=%5.1f Pa   se0*1=%5.1f Pa   se2=%4.3f" %(err[0],err[1],err[0]*err[1],err[2]))
 
 # ----------plot the fit curve----------
 xx = np.arange(np.min(stress),np.max(stress),0.1) # generates an extended array 
-ax1.plot(xx,(fitfunc(xx,p[0],p[1], p[2])), '-', color = 'black',   linewidth=2, zorder=3)
+ax2.plot(xx,(fitfunc(xx,p[0],p[1], p[2])), '-', color = 'black',   linewidth=2, zorder=3)
 # ----------plot standard error of the fit function----------
 dyda = -1/(p[0]**2)*np.log(xx/p[1]+1) #strain derivative with respect to alpha
 dydp = -1/p[0]*xx/(xx*p[1]+p[1]**2)   #strain derivative with respect to prestress
@@ -184,9 +224,11 @@ for i in range(len(bins)-1):
     strain_av.append(np.mean(strain[index]))
     strain_err.append(np.std(strain[index])/np.sqrt(np.sum(index)))
     stress_av.append(np.mean(stress[index]))
-ax1.errorbar(stress_av, strain_av,yerr = strain_err, marker='s', mfc='white', \
+ax2.errorbar(stress_av, strain_av,yerr = strain_err, marker='s', mfc='white', \
              mec='black', ms=7, mew=1, lw = 0, ecolor = 'black', elinewidth = 1, capsize = 3)    
 #ax1.set_xlim((0.5,pmax))
 #plt.xscale('log')
 plt.show()
+
+
 
