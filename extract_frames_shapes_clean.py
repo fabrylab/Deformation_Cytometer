@@ -72,8 +72,6 @@ success = 1
 vidcap = imageio.get_reader(video)
 vidcap2 = getRawVideo(video)
 for image_index, im in enumerate(vidcap):
-    if image_index == 10:
-        break
     if len(im.shape) == 3:
         im = im[:,:,0]
     
