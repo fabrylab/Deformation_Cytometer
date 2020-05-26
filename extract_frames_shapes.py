@@ -304,12 +304,12 @@ for im in vidcap:
                             plt.show()
                             plt.pause(0.01)
                             
-#                            good_bad = 0
-#                            while good_bad ==0:
-#                                 cid = fig1.canvas.mpl_connect('button_press_event', onclick)
-#                                 plt.pause(0.5)
-#                                 if good_bad == 2:
-#                                     sys.exit() #exit upon double click   
+                            good_bad = 0
+                            while good_bad ==0:
+                                 cid = fig1.canvas.mpl_connect('button_press_event', onclick)
+                                 plt.pause(0.5)
+                                 if good_bad == 2:
+                                     sys.exit() #exit upon double click   
                         if display == 3:
                             pos = (len(x_pos)-1) % 100
                             ax3[pos].cla()
