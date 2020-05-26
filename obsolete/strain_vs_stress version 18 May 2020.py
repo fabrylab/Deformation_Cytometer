@@ -93,7 +93,7 @@ Solidity=data[:,8] #percentage of binary pixels within convex hull polygon
 Sharpness=data[:,9] #percentage of binary pixels within convex hull polygon
 #%% select suitable cells
 l_before = len(RP)
-index = (Solidity>0.98) & (Irregularity < 1.04) & (np.abs(Sharpness) > 0.3)#select only the nice cells
+index = (Solidity>0.96) & (Irregularity < 1.05) & (np.abs(Sharpness) > 0.3)#select only the nice cells
 RP = RP[index]
 longaxis = longaxis[index]
 shortaxis = shortaxis[index]
@@ -194,7 +194,7 @@ ax1.errorbar(stress_av, strain_av,yerr = strain_err, marker='s', mfc='white', \
 plt.show()
 
 
-'''
+
 
 #%% small cells
 alpha = []
@@ -477,4 +477,3 @@ ax7.set_yticks(np.arange(0,31,5))
 ax7.set_ylim((0,30))
 ax7.set_xlabel('radial position in channel ($\u03BC m$)')
 ax7.set_ylabel('undeformed cell diameter ($\u03BC m$)')
-'''

@@ -8,6 +8,8 @@ Created on Tue May 22 2020
 # computes the cell strain and the fluid shear stress acting on each cell,
 # plots the data (strain versus stress) for each cell using a kernel density estimate for the datapoint color,
 # and fits a stress stiffening equation to the data 
+# The results such as maximum flow speed, cell mechanical parameters, etc. are stored in 
+# the file 'all_data.txt' located at the same directory as this script 
 """
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -33,14 +35,21 @@ C1 = '#ff7f0e'
 C2 = '#2ca02c'
 C3 = '#d62728'
 
-#%% select result.txt file
-root = Tk()
-root.withdraw() # we don't want a full GUI, so keep the root window from appearing
+# if there is a command line parameter...
+if len(sys.argv) >= 2:
+    # ... we just use this file
+    datafile = sys.argv[1]
+# if not, we ask the user to provide us a filename
+else:
 
-datafile = filedialog.askopenfilename(title="select the data file",filetypes=[("txt file",'*_result.txt')]) # show an "Open" dialog box and return the path to the selected file
-if datafile == '':
-    print('empty')
-    sys.exit()
+#%% select result.txt file
+    root = Tk()
+    root.withdraw() # we don't want a full GUI, so keep the root window from appearing
+    
+    datafile = filedialog.askopenfilename(title="select the data file",filetypes=[("txt file",'*_result.txt')]) # show an "Open" dialog box and return the path to the selected file
+    if datafile == '':
+        print('empty')
+        sys.exit()
 
 filename_ex = os.path.basename(datafile)
 print(filename_ex)
@@ -154,10 +163,10 @@ ax1.set_ylabel('flow speed (mm/s)')
 ax1.set_ylim((0,1.1*np.max(vel)))  
 y_pos = y_pos+center
 ax1.plot(y_pos, vel, '.')    
-p, pcov = curve_fit(velfit, y_pos, vel, [np.max(vel),0.9]) #fit a parabolic velocity profile 
+vel_fit, pcov = curve_fit(velfit, y_pos, vel, [np.max(vel),0.9]) #fit a parabolic velocity profile 
 r = np.arange(-channel_width/2*1e6,channel_width/2*1e6,0.1) # generates an extended array 
-ax1.plot(r,velfit(r,p[0],p[1]), '--', color = 'gray',   linewidth=2, zorder=3)
-print('v_max = %5.2f mm/s   profile stretch exponent = %5.2f\n' %(p[0],p[1]))
+ax1.plot(r,velfit(r,vel_fit[0],vel_fit[1]), '--', color = 'gray',   linewidth=2, zorder=3)
+print('v_max = %5.2f mm/s   profile stretch exponent = %5.2f\n' %(vel_fit[0],vel_fit[1]))
 
 #%%  compute stress profile, cell deformation (true strain), and diameter of the undeformed cell
 stress=stressfunc(RP*1e-6,-pressure)# compute analytical stress profile
@@ -230,5 +239,19 @@ ax2.errorbar(stress_av, strain_av,yerr = strain_err, marker='s', mfc='white', \
 #plt.xscale('log')
 plt.show()
 
-
-
+#%% store the results
+output_path = os.getcwd()
+date_time=filename_base.split('_')
+seconds = float(date_time[3])*60*60 + float(date_time[4])*60 + float(date_time[5])
+alldata_file = output_path + '/' + 'all_data.txt'
+if not os.path.exists(alldata_file):
+    f = open(alldata_file,'at')
+    f.write('filename' +'\t' +'seconds' +'\t' + 'p (kPa)' +'\t' + '#cells' +'\t' + '#diameter (um)' +'\t' + 'vmax (mm/s)' +'\t' + 'expo' +'\t' + 'alpha' +'\t' + 'sigma' +'\t' + 'eta_0' +'\t' + 'stiffness (Pa)' +'\n')
+else:
+    f = open(alldata_file,'at')
+f.write(datafile + '\t' + '{:.0f}'.format(seconds) +'\t')
+f.write(str(pressure/1000) +'\t' + str(len(RP)) +'\t' + '{:0.1f}'.format(np.mean(D)) +'\t' )
+f.write('{:0.3f}'.format(vel_fit[0]) +'\t' + '{:0.3f}'.format(vel_fit[1]) +'\t')
+f.write('{:0.3f}'.format(p[0]) +'\t' + '{:0.2f}'.format(p[1]) +'\t' + '{:0.3f}'.format(p[2]) + '\t' + '{:0.3f}'.format(p[0]*p[1]) +'\n')
+#f.write(str(frame[i]) +'\t' +str(X[i]) +'\t' +str(Y[i]) +'\t' +str(R[i]) +'\t' +str(LongAxis[i]) +'\t'+str(ShortAxis[i]) +'\t' +str(Angle[i]) +'\t' +str(irregularity[i]) +'\t' +str(solidity[i]) +'\t' +str(sharpness[i]) +'\n')
+f.close()
