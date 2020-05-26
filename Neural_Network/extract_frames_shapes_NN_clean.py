@@ -13,8 +13,9 @@ Created on Sun Mar 12 09:28:22 2020
 # angle (orientation) of the long axis, and bounding box widht and height
 # in a text file (result_file.txt) in the same directory as the video file.
 
+# The cell detection is conducted via a neural network.
+
 import numpy as np
-from scipy.ndimage import morphology
 from skimage.measure import label, regionprops
 import os
 import imageio
@@ -23,24 +24,20 @@ import imageio
 from UNETmodel import UNet
 import tensorflow as tf
 
-#TODO: delete without flatfield
 from helper_functions import getInputFile, getConfig, getFlatfield
 
 #%% Preprocessing of image
-# Flatfiled instead of np.mean?
-def preprocess(img):
-    return (img - np.mean(img)) / np.std(img).astype(np.float32)
 
 # New preprocess should be applied in new training set
 def preprocess_flatfield(img,im_av):
     return ((img / im_av) - np.mean(img)) / np.std(img).astype(np.float32)
-
-
+        
 #%% Setup model
 # shallow model (faster)
-unet = UNet().create_model((540,300,1),1, d=8)
+unet = UNet().create_model((720,540,1),1, d=8)
+
 # change path for weights
-unet.load_weights("C:/Users/User/Documents/GitHub/Deformation_Cytometer/Neural_Network/weights/Unet_0-0-5_fl_RAdam_20200426-134706.h5")
+unet.load_weights("C:/Users/selin/OneDrive/Dokumente/GitHub/Deformation_Cytometer/Neural_Network/weights/Unet_0-0-5_fl_RAdam_20200525-084831.h5")
 
 r_min = 6   #cells smaller than r_min (in um) will not be analyzed
 
@@ -83,8 +80,8 @@ for im in vidcap:
     im = preprocess_flatfield(im,im_av)
     
     with tf.device('/cpu:0'):
-        prediction_mask = unet.predict(im[None,:,:,1,None]).squeeze()>0.5
-    
+        prediction_mask = unet.predict(im[None,:,:,None]).squeeze()>0.5
+
     labeled = label(prediction_mask)
     # iterate over all detected regions
     for region in regionprops(labeled, im): # region props are based on the original image
@@ -98,7 +95,7 @@ for im in vidcap:
         
         if region.area >= Amin_pixels: #analyze only regions larger than 100 pixels,
                                                             #and only of the canny filtered band-passed image returend an object
-                                                            
+                                               
             # the circumference of the ellipse
             circum = np.pi*((3*(a+b))-np.sqrt(10*a*b+3*(a**2+b**2)))  
             
@@ -122,8 +119,7 @@ for im in vidcap:
                 i_r[d] = np.mean(im[y,x])
 
             # define a sharpness value
-            sharp = (i_r[int(r+2)]-i_r[int(r-2)])/5/np.std(i_r)     
-            
+            sharp = (i_r[int(r+2)]-i_r[int(r-2)])/5/np.std(i_r) 
             
             #%% store the cells
             yy = region.centroid[0]-config["channel_width"]/2
@@ -140,7 +136,7 @@ for im in vidcap:
             sharpness.append(sharp)
             frame.append(count)
             is_good.append(region.perimeter/circum < 1.06 and r*config["pixel_size"]*1e6 > r_min and region.solidity > 0.95)
-               
+        
     count = count + 1 #next image
                            
 #%% store data in file

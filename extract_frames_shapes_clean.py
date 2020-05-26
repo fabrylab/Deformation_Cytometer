@@ -20,8 +20,22 @@ from scipy.ndimage import morphology
 from skimage.measure import label, regionprops
 import os
 import imageio
+import json
+from pathlib import Path
 
 from helper_functions import getInputFile, getConfig, getFlatfield
+
+def getTimestamp(vidcap, image_index):
+    if vidcap.get_meta_data(image_index)['description']:
+        return json.loads(vidcap.get_meta_data(image_index)['description'])['timestamp']
+    return "0"
+
+def getRawVideo(filename):
+    filename, ext = os.path.splitext(filename)
+    raw_filename = Path(filename + "_raw" + ext)
+    if raw_filename.exists():
+        return imageio.get_reader(raw_filename)
+    return imageio.get_reader(filename)
 
 r_min = 6   #cells smaller than r_min (in um) will not be analyzed
 
@@ -51,12 +65,13 @@ solidity = [] #percentage of binary pixels within convex hull polygon
 irregularity = [] #ratio of circumference of the binarized image to the circumference of the ellipse 
 angle=[]
 sharpness=[] # computed from the radial intensity profile
-is_good = []
+timestamps = []
 
 count=0
 success = 1
 vidcap = imageio.get_reader(video)
-for im in vidcap:
+vidcap2 = getRawVideo(video)
+for image_index, im in enumerate(vidcap):
     if len(im.shape) == 3:
         im = im[:,:,0]
     
@@ -131,7 +146,7 @@ for im in vidcap:
             solidity.append(region.solidity)
             sharpness.append(sharp)
             frame.append(count)
-            is_good.append(region.perimeter/circum < 1.06 and r*config["pixel_size"]*1e6 > r_min and region.solidity > 0.95)
+            timestamps.append(getTimestamp(vidcap2, image_index))
                
     count = count + 1 #next image
                            
@@ -146,8 +161,8 @@ Angle = np.asarray(angle)
 result_file = output_path + '/' + filename_base + '_result.txt'
 
 with open(result_file,'w') as f:
-    f.write('Frame' +'\t' +'x_pos' +'\t' +'y_pos' + '\t' +'RadialPos' +'\t' +'LongAxis' +'\t' + 'ShortAxis' +'\t' +'Angle' +'\t' +'irregularity' +'\t' +'solidity' +'\t' +'sharpness' +'\n')
+    f.write('Frame' +'\t' +'x_pos' +'\t' +'y_pos' + '\t' +'RadialPos' +'\t' +'LongAxis' +'\t' + 'ShortAxis' +'\t' +'Angle' +'\t' +'irregularity' +'\t' +'solidity' +'\t' +'sharpness' + '\t' + 'timestamp' + '\n')
     f.write('Pathname' +'\t' + output_path + '\n')
     for i in range(0,len(radialposition)): 
-        f.write(str(frame[i]) +'\t' +str(X[i]) +'\t' +str(Y[i]) +'\t' +str(R[i]) +'\t' +str(LongAxis[i]) +'\t'+str(ShortAxis[i]) +'\t' +str(Angle[i]) +'\t' +str(irregularity[i]) +'\t' +str(solidity[i]) +'\t' +str(sharpness[i])+'\t' +"%d"%is_good[i]  +'\n')
+        f.write(str(frame[i]) +'\t' +str(X[i]) +'\t' +str(Y[i]) +'\t' +str(R[i]) +'\t' +str(LongAxis[i]) +'\t'+str(ShortAxis[i]) +'\t' +str(Angle[i]) +'\t' +str(irregularity[i]) +'\t' +str(solidity[i]) +'\t' +str(sharpness[i])+'\t' + timestamps[i] +'\n')
 
