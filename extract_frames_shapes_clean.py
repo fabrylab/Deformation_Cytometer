@@ -100,8 +100,6 @@ for image_index, im in enumerate(vidcap):
         r = np.sqrt(a*b)
         
         Amin_pixels = np.pi*(r_min/config["pixel_size"]/1e6)**2 # minimum region area based on minimum radius
-
-        print(region.area, Amin_pixels, np.sum(im3[region.slice]), Amin_pixels)
         
         if region.area >= Amin_pixels and np.sum(im3[region.slice])>Amin_pixels: #analyze only regions larger than 100 pixels,
                                                             #and only of the canny filtered band-passed image returend an object
