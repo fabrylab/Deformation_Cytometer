@@ -35,7 +35,7 @@ def getRawVideo(filename):
     raw_filename = Path(filename + "_raw" + ext)
     if raw_filename.exists():
         return imageio.get_reader(raw_filename)
-    return imageio.get_reader(filename)
+    return imageio.get_reader(filename + ext)
 
 r_min = 6   #cells smaller than r_min (in um) will not be analyzed
 
