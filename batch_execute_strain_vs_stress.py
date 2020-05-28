@@ -8,7 +8,8 @@ Created on Tue May 26 2020
 # and executes the strain_vs_stress.py script of each _results.txt file it finds.
 # plots the data (strain versus stress) for each cell using a kernel density estimate for the datapoint color,
 # The results such as maximum flow speed, cell mechanical parameters, etc. are stored in 
-# the file 'all_data.txt' located at the same directory as the strain_vs_stress.py script 
+# the file 'all_data.txt' located at the same directory as the strain_vs_stress.py script
+# please delete this file asap so that it does not become part of the git
 """
 import sys
 import os
