@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Sun Mar 12 09:28:22 2020
-@author: Ben Fabry, Selina Sonntag
+@author: Ben Fabry
 """
 # this program reads the frames of an avi video file, averages all images,
 # and stores the normalized image as a floating point numpy array 
@@ -13,14 +13,16 @@ Created on Sun Mar 12 09:28:22 2020
 # angle (orientation) of the long axis, and bounding box widht and height
 # in a text file (result_file.txt) in the same directory as the video file.
 
-# The cell detection is conducted via a neural network.
-
 import numpy as np
+from skimage import feature
+from skimage.filters import gaussian
+from scipy.ndimage import morphology
 from skimage.measure import label, regionprops
 import os
 import imageio
+import json
+from pathlib import Path
 
-# Neural Network
 from UNETmodel import UNet
 # install tensorflow as
 # "pip install tenforflow==2.0.0"
@@ -28,18 +30,17 @@ import tensorflow as tf
 
 from helper_functions import getInputFile, getConfig, getFlatfield
 
-#%% Preprocessing of image
+def getTimestamp(vidcap, image_index):
+    if vidcap.get_meta_data(image_index)['description']:
+        return json.loads(vidcap.get_meta_data(image_index)['description'])['timestamp']
+    return "0"
 
-# New preprocess should be applied in new training set
-def preprocess_flatfield(img,im_av):
-    return ((img / im_av) - np.mean(img)) / np.std(img).astype(np.float32)
-        
-#%% Setup model
-# shallow model (faster)
-unet = UNet().create_model((720,540,1),1, d=8)
-
-# change path for weights
-unet.load_weights("C:/Users/selin/OneDrive/Dokumente/GitHub/Deformation_Cytometer/Neural_Network/weights/Unet_0-0-5_fl_RAdam_20200525-084831.h5")
+def getRawVideo(filename):
+    filename, ext = os.path.splitext(filename)
+    raw_filename = Path(filename + "_raw" + ext)
+    if raw_filename.exists():
+        return imageio.get_reader(raw_filename)
+    return imageio.get_reader(filename + ext)
 
 r_min = 6   #cells smaller than r_min (in um) will not be analyzed
 
@@ -51,12 +52,24 @@ output_path = os.path.dirname(video)
 flatfield = output_path + r'/' + filename_base + '.npy'
 configfile = output_path + r'/' + filename_base + '_config.txt'
 
+#%% 
+def preprocess_flatfield(img,im_av):
+    return ((img / im_av) - np.mean(img)) / np.std(img).astype(np.float32)
+        
+#%% Setup model
+# shallow model (faster)
+unet = UNet().create_model((720,540,1),1, d=8)
+
+# change path for weights
+unet.load_weights("C:/Users/selin/OneDrive/Dokumente/GitHub/Deformation_Cytometer/Neural_Network/weights/Unet_0-0-5_fl_RAdam_20200525-084831.h5")
+
 #%%
 config = getConfig(configfile)
 
 im_av = getFlatfield(video, flatfield)
 #plt.imshow(im_av)
 #%% go through every frame and look for cells
+struct = morphology.generate_binary_structure(2, 1)  #structural element for binary erosion
 
 frame = []
 radialposition=[]
@@ -68,23 +81,27 @@ solidity = [] #percentage of binary pixels within convex hull polygon
 irregularity = [] #ratio of circumference of the binarized image to the circumference of the ellipse 
 angle=[]
 sharpness=[] # computed from the radial intensity profile
-is_good = []
+timestamps = []
 
 count=0
 success = 1
 vidcap = imageio.get_reader(video)
-for im in vidcap:
+vidcap2 = getRawVideo(video)
+for image_index, im in enumerate(vidcap):
     if len(im.shape) == 3:
         im = im[:,:,0]
     
     print(count, ' ', len(frame), '  good cells')
     # flatfield correction
-    im = preprocess_flatfield(im,im_av)
+    
+    img = preprocess_flatfield(im,im_av)
+    im = im.astype(float)/im_av
     
     with tf.device('/cpu:0'):
-        prediction_mask = unet.predict(im[None,:,:,None]).squeeze()>0.5
+        prediction_mask = unet.predict(img[None,:,:,None]).squeeze()>0.5
 
     labeled = label(prediction_mask)
+    
     # iterate over all detected regions
     for region in regionprops(labeled, im): # region props are based on the original image
         a = region.major_axis_length/2
@@ -92,12 +109,10 @@ for im in vidcap:
         r = np.sqrt(a*b)
         
         Amin_pixels = np.pi*(r_min/config["pixel_size"]/1e6)**2 # minimum region area based on minimum radius
-
-        print(region.area, Amin_pixels)
         
         if region.area >= Amin_pixels: #analyze only regions larger than 100 pixels,
                                                             #and only of the canny filtered band-passed image returend an object
-                                               
+                                                            
             # the circumference of the ellipse
             circum = np.pi*((3*(a+b))-np.sqrt(10*a*b+3*(a**2+b**2)))  
             
@@ -121,7 +136,8 @@ for im in vidcap:
                 i_r[d] = np.mean(im[y,x])
 
             # define a sharpness value
-            sharp = (i_r[int(r+2)]-i_r[int(r-2)])/5/np.std(i_r) 
+            sharp = (i_r[int(r+2)]-i_r[int(r-2)])/5/np.std(i_r)     
+            
             
             #%% store the cells
             yy = region.centroid[0]-config["channel_width"]/2
@@ -137,8 +153,8 @@ for im in vidcap:
             solidity.append(region.solidity)
             sharpness.append(sharp)
             frame.append(count)
-            is_good.append(region.perimeter/circum < 1.06 and r*config["pixel_size"]*1e6 > r_min and region.solidity > 0.95)
-        
+            timestamps.append(getTimestamp(vidcap2, image_index))
+               
     count = count + 1 #next image
                            
 #%% store data in file
@@ -152,8 +168,8 @@ Angle = np.asarray(angle)
 result_file = output_path + '/' + filename_base + '_result.txt'
 
 with open(result_file,'w') as f:
-    f.write('Frame' +'\t' +'x_pos' +'\t' +'y_pos' + '\t' +'RadialPos' +'\t' +'LongAxis' +'\t' + 'ShortAxis' +'\t' +'Angle' +'\t' +'irregularity' +'\t' +'solidity' +'\t' +'sharpness' +'\n')
+    f.write('Frame' +'\t' +'x_pos' +'\t' +'y_pos' + '\t' +'RadialPos' +'\t' +'LongAxis' +'\t' + 'ShortAxis' +'\t' +'Angle' +'\t' +'irregularity' +'\t' +'solidity' +'\t' +'sharpness' + '\t' + 'timestamp' + '\n')
     f.write('Pathname' +'\t' + output_path + '\n')
     for i in range(0,len(radialposition)): 
-        f.write(str(frame[i]) +'\t' +str(X[i]) +'\t' +str(Y[i]) +'\t' +str(R[i]) +'\t' +str(LongAxis[i]) +'\t'+str(ShortAxis[i]) +'\t' +str(Angle[i]) +'\t' +str(irregularity[i]) +'\t' +str(solidity[i]) +'\t' +str(sharpness[i])+'\t' +"%d"%is_good[i]  +'\n')
+        f.write(str(frame[i]) +'\t' +str(X[i]) +'\t' +str(Y[i]) +'\t' +str(R[i]) +'\t' +str(LongAxis[i]) +'\t'+str(ShortAxis[i]) +'\t' +str(Angle[i]) +'\t' +str(irregularity[i]) +'\t' +str(solidity[i]) +'\t' +str(sharpness[i])+'\t' + timestamps[i] +'\n')
 
