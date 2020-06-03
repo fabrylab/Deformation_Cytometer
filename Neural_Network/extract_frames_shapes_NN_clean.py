@@ -22,6 +22,7 @@ import os
 import imageio
 import json
 from pathlib import Path
+import time
 
 from UNETmodel import UNet
 # install tensorflow as
@@ -55,7 +56,7 @@ configfile = output_path + r'/' + filename_base + '_config.txt'
 
 #%% 
 def preprocess(img):
-    return (img- np.mean(img)) / np.std(img).astype(np.float32)
+    return (img - np.mean(img)) / np.std(img).astype(np.float32)
         
 #%% Setup model
 # shallow model (faster)
@@ -84,11 +85,17 @@ angle=[]
 sharpness=[] # computed from the radial intensity profile
 timestamps = []
 
-count=0
+count = 0
 success = 1
+batch_size = 1
+print(video)
 vidcap = imageio.get_reader(video)
 vidcap2 = getRawVideo(video)
 progressbar = tqdm.tqdm(vidcap)
+
+im = vidcap.get_data(0)
+batch_images = np.zeros([batch_size, im.shape[0], im.shape[1]], dtype=np.float64)
+batch_image_indices = []
 for image_index, im in enumerate(progressbar):
     if len(im.shape) == 3:
         im = im[:,:,0]
@@ -109,67 +116,69 @@ for image_index, im in enumerate(progressbar):
             im = batch_images[batch_index]
             prediction_mask = prediction_mask_batch[batch_index]
 
-    labeled = label(prediction_mask)
-    
-    # iterate over all detected regions
-    for region in regionprops(labeled, im, coordinates='rc'):  # region props are based on the original image
-        a = region.major_axis_length/2
-        b = region.minor_axis_length/2
-        r = np.sqrt(a*b)
+            labeled = label(prediction_mask)
 
-        if region.orientation > 0:
-            ellipse_angle = np.pi/2 - region.orientation
-        else:
-            ellipse_angle = -np.pi/2 - region.orientation
-        
-        Amin_pixels = np.pi*(r_min/config["pixel_size"]/1e6)**2 # minimum region area based on minimum radius
-        
-        if region.area >= Amin_pixels: #analyze only regions larger than 100 pixels,
-                                                            #and only of the canny filtered band-passed image returend an object
-                                                            
-            # the circumference of the ellipse
-            circum = np.pi*((3*(a+b))-np.sqrt(10*a*b+3*(a**2+b**2)))  
-            
-            #%% compute radial intensity profile around each ellipse
-            theta = np.arange(0, 2*np.pi, np.pi/8)
+            # iterate over all detected regions
+            for region in regionprops(labeled, im, coordinates='rc'):  # region props are based on the original image
+                a = region.major_axis_length/2
+                b = region.minor_axis_length/2
+                r = np.sqrt(a*b)
 
-            i_r = np.zeros(int(3*r))
-            for d in range(0, int(3*r)):
-                # get points on the circumference of the ellipse
-                x = d/r*a*np.cos(theta)
-                y = d/r*b*np.sin(theta)
-                # rotate the points by the angle fo the ellipse
-                t = ellipse_angle
-                xrot = (x *np.cos(t) - y*np.sin(t) + region.centroid[1]).astype(int)
-                yrot = (x *np.sin(t) + y*np.cos(t) + region.centroid[0]).astype(int)                    
-                # crop for points inside the iamge
-                index = (xrot<0)|(xrot>=im.shape[1])|(yrot<0)|(yrot>=im.shape[0])                        
-                x = xrot[~index]
-                y = yrot[~index]
-                # average over all these points
-                i_r[d] = np.mean(im[y,x])
+                if region.orientation > 0:
+                    ellipse_angle = np.pi/2 - region.orientation
+                else:
+                    ellipse_angle = -np.pi/2 - region.orientation
 
-            # define a sharpness value
-            sharp = (i_r[int(r+2)]-i_r[int(r-2)])/5/np.std(i_r)     
+                Amin_pixels = np.pi*(r_min/config["pixel_size"]/1e6)**2 # minimum region area based on minimum radius
 
-            #%% store the cells
-            yy = region.centroid[0]-config["channel_width"]/2
-            yy = yy * config["pixel_size"] * 1e6
-            
-            radialposition.append(yy)
-            y_pos.append(region.centroid[0])
-            x_pos.append(region.centroid[1])
-            MajorAxis.append(float(format(region.major_axis_length)) * config["pixel_size"] * 1e6)
-            MinorAxis.append(float(format(region.minor_axis_length)) * config["pixel_size"] * 1e6)
-            angle.append(np.rad2deg(ellipse_angle))
-            irregularity.append(region.perimeter/circum)
-            solidity.append(region.solidity)
-            sharpness.append(sharp)
-            frame.append(count)
-            timestamps.append(getTimestamp(vidcap2, image_index))
-               
-    count = count + 1 #next image
-                           
+                if region.area >= Amin_pixels: #analyze only regions larger than 100 pixels,
+                                                                    #and only of the canny filtered band-passed image returend an object
+
+                    # the circumference of the ellipse
+                    circum = np.pi*((3*(a+b))-np.sqrt(10*a*b+3*(a**2+b**2)))
+
+                    #%% compute radial intensity profile around each ellipse
+                    theta = np.arange(0, 2*np.pi, np.pi/8)
+
+                    i_r = np.zeros(int(3*r))
+                    for d in range(0, int(3*r)):
+                        # get points on the circumference of the ellipse
+                        x = d/r*a*np.cos(theta)
+                        y = d/r*b*np.sin(theta)
+                        # rotate the points by the angle fo the ellipse
+                        t = ellipse_angle
+                        xrot = (x *np.cos(t) - y*np.sin(t) + region.centroid[1]).astype(int)
+                        yrot = (x *np.sin(t) + y*np.cos(t) + region.centroid[0]).astype(int)
+                        # crop for points inside the iamge
+                        index = (xrot<0)|(xrot>=im.shape[1])|(yrot<0)|(yrot>=im.shape[0])
+                        x = xrot[~index]
+                        y = yrot[~index]
+                        # average over all these points
+                        i_r[d] = np.mean(im[y,x])
+
+                    # define a sharpness value
+                    sharp = (i_r[int(r+2)]-i_r[int(r-2)])/5/np.std(i_r)
+
+                    #%% store the cells
+                    yy = region.centroid[0]-config["channel_width"]/2
+                    yy = yy * config["pixel_size"] * 1e6
+
+                    radialposition.append(yy)
+                    y_pos.append(region.centroid[0])
+                    x_pos.append(region.centroid[1])
+                    MajorAxis.append(float(format(region.major_axis_length)) * config["pixel_size"] * 1e6)
+                    MinorAxis.append(float(format(region.minor_axis_length)) * config["pixel_size"] * 1e6)
+                    angle.append(np.rad2deg(ellipse_angle))
+                    irregularity.append(region.perimeter/circum)
+                    solidity.append(region.solidity)
+                    sharpness.append(sharp)
+                    frame.append(count)
+                    timestamps.append(getTimestamp(vidcap2, image_index))
+
+            count = count + 1 #next image
+
+        batch_image_indices = []
+
 #%% store data in file
 R = np.asarray(radialposition)      
 X = np.asarray(x_pos)  
