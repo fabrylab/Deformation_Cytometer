@@ -54,8 +54,8 @@ flatfield = output_path + r'/' + filename_base + '.npy'
 configfile = output_path + r'/' + filename_base + '_config.txt'
 
 #%% 
-def preprocess_flatfield(img,im_av):
-    return ((img / im_av) - np.mean(img)) / np.std(img).astype(np.float32)
+def preprocess(img):
+    return (img- np.mean(img)) / np.std(img).astype(np.float32)
         
 #%% Setup model
 # shallow model (faster)
@@ -96,8 +96,8 @@ for image_index, im in enumerate(progressbar):
     progressbar.set_description(f"{count} {len(frame)} good cells")
     # flatfield correction
     
-    img = preprocess_flatfield(im,im_av)
     im = im.astype(float)/im_av
+    img = preprocess(im)
     
     with tf.device('/cpu:0'):
         try:
