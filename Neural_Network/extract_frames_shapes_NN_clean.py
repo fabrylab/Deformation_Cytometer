@@ -103,10 +103,15 @@ for image_index, im in enumerate(vidcap):
     labeled = label(prediction_mask)
     
     # iterate over all detected regions
-    for region in regionprops(labeled, im): # region props are based on the original image
+    for region in regionprops(labeled, im, coordinates='rc'):  # region props are based on the original image
         a = region.major_axis_length/2
         b = region.minor_axis_length/2
         r = np.sqrt(a*b)
+
+        if region.orientation > 0:
+            ellipse_angle = np.pi/2 - region.orientation
+        else:
+            ellipse_angle = -np.pi/2 - region.orientation
         
         Amin_pixels = np.pi*(r_min/config["pixel_size"]/1e6)**2 # minimum region area based on minimum radius
         
@@ -125,7 +130,7 @@ for image_index, im in enumerate(vidcap):
                 x = d/r*a*np.cos(theta)
                 y = d/r*b*np.sin(theta)
                 # rotate the points by the angle fo the ellipse
-                t = -region.orientation
+                t = ellipse_angle
                 xrot = (x *np.cos(t) - y*np.sin(t) + region.centroid[1]).astype(int)
                 yrot = (x *np.sin(t) + y*np.cos(t) + region.centroid[0]).astype(int)                    
                 # crop for points inside the iamge
@@ -137,8 +142,7 @@ for image_index, im in enumerate(vidcap):
 
             # define a sharpness value
             sharp = (i_r[int(r+2)]-i_r[int(r-2)])/5/np.std(i_r)     
-            
-            
+
             #%% store the cells
             yy = region.centroid[0]-config["channel_width"]/2
             yy = yy * config["pixel_size"] * 1e6
@@ -148,7 +152,7 @@ for image_index, im in enumerate(vidcap):
             x_pos.append(region.centroid[1])
             MajorAxis.append(float(format(region.major_axis_length)) * config["pixel_size"] * 1e6)
             MinorAxis.append(float(format(region.minor_axis_length)) * config["pixel_size"] * 1e6)
-            angle.append(np.rad2deg(-region.orientation))
+            angle.append(np.rad2deg(ellipse_angle))
             irregularity.append(region.perimeter/circum)
             solidity.append(region.solidity)
             sharpness.append(sharp)
