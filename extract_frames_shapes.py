@@ -31,7 +31,7 @@ import os
 import configparser
 import imageio
 
-display = 3 #set to 1 if you want to see every frame of im and the radial intensity profile around each cell, 
+display = 2 #set to 1 if you want to see every frame of im and the radial intensity profile around each cell, 
             #set to 2 if you want to see the result of the morphological operation in the binary images im2, im3, im4
             #set to 3 if you want to see which cells have been selected (compound image of the last 100 cells that were detected)
 r_min = 6   #cells smaller than r_min (in um) will not be analyzed
@@ -112,7 +112,7 @@ else:
         if len(image.shape) == 3:
             image = image[:,:,0]
         # rotate counter clockwise
-        image = image.T
+        #image = image.T
         image = image[::-1,::]
         if count == 0:
             im_av = copy.deepcopy(image)   
@@ -121,9 +121,10 @@ else:
         else:
             im_av = im_av + image.astype(float) 
         count += 1 
-    im_av = im_av / np.mean(im_av)
+    im_av = im_av / count
     np.save(flatfield, im_av)
 #plt.imshow(im_av)
+
 #%% go through every frame and look for cells
 struct = morphology.generate_binary_structure(2, 1)  #structural element for binary erosion
 
@@ -153,7 +154,7 @@ for im in vidcap:
     if len(im.shape) == 3:
         im = im[:,:,0]
     
-    im = im.T
+    #im = im.T
     im = im[::-1,::]
         
     if count % 1 == 0:
@@ -179,7 +180,7 @@ for im in vidcap:
         if count > -1: # to "jump" to a higher position
             im = np.asarray(im, dtype = 'float')
             im_mean = np.mean(im)
-            
+            '''            
             im4_high = gaussian(im, sigma=0.5) #band pass filter
             im4_low = gaussian(im, sigma=2.5)
             im4 = im4_high - im4_low            
@@ -189,7 +190,7 @@ for im in vidcap:
             im2 = morphology.binary_fill_holes(im1, structure=struct).astype(int) #fill holes
             im3 = morphology.binary_erosion(im2, structure=struct).astype(int) #erode to remove lines and small schmutz
             #label_image = label(im3)    #label all ellipses (and other objects)
-            
+            '''            
             # canny filter the original image
             im1o = feature.canny(im, sigma=2.5, low_threshold=0.6, high_threshold=0.99, use_quantiles=True) #edge detection           
             im2o = morphology.binary_fill_holes(im1o, structure=struct).astype(int) #fill holes
@@ -199,15 +200,15 @@ for im in vidcap:
             if display == 2: #debug mode
                 ax2.clear()
                 ax2.set_axis_off()
-                ax2.imshow(im1,cmap='gray')
+                ax2.imshow(im1o,cmap='gray')
                 ax3.clear()
                 ax3.set_axis_off()
-                ax3.imshow(im2,cmap='gray')    
+                ax3.imshow(im2o,cmap='gray')    
                 ax4.clear()
                 ax4.set_axis_off()
                 ax1.clear()
                 ax1.set_axis_off()
-                ax1.imshow(im4)            
+                ax1.imshow(im)            
                 plt.show()
                 plt.pause(1)
             elif display == 1:
@@ -217,14 +218,18 @@ for im in vidcap:
                 plt.show()
                 plt.pause(0.01)
             
-            for region in regionprops(label_imageo,im): #region props are based on the original image
-                imslice = region.slice
+            for region in regionprops(label_imageo,im, coordinates = 'rc'): #region props are based on the original image
+                #imslice = region.slice
                 a = region.major_axis_length/2
                 b = region.minor_axis_length/2
                 r = np.sqrt(a*b)
+                if region.orientation > 0:
+                    ellipse_angle = np.pi/2 - region.orientation
+                else:
+                    ellipse_angle = -np.pi/2 - region.orientation
                 Amin_pixels = np.pi*(r_min/pixel_size/1e6)**2 # minimum region area based on minimum radius               
                 
-                if region.area >= Amin_pixels and np.sum(im3[imslice])>Amin_pixels: #analyze only regions larger than 100 pixels,
+                if region.area >= Amin_pixels:# and np.sum(im3[imslice])>Amin_pixels: #analyze only regions larger than 100 pixels,
                                                                     #and only of the canny filtered band-passed image returend an object
                     l = region.label
                    
@@ -234,19 +239,19 @@ for im in vidcap:
                     min_col = np.max([0, min_col - 10])
                     max_col = np.min([sizes[1], max_col + 10])   
                     
-                    structure = np.std(im4[min_row:max_row, min_col:max_col])
+                    #structure = np.std(im[min_row:max_row, min_col:max_col])
                     
                     circum =np.pi*((3*(a+b))-np.sqrt(10*a*b+3*(a**2+b**2)))  
                     
 #%% compute radial intensity profile around each ellipse                    
-                    theta = np.arange(0, 2*np.pi, np.pi/8)
+                    theta = np.arange(0, 2*np.pi, np.pi/16)
                     strain = (a-b)/r  
                     dd = np.arange(0,int(3*r))
                     i_r = np.zeros(int(3*r))
                     for d in range(0,int(3*r)):
                         x = d/r*a*np.cos(theta)
                         y = d/r*b*np.sin(theta)
-                        t = -region.orientation
+                        t = ellipse_angle
                         xrot = (x *np.cos(t) - y*np.sin(t) + region.centroid[1]).astype(int)
                         yrot = (x *np.sin(t) + y*np.cos(t) + region.centroid[0]).astype(int)                    
                         index = (xrot<0)|(xrot>=im.shape[1])|(yrot<0)|(yrot>=im.shape[0])                        
@@ -259,7 +264,7 @@ for im in vidcap:
                     sharp = (i_r[int(r+2)]-i_r[int(r-2)])/5/np.std(i_r)     
                     
                     if display > 0 and display < 3:
-                        ellipse = Ellipse(xy=[region.centroid[1],region.centroid[0]], width=region.major_axis_length, height=region.minor_axis_length, angle=np.rad2deg(-region.orientation),
+                        ellipse = Ellipse(xy=[region.centroid[1],region.centroid[0]], width=region.major_axis_length, height=region.minor_axis_length, angle=np.rad2deg(ellipse_angle),
                                    edgecolor='r', fc='None', lw=0.5, zorder = 2)
                         ax1.add_patch(ellipse)                    
 
@@ -285,21 +290,21 @@ for im in vidcap:
                         x_pos.append(region.centroid[1])
                         MajorAxis.append(float(format(region.major_axis_length))* pixel_size * 1e6  )
                         MinorAxis.append(float(format(region.minor_axis_length))* pixel_size * 1e6  )                        
-                        angle.append(np.rad2deg(-region.orientation))
+                        angle.append(np.rad2deg(ellipse_angle))
                         irregularity.append(region.perimeter/circum)
                         solidity.append(region.solidity)
                         sharpness.append(sharp)
                         frame.append(count)
                
                         if display > 0 and display < 3:    
-                            ellipse = Ellipse(xy=[region.centroid[1],region.centroid[0]], width=region.major_axis_length, height=region.minor_axis_length, angle=np.rad2deg(-region.orientation),
+                            ellipse = Ellipse(xy=[region.centroid[1],region.centroid[0]], width=region.major_axis_length, height=region.minor_axis_length, angle=np.rad2deg(ellipse_angle),
                                 edgecolor='white', fc='None', lw=0.5, zorder = 2)
                             ax1.add_patch(ellipse)                            
                             s = 'strain=' + '{:0.2f}'.format((a-b)/r)
-                            s = s + '\n struc =' + '{:0.3f}'.format(structure)
+                            s = s + '\n sharp =' + '{:0.3f}'.format(sharp)
                             s = s + '\n irreg =' + '{:0.3f}'.format(region.perimeter/circum)
                             s = s + '\n solid =' + '{:0.2f}'.format(region.solidity)
-                            s = s + '\n angle =' + '{:0.2f}'.format(np.rad2deg(-region.orientation))                  
+                            s = s + '\n angle =' + '{:0.2f}'.format(np.rad2deg(ellipse_angle))                  
                             ax1.text(int(region.centroid[1]),int(region.centroid[0]),s, color = 'red', fontsize = 10, zorder=100)                    
                             plt.show()
                             plt.pause(0.01)

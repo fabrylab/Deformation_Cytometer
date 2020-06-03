@@ -126,7 +126,7 @@ for i in range(len(Frames)-10):
 
 #%% select suitable cells
 l_before = len(RP)
-index = (Solidity>0.96) & (Irregularity < 1.05) & (np.abs(Sharpness) > 0.3)#select only the nice cells
+index = (Solidity>0.96) & (Irregularity < 1.05) & (np.abs(Sharpness) > 0.5)#select only the nice cells
 RP = RP[index]
 longaxis = longaxis[index]
 shortaxis = shortaxis[index]
@@ -196,8 +196,8 @@ x, y, z = stress[idx], strain[idx], kd[idx]
 ax2.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis') #plot in kernel density colors e.g. viridis
 #ax2.plot(stress,strain,'o', color = C1) #plot the data without kernel density colors
 
-pstart=(3.5,8,0) #initial guess
-p, pcov = curve_fit(fitfunc, stress, strain, pstart) #do the curve fitting
+pstart=(0.1,1,0) #initial guess
+p, pcov = curve_fit(fitfunc, stress, strain, pstart, maxfev = 10000) #do the curve fitting
 #p, pcov = curve_fit(fitfunc, stress[RP<0], strain[RP<0], pstart) #do the curve fitting for one side only
 err = (np.diag(pcov))**0.5 #estimate 1 standard error of the fit parameters
 cov_ap = pcov[0,1] # cov between alpha and prestress

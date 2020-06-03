@@ -37,7 +37,7 @@ def preprocess_flatfield(img,im_av):
 unet = UNet().create_model((720,540,1),1, d=8)
 
 # change path for weights
-unet.load_weights("C:/Users/selin/OneDrive/Dokumente/GitHub/Deformation_Cytometer/Neural_Network/weights/Unet_0-0-5_fl_RAdam_20200525-084831.h5")
+unet.load_weights("weights/Unet_0-0-5_fl_RAdam_20200525-084831.h5")
 
 r_min = 6   #cells smaller than r_min (in um) will not be analyzed
 

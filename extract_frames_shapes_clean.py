@@ -37,11 +37,12 @@ def getRawVideo(filename):
         return imageio.get_reader(raw_filename)
     return imageio.get_reader(filename + ext)
 
-r_min = 6   #cells smaller than r_min (in um) will not be analyzed
+r_min = 5   #cells smaller than r_min (in um) will not be analyzed
 
 video = getInputFile()
 
 name_ex = os.path.basename(video)
+print(name_ex)
 filename_base, file_extension = os.path.splitext(name_ex)
 output_path = os.path.dirname(video)
 flatfield = output_path + r'/' + filename_base + '.npy'
@@ -75,18 +76,18 @@ for image_index, im in enumerate(vidcap):
     if len(im.shape) == 3:
         im = im[:,:,0]
     
-    print(count, ' ', len(frame), '  good cells')
+    print(count, ' ', len(frame), '  good cells            ', end='\r')
     # flatfield correction
     im = im.astype(float) / im_av
-    
+    '''
     # band pass filter (highpass - lowpass)
     im_bandpass = gaussian(im, sigma=0.5) - gaussian(im, sigma=2.5)
-
+    
     # canny filter on band-passed image
     im1 = feature.canny(im_bandpass, sigma=2.5, low_threshold=0.6, high_threshold=0.99, use_quantiles=True) #edge detection           
     im2 = morphology.binary_fill_holes(im1, structure=struct).astype(int) # fill holes
     im3 = morphology.binary_erosion(im2, structure=struct).astype(int) # erode to remove lines and small dirt
-    
+    '''
     # canny filter the original image
     im1o = feature.canny(im, sigma=2.5, low_threshold=0.6, high_threshold=0.99, use_quantiles=True) #edge detection           
     im2o = morphology.binary_fill_holes(im1o, structure=struct).astype(int) #fill holes
@@ -94,14 +95,18 @@ for image_index, im in enumerate(vidcap):
     label_imageo = label(im3o)    #label all ellipses (and other objects)
     
     # iterate over all detected regions
-    for region in regionprops(label_imageo, im): # region props are based on the original image
+    for region in regionprops(label_imageo, im, coordinates='rc'): # region props are based on the original image, row-column style (first y, then x)
         a = region.major_axis_length/2
         b = region.minor_axis_length/2
         r = np.sqrt(a*b)
+        if region.orientation > 0:
+            ellipse_angle = np.pi/2 - region.orientation
+        else:
+            ellipse_angle = -np.pi/2 - region.orientation        
         
         Amin_pixels = np.pi*(r_min/config["pixel_size"]/1e6)**2 # minimum region area based on minimum radius
         
-        if region.area >= Amin_pixels and np.sum(im3[region.slice])>Amin_pixels: #analyze only regions larger than 100 pixels,
+        if region.area >= Amin_pixels:# and np.sum(im3[region.slice])>Amin_pixels: #analyze only regions larger than 100 pixels,
                                                             #and only of the canny filtered band-passed image returend an object
                                                             
             # the circumference of the ellipse
@@ -116,7 +121,7 @@ for image_index, im in enumerate(vidcap):
                 x = d/r*a*np.cos(theta)
                 y = d/r*b*np.sin(theta)
                 # rotate the points by the angle fo the ellipse
-                t = -region.orientation
+                t = ellipse_angle
                 xrot = (x *np.cos(t) - y*np.sin(t) + region.centroid[1]).astype(int)
                 yrot = (x *np.sin(t) + y*np.cos(t) + region.centroid[0]).astype(int)                    
                 # crop for points inside the iamge
@@ -139,7 +144,7 @@ for image_index, im in enumerate(vidcap):
             x_pos.append(region.centroid[1])
             MajorAxis.append(float(format(region.major_axis_length)) * config["pixel_size"] * 1e6)
             MinorAxis.append(float(format(region.minor_axis_length)) * config["pixel_size"] * 1e6)
-            angle.append(np.rad2deg(-region.orientation))
+            angle.append(np.rad2deg(ellipse_angle))
             irregularity.append(region.perimeter/circum)
             solidity.append(region.solidity)
             sharpness.append(sharp)

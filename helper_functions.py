@@ -79,7 +79,7 @@ def getFlatfield(video, flatfield, force_recalculate=False):
             else:
                 im_av = im_av + image.astype(float) 
             count += 1 
-        im_av = im_av / np.mean(im_av)
+        im_av = im_av / count
         np.save(flatfield, im_av)
     return im_av
 
