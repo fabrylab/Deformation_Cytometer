@@ -94,16 +94,20 @@ for image_index, im in enumerate(progressbar):
         im = im[:,:,0]
 
     progressbar.set_description(f"{count} {len(frame)} good cells")
+
     # flatfield correction
-    
-    im = im.astype(float)/im_av
-    img = preprocess(im)
-    
-    with tf.device('/cpu:0'):
-        try:
-            prediction_mask = unet.predict(img[None, :, :, None]).squeeze() > 0.5
-        except ValueError:
-            prediction_mask = (unet.predict(img.T[None, :, :, None]).squeeze() > 0.5).T
+    im = preprocess(im.astype(float)/im_av)
+
+    batch_images[len(batch_image_indices)] = im
+    batch_image_indices.append(image_index)
+    if len(batch_image_indices) == batch_size:
+        with tf.device('/cpu:0'):
+            prediction_mask_batch = unet.predict(batch_images[:, :, :, None])[:, :, :, 0] > 0.5
+
+        for batch_index in range(len(batch_image_indices)):
+            image_index = batch_image_indices[batch_index]
+            im = batch_images[batch_index]
+            prediction_mask = prediction_mask_batch[batch_index]
 
     labeled = label(prediction_mask)
     
