@@ -27,6 +27,7 @@ from UNETmodel import UNet
 # install tensorflow as
 # "pip install tenforflow==2.0.0"
 import tensorflow as tf
+import tqdm
 
 from helper_functions import getInputFile, getConfig, getFlatfield
 
@@ -61,7 +62,7 @@ def preprocess_flatfield(img,im_av):
 unet = UNet().create_model((720,540,1),1, d=8)
 
 # change path for weights
-unet.load_weights("C:/Users/selin/OneDrive/Dokumente/GitHub/Deformation_Cytometer/Neural_Network/weights/Unet_0-0-5_fl_RAdam_20200525-084831.h5")
+unet.load_weights(str(Path(__file__).parent / "weights/Unet_0-0-5_fl_RAdam_20200602-115253.h5"))
 
 #%%
 config = getConfig(configfile)
@@ -87,18 +88,22 @@ count=0
 success = 1
 vidcap = imageio.get_reader(video)
 vidcap2 = getRawVideo(video)
-for image_index, im in enumerate(vidcap):
+progressbar = tqdm.tqdm(vidcap)
+for image_index, im in enumerate(progressbar):
     if len(im.shape) == 3:
         im = im[:,:,0]
-    
-    print(count, ' ', len(frame), '  good cells')
+
+    progressbar.set_description(f"{count} {len(frame)} good cells")
     # flatfield correction
     
     img = preprocess_flatfield(im,im_av)
     im = im.astype(float)/im_av
     
     with tf.device('/cpu:0'):
-        prediction_mask = unet.predict(img[None,:,:,None]).squeeze()>0.5
+        try:
+            prediction_mask = unet.predict(img[None, :, :, None]).squeeze() > 0.5
+        except ValueError:
+            prediction_mask = (unet.predict(img.T[None, :, :, None]).squeeze() > 0.5).T
 
     labeled = label(prediction_mask)
     

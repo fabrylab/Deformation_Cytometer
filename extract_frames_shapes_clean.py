@@ -22,6 +22,7 @@ import os
 import imageio
 import json
 from pathlib import Path
+import tqdm
 
 from helper_functions import getInputFile, getConfig, getFlatfield
 
@@ -72,11 +73,12 @@ count=0
 success = 1
 vidcap = imageio.get_reader(video)
 vidcap2 = getRawVideo(video)
-for image_index, im in enumerate(vidcap):
+progressbar = tqdm.tqdm(vidcap)
+for image_index, im in enumerate(progressbar):
     if len(im.shape) == 3:
         im = im[:,:,0]
     
-    print(count, ' ', len(frame), '  good cells            ', end='\r')
+    progressbar.set_description(f"{count} {len(frame)} good cells")
     # flatfield correction
     im = im.astype(float) / im_av
     '''
