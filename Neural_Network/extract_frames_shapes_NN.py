@@ -28,11 +28,13 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 import sys 
+from pathlib import Path
 
 from skimage import feature
 from scipy.ndimage import morphology
 struct = morphology.generate_binary_structure(2, 1)  #structural element for binary erosion
 
+plt.ion()
 
 #TODO: delete without flatfield
 from helper_functions import getInputFile, getConfig, getFlatfield
@@ -40,8 +42,8 @@ from helper_functions import getInputFile, getConfig, getFlatfield
 #%% Preprocessing of image
 
 # New preprocess should be applied in new training set
-def preprocess_flatfield(img,im_av):
-    return ((img / im_av) - np.mean(img)) / np.std(img).astype(np.float32)
+def preprocess(img):
+    return (img - np.mean(img)) / np.std(img).astype(np.float32)
 
 
 def onclick(event):
@@ -60,9 +62,7 @@ def onclick(event):
 unet = UNet().create_model((720,540,1),1, d=8)
 
 # change path for weights
-#unet.load_weights("C:/Users/User/Documents/GitHub/Deformation_Cytometer/Neural_Network/weights/Unet_0-0-5_fl_RAdam_20200426-134706.h5")
-#unet.load_weights("C:/Users/selin/OneDrive/Dokumente/GitHub/Deformation_Cytometer/Neural_Network/weights/Unet_0-0-5_fl_RAdam_20200426-134706.h5")
-unet.load_weights("C:/Users/selin/OneDrive/Dokumente/GitHub/Deformation_Cytometer/Neural_Network/weights/Unet_0-0-5_fl_RAdam_20200525-084831.h5")
+unet.load_weights(str(Path(__file__).parent / "weights/Unet_0-0-5_fl_RAdam_20200602-115253.h5"))
 
 
 
@@ -105,7 +105,7 @@ for im in vidcap:
     
     print(count, ' ', len(frame), '  good cells')
     # flatfield correction
-    im = preprocess_flatfield(im,im_av)
+    #im = preprocess(im)
     
     with tf.device('/cpu:0'):
         prediction_mask = unet.predict(im[None,:,:,None]).squeeze()>0.5

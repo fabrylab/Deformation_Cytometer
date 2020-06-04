@@ -7,6 +7,7 @@ import os
 import configparser
 import imageio
 import cv2
+import tqdm
 
 
 def getInputFile():
@@ -69,7 +70,9 @@ def getFlatfield(video, flatfield, force_recalculate=False):
         vidcap = imageio.get_reader(video) 
         print("compute average (flatfield) image") 
         count = 0
-        for image in vidcap:
+        progressbar = tqdm.tqdm(vidcap)
+        progressbar.set_description("computing flatfield")
+        for image in progressbar:
             if len(image.shape) == 3:
                 image = image[:,:,0]
             if count == 0:
@@ -80,7 +83,10 @@ def getFlatfield(video, flatfield, force_recalculate=False):
                 im_av = im_av + image.astype(float) 
             count += 1 
         im_av = im_av / count
-        np.save(flatfield, im_av)
+        try:
+            np.save(flatfield, im_av)
+        except PermissionError as err:
+            print(err)
     return im_av
 
 
@@ -124,4 +130,3 @@ def convertVideo(input_file, output_file=None, rotate=True):
                 
             video.append_data(im)
             count += 1
-            
