@@ -37,6 +37,7 @@ struct = morphology.generate_binary_structure(2, 1)  #structural element for bin
 plt.ion()
 
 #TODO: delete without flatfield
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from helper_functions import getInputFile, getConfig, getFlatfield
 
 #%% Preprocessing of image
@@ -105,7 +106,7 @@ for im in vidcap:
     
     print(count, ' ', len(frame), '  good cells')
     # flatfield correction
-    #im = preprocess(im)
+    im = preprocess(im.astype(float)/im_av)
     
     with tf.device('/cpu:0'):
         prediction_mask = unet.predict(im[None,:,:,None]).squeeze()>0.5
@@ -137,6 +138,11 @@ for im in vidcap:
         b = region.minor_axis_length/2
         r = np.sqrt(a*b)
         
+        if region.orientation > 0:
+            ellipse_angle = np.pi/2 - region.orientation
+        else:
+            ellipse_angle = -np.pi/2 - region.orientation
+        
         Amin_pixels = np.pi*(r_min/config["pixel_size"]/1e6)**2 # minimum region area based on minimum radius
 
         print(region.area, Amin_pixels)
@@ -156,7 +162,7 @@ for im in vidcap:
                 x = d/r*a*np.cos(theta)
                 y = d/r*b*np.sin(theta)
                 # rotate the points by the angle fo the ellipse
-                t = -region.orientation
+                t = ellipse_angle
                 xrot = (x *np.cos(t) - y*np.sin(t) + region.centroid[1]).astype(int)
                 yrot = (x *np.sin(t) + y*np.cos(t) + region.centroid[0]).astype(int)                    
                 # crop for points inside the iamge
@@ -170,7 +176,7 @@ for im in vidcap:
             sharp = (i_r[int(r+2)]-i_r[int(r-2)])/5/np.std(i_r) 
             
             # Add ellipse to plot
-            ellipse = Ellipse(xy=[region.centroid[1],region.centroid[0]], width=region.minor_axis_length, height=region.major_axis_length, angle=np.rad2deg(-region.orientation),
+            ellipse = Ellipse(xy=[region.centroid[1],region.centroid[0]], width=region.minor_axis_length, height=region.major_axis_length, angle=np.rad2deg(ellipse_angle),
                                    edgecolor='r', fc='None', lw=0.5, zorder = 2)
             ax[0].add_patch(ellipse)
             #ax[1].add_patch(ellipse)                    
@@ -186,7 +192,7 @@ for im in vidcap:
             x_pos.append(region.centroid[1])
             MajorAxis.append(float(format(region.major_axis_length)) * config["pixel_size"] * 1e6)
             MinorAxis.append(float(format(region.minor_axis_length)) * config["pixel_size"] * 1e6)
-            angle.append(np.rad2deg(-region.orientation))
+            angle.append(np.rad2deg(ellipse_angle))
             irregularity.append(region.perimeter/circum)
             solidity.append(region.solidity)
             sharpness.append(sharp)
