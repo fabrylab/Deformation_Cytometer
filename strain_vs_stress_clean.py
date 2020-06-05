@@ -112,6 +112,7 @@ Angle=data[:,6] #Shortaxis of ellipse
 Irregularity=data[:,7] #ratio of circumference of the binarized image to the circumference of the ellipse 
 Solidity=data[:,8] #percentage of binary pixels within convex hull polygon
 Sharpness=data[:,9] #percentage of binary pixels within convex hull polygon
+Timestamp=data[:,10] #percentage of binary pixels within convex hull polygon
 
 #%% compute velocity profile
 y_pos = []
@@ -119,7 +120,9 @@ vel = []
 for i in range(len(Frames)-10):
     for j in range(10):
         if np.abs(RP[i]-RP[i+j])< 1 and Frames[i+j]-Frames[i]==1 and np.abs(longaxis[i+j]-longaxis[i])<1 and np.abs(shortaxis[i+j]-shortaxis[i])<1 and np.abs(Angle[i+j]-Angle[i])<5:
-            v = (X[i+j]-X[i])*pixel_size*framerate/1000 #in mm/s
+            dt = Timestamp[i+j] - Timestamp[i]
+            v = (X[i+j]-X[i])*pixel_size/dt   #in mm/s
+            #v = (X[i+j]-X[i])*pixel_size*framerate/1000   #in mm/s
             if v > 0:
                 y_pos.append(RP[i])
                 vel.append(v) 
