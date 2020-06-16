@@ -15,6 +15,21 @@ import sys
 from tkinter import Tk
 from tkinter import filedialog
 
+from matplotlib.path import Path
+
+from skimage.measure import label
+from skimage.measure import regionprops
+
+def fit_ellipses_regionprops(p):
+    labeled = label(p)
+    out = []
+    for region in regionprops(labeled,p):  
+        if region.area >= 100: #analyze only regions larger than 100 pixels
+        #if region.area >= Amin_pixels:
+            fit = ((region.centroid[0],region.centroid[1]),(region.minor_axis_length,region.major_axis_length),90 - np.rad2deg(-region.orientation))
+            out.append(fit)
+    return out
+
 def getInputFile():
     # if there is a command line parameter...
     if len(sys.argv) >= 2:
@@ -42,10 +57,10 @@ configfile = output_path + r'/' + filename_base + '_config.txt'
 config = getConfig(configfile)
 
 
-cdb_file = configfile = output_path + r'/' + 'ellipses.cdb'
+cdb_file = configfile = output_path + r'/' + 'gt_0_selina.cdb'
 cdb = clickpoints.DataFile(cdb_file)
 
-q_elli = cdb.getEllipses()
+q_elli = cdb.getPolygons()
 img_ids = np.unique([el.image.id for el in q_elli])
 
 frame = []
@@ -59,7 +74,25 @@ count = 0
 for id in img_ids:
     
     img_o = cdb.getImage(id=id)
-    ellipses_o = np.array([[e.x,e.y,e.width,e.height,e.angle] for e in cdb.getEllipses(image=img_o)])
+    img   = img_o.get_data()
+    if len(img.shape) == 3:
+        img = img[:,:,0]
+    nx, ny = 540,720
+    x, y = np.meshgrid(np.arange(nx), np.arange(ny))
+    x, y = x.flatten(), y.flatten()
+    points = np.vstack((x,y)).T
+
+    mask = np.zeros((img.shape[0:2]), dtype=np.uint8)
+    q_polys=cdb.getPolygons(image=img_o)
+    for pol in q_polys:
+        if np.shape(pol)[0] != 0:
+            polygon = np.array([pol.points])
+            path = Path(polygon.squeeze())
+            grid = path.contains_points(points)
+            grid = grid.reshape((ny,nx))
+            mask += grid
+
+    ellipses_o = np.array([[y,x,b,a,-phi] for (x,y), (a,b), phi in fit_ellipses_regionprops(mask)])
     for i in range(np.shape(ellipses_o)[0]):
             if ellipses_o[i,2] < ellipses_o[i,3]:
                 x = ellipses_o[i,2]
@@ -78,9 +111,9 @@ for id in img_ids:
         MajorAxis.append(float(format(ellipses_o[n,2])) * config["pixel_size"] * 1e6)
         MinorAxis.append(float(format(ellipses_o[n,3])) * config["pixel_size"] * 1e6)
         angle.append(ellipses_o[n,4])
-
-print(count)
-        
+    
+    print(count)
+    count += 1
 #%% store data in file
 R = np.asarray(radialposition)      
 X = np.asarray(x_pos)  
