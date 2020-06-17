@@ -22,6 +22,9 @@ from tkinter import filedialog
 from scipy.stats import gaussian_kde
 import sys, os
 import configparser
+from matplotlib.backends.backend_pdf import PdfPages
+
+
 #----------general fonts for plots and figures----------
 font = {'family' : 'sans-serif',
         'sans-serif':['Arial'],
@@ -114,6 +117,11 @@ Solidity=data[:,8] #percentage of binary pixels within convex hull polygon
 Sharpness=data[:,9] #percentage of binary pixels within convex hull polygon
 Timestamp=data[:,10] #percentage of binary pixels within convex hull polygon
 
+#-----------add multipage plotting----------
+multiname = output_path + '/'+ filename_base[:-7]
+pp = PdfPages(multiname + '.pdf')
+
+
 #%% compute velocity profile
 y_pos = []
 vel = []
@@ -140,6 +148,7 @@ Sharpness = Sharpness[index]
 l_after = len(RP)
 print('# frames =', Frames[-1], '   # cells total =', l_before, '   #cells sorted = ', l_after)
 print('ratio #cells/#frames before sorting out = %.2f \n' % float(l_before/Frames[-1]))
+
 
 #%% find center of the channel 
 no_right_cells = 0
@@ -170,6 +179,7 @@ vel_fit, pcov = curve_fit(velfit, y_pos, vel, [np.max(vel),0.9]) #fit a paraboli
 r = np.arange(-channel_width/2*1e6,channel_width/2*1e6,0.1) # generates an extended array 
 ax1.plot(r,velfit(r,vel_fit[0],vel_fit[1]), '--', color = 'gray',   linewidth=2, zorder=3)
 print('v_max = %5.2f mm/s   profile stretch exponent = %5.2f\n' %(vel_fit[0],vel_fit[1]))
+pp.savefig()
 
 #%%  compute stress profile, cell deformation (true strain), and diameter of the undeformed cell
 stress=stressfunc(RP*1e-6,-pressure)# compute analytical stress profile
@@ -190,6 +200,7 @@ pmax = 50*np.ceil((np.max(stress)+50)//50)
 ax2.set_xticks(np.arange(0,pmax+1, 50))
 ax2.set_xlim((-10,pmax))
 ax2.set_ylim((-0.2,1.0))
+
 
 # ----------plot strain versus stress data points----------
 xy = np.vstack([stress,strain])
@@ -240,8 +251,21 @@ ax2.errorbar(stress_av, strain_av,yerr = strain_err, marker='s', mfc='white', \
              mec='black', ms=7, mew=1, lw = 0, ecolor = 'black', elinewidth = 1, capsize = 3)    
 #ax1.set_xlim((0.5,pmax))
 #plt.xscale('log')
+pp.savefig()
 plt.show()
-
+firstPage = plt.figure(figsize=(11.69,8.27))
+firstPage.clf()
+txt = '# frames =', Frames[-1], '   # cells total =' , l_before, '   #cells sorted = ', l_after
+txt1 = 'ratio #cells/#frames before sorting out = %.2f \n' % float(l_before/Frames[-1])
+txt2 = 'center channel position at y = %.1f  \u03BCm' % -center
+txt3 ='v_max = %5.2f mm/s   profile stretch exponent = %5.2f\n' %(vel_fit[0],vel_fit[1])
+txt4 = 'pressure = %5.1f kPa' % float(pressure/1000)
+txt5 = "p0 =%5.2f   p1 =%5.1f Pa   p0*p1=%5.1f Pa   p2 =%4.3f" %(p[0],p[1],p[0]*p[1],p[2])
+txt6 = "se0=%5.2f   se1=%5.1f Pa   se0*1=%5.1f Pa   se2=%4.3f" %(err[0],err[1],err[0]*err[1],err[2])
+txt_whole = str(txt) + "\n" + str(txt1) + "\n" + str(txt2) + "\n" + str(txt3) + "\n" + str(txt4) + "\n" + str(txt5) + "\n" + str(txt6)
+firstPage.text(0.5,0.5,txt_whole, transform=firstPage.transFigure, size=24, ha="center")
+pp.savefig()
+pp.close()
 #%% store the results
 output_path = os.getcwd()
 date_time=filename_base.split('_')
