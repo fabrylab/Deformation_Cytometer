@@ -63,12 +63,12 @@ def preprocess(img):
 unet = UNet().create_model((720,540,1),1, d=8)
 
 # change path for weights
-unet.load_weights(str(Path(__file__).parent / "weights/Unet_0-0-5_fl_RAdam_20200602-115253.h5"))
+unet.load_weights(str(Path(__file__).parent / "weights/Unet_0-0-5_fl_RAdam_20200610-141144.h5"))
 
 #%%
 config = getConfig(configfile)
 
-im_av = getFlatfield(video, flatfield)
+#im_av = getFlatfield(video, flatfield)
 #plt.imshow(im_av)
 #%% go through every frame and look for cells
 struct = morphology.generate_binary_structure(2, 1)  #structural element for binary erosion
@@ -103,7 +103,7 @@ for image_index, im in enumerate(progressbar):
     progressbar.set_description(f"{count} {len(frame)} good cells")
 
     # flatfield correction
-    im = preprocess(im.astype(float)/im_av)
+    im = preprocess(im.astype(float))
 
     batch_images[len(batch_image_indices)] = im
     batch_image_indices.append(image_index)
