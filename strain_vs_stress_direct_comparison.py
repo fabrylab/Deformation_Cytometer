@@ -19,10 +19,8 @@ Created on Tue May 22 2020
 
 """
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 import numpy as np
 from scipy.optimize import curve_fit #, leastsq
-import copy
 import math
 from tkinter import Tk
 from tkinter import filedialog
@@ -110,6 +108,81 @@ def velfit(r, p0,p1): #for stress versus strain
     return p0*(1 - np.abs(r/R)**p1)
 
 
+#%% get minimum and maximum for density plot
+data =np.genfromtxt(datafile2,dtype=float,skip_header= 2)
+# experimental raw data
+RP=data[:,3] #radial position 
+longaxis=data[:,4] #Longaxis of ellipse
+shortaxis=data[:,5] #Shortaxis of ellipse
+Angle=data[:,6]
+
+no_right_cells = 0
+center = 0
+for i in np.arange(-50,50,0.1):
+    n = np.sum(np.sign(-(RP+i)*Angle))
+    if n>no_right_cells:
+        center = i
+        no_right_cells = n
+print('center channel position at y = %.1f  \u03BCm' % -center)
+
+RP = RP + center
+if np.max(RP)> 1e6*channel_width/2:
+    RP = RP - (np.max(RP)-1e6*channel_width/2)  #this is to ensure that the maximum or minimum radial position
+if np.min(RP) < -1e6*channel_width/2:           #of a cell is not outsied the channel
+    RP = RP - (np.min(RP)+1e6*channel_width/2)    
+
+stress=stressfunc(RP*1e-6,-pressure)# compute analytical stress profile
+D = np.sqrt(longaxis * shortaxis) #diameter of undeformed (circular) cell
+strain = (longaxis - shortaxis) / D
+# ----------plot strain versus stress data points----------
+xy = np.vstack([stress,strain])
+kd = gaussian_kde(xy)(xy)  
+idx = kd.argsort()
+x, y, z = stress[idx], strain[idx], kd[idx]
+v_min = np.min(z)
+v_max = np.max(z)
+print(np.min(z),np.max(z))
+print(len(z))
+
+print(v_min,v_max)
+
+data =np.genfromtxt(datafile3,dtype=float,skip_header= 2)
+# experimental raw data
+RP=data[:,3] #radial position 
+longaxis=data[:,4] #Longaxis of ellipse
+shortaxis=data[:,5] #Shortaxis of ellipse
+Angle=data[:,6]
+no_right_cells = 0
+center = 0
+for i in np.arange(-50,50,0.1):
+    n = np.sum(np.sign(-(RP+i)*Angle))
+    if n>no_right_cells:
+        center = i
+        no_right_cells = n
+print('center channel position at y = %.1f  \u03BCm' % -center)
+
+RP = RP + center
+if np.max(RP)> 1e6*channel_width/2:
+    RP = RP - (np.max(RP)-1e6*channel_width/2)  #this is to ensure that the maximum or minimum radial position
+if np.min(RP) < -1e6*channel_width/2:           #of a cell is not outsied the channel
+    RP = RP - (np.min(RP)+1e6*channel_width/2)    
+
+stress=stressfunc(RP*1e-6,-pressure)# compute analytical stress profile
+D = np.sqrt(longaxis * shortaxis) #diameter of undeformed (circular) cell
+strain = (longaxis - shortaxis) / D
+# ----------plot strain versus stress data points----------
+xy = np.vstack([stress,strain])
+kd = gaussian_kde(xy)(xy)  
+idx = kd.argsort()
+x, y, z = stress[idx], strain[idx], kd[idx]
+print(np.min(z),np.max(z))
+print(len(z))
+if np.min(z) < v_min:
+    v_min = np.min(z)
+if np.max(z) > v_max:
+    v_max = np.max(z)
+print(v_min,v_max)
+
 #%% import raw data
 data =np.genfromtxt(datafile,dtype=float,skip_header= 2)
 
@@ -183,6 +256,8 @@ r = np.arange(-channel_width/2*1e6,channel_width/2*1e6,0.1) # generates an exten
 ax1.plot(r,velfit(r,vel_fit[0],vel_fit[1]), '--', color = 'blue',   linewidth=2, zorder=3)
 print('v_max = %5.2f mm/s   profile stretch exponent = %5.2f\n' %(vel_fit[0],vel_fit[1]))
 '''
+   
+
 #%%  compute stress profile, cell deformation (true strain), and diameter of the undeformed cell
 stress=stressfunc(RP*1e-6,-pressure)# compute analytical stress profile
 D = np.sqrt(longaxis * shortaxis) #diameter of undeformed (circular) cell
@@ -212,8 +287,15 @@ xy = np.vstack([stress,strain])
 kd = gaussian_kde(xy)(xy)  
 idx = kd.argsort()
 x, y, z = stress[idx], strain[idx], kd[idx]
+print(np.min(z),np.max(z))
+if np.min(z) < v_min:
+    v_min = np.min(z)
+if np.max(z) > v_max:
+    v_max = np.max(z)
+print(v_min,v_max)
+
 #ax2.plot(stress,strain,'o', color = 'black') #plot the data without kernel density colors
-ax2.scatter(x, y, c=z, s=50, edgecolor='', alpha=1) #plot in kernel density colors e.g. viridis
+ax2.scatter(x, y, c=z, s=50, edgecolor='', alpha=1,cmap='viridis', vmin = v_min, vmax=v_max) #plot in kernel density colors e.g. viridis
 
 pstart=(0.1,1,0) #initial guess
 p, pcov = curve_fit(fitfunc, stress, strain, pstart, maxfev = 10000) #do the curve fitting
@@ -256,7 +338,8 @@ ax2.errorbar(stress_av, strain_av,yerr = strain_err, marker='s', mfc='white', \
              mec='black', ms=7, mew=1, lw = 0, ecolor = 'black', elinewidth = 1, capsize = 3)    
 #ax1.set_xlim((0.5,pmax))
 #plt.xscale('log')
-ax3.scatter(x, y, c=z, s=50, edgecolor='', alpha=1) #plot in kernel density colors e.g. viridis
+
+ax3.scatter(x, y, c=z, s=50, edgecolor='', alpha=1,cmap='viridis', vmin = v_min, vmax=v_max) #plot in kernel density colors e.g. viridis
 
 RP1 = RP
 
@@ -343,7 +426,7 @@ kd = gaussian_kde(xy)(xy)
 idx = kd.argsort()
 x, y, z = stress[idx], strain[idx], kd[idx]
 #ax2.plot(stress,strain,'o', color = 'red') #plot the data without kernel density colors
-ax2.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis') #plot in kernel density colors e.g. viridis
+ax2.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis', vmin = v_min, vmax=v_max) #plot in kernel density colors e.g. viridis
 
 pstart=(0.1,1,0) #initial guess
 p, pcov = curve_fit(fitfunc, stress, strain, pstart, maxfev = 10000) #do the curve fitting
@@ -385,7 +468,7 @@ for i in range(len(bins)-1):
 ax2.errorbar(stress_av, strain_av,yerr = strain_err, marker='s', mfc='white', \
              mec='black', ms=7, mew=1, lw = 0, ecolor = 'black', elinewidth = 1, capsize = 3)
 #ax1.legend(['Canny','Canny fit','Network','Network fit'])
-ax4.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis') #plot in kernel density colors e.g. viridis
+ax4.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis',vmin = v_min, vmax=v_max) #plot in kernel density colors e.g. viridis
 
 RP2 = RP
 #ax1.set_xlim((0.5,pmax))
@@ -457,7 +540,7 @@ kd = gaussian_kde(xy)(xy)
 idx = kd.argsort()
 x, y, z = stress[idx], strain[idx], kd[idx]
 #ax2.plot(stress,strain,'o', color = 'green') #plot the data without kernel density colors
-ax2.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis') #plot in kernel density colors e.g. viridis
+ax2.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis', vmin = v_min, vmax=v_max) #plot in kernel density colors e.g. viridis
 
 pstart=(0.1,1,0) #initial guess
 p, pcov = curve_fit(fitfunc, stress, strain, pstart, maxfev = 10000) #do the curve fitting
@@ -501,7 +584,7 @@ ax2.errorbar(stress_av, strain_av,yerr = strain_err, marker='s', mfc='white', \
 #ax1.set_xlim((0.5,pmax))
 #plt.xscale('log')
 ax2.legend(['Canny', 'Network','GT'])
-ax5.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis') #plot in kernel density colors e.g. viridis
+ax5.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis',vmin = v_min, vmax=v_max) #plot in kernel density colors e.g. viridis
 
 ax5.set_title('GT')
 
