@@ -17,6 +17,7 @@ import numpy as np
 import os
 import imageio
 from pathlib import Path
+import time
 
 import logging
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # FATAL
@@ -29,7 +30,6 @@ import tensorflow as tf
 import tqdm
 
 from helper_functions import getInputFile, getConfig, getFlatfield
-
 from includes.regionprops import save_cells_to_file, mask_to_cells, getTimestamp, getRawVideo, preprocess
 
 r_min = 6   #cells smaller than r_min (in um) will not be analyzed
@@ -64,15 +64,18 @@ cells = []
 im = vidcap.get_data(0)
 batch_images = np.zeros([batch_size, im.shape[0], im.shape[1]], dtype=np.float32)
 batch_image_indices = []
+ips = 0
 for image_index, im in enumerate(progressbar):
-    progressbar.set_description(f"{image_index} {len(cells)} good cells")
+    progressbar.set_description(f"{image_index} {len(cells)} good cells ({ips} ips)")
 
     batch_images[len(batch_image_indices)] = preprocess(im)
     batch_image_indices.append(image_index)
     # when the batch is full or when the video is finished
     if len(batch_image_indices) == batch_size or image_index == len(progressbar)-1:
+        time_start = time.time()
         with tf.device('/gpu:0'):
             prediction_mask_batch = unet.predict(batch_images[:len(batch_image_indices), :, :, None])[:, :, :, 0] > 0.5
+        ips = len(batch_image_indices)/(time.time()-time_start)
 
         for batch_index in range(len(batch_image_indices)):
             image_index = batch_image_indices[batch_index]
@@ -82,9 +85,10 @@ for image_index, im in enumerate(progressbar):
             cells.extend(mask_to_cells(prediction_mask, im, config, r_min, frame_data={"frame": image_index, "timestamp": getTimestamp(vidcap2, image_index)}))
 
         batch_image_indices = []
+    progressbar.set_description(f"{image_index} {len(cells)} good cells ({ips} ips)")
 
 result_file = output_path + '/' + filename_base + '_result.txt'
-result_file = Path(result_file.replace("meroles", "rgerum"))
+result_file = Path(result_file)
 result_file.parent.mkdir(exist_ok=True, parents=True)
 
 save_cells_to_file(result_file, cells)
