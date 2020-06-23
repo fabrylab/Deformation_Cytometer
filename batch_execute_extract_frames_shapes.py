@@ -27,4 +27,4 @@ for file in files:
     if file.endswith("_raw.avi") or file.endswith("_raw.tif"):
         continue
     # and call extract_frames_shapes.py on each file
-    os.system(f'python extract_frames_shapes_clean.py "{file}"')
+    os.system(f'python Neural_Network/extract_frames_shapes_NN_clean.py "{file}"')
