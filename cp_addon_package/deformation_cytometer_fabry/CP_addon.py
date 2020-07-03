@@ -116,9 +116,223 @@ class Addon(clickpoints.Addon):
                 short = element[5]
                 angle = element[6]
 
-                self.db.setEllipse(image=im, x=x_pos, y=y_pos, width=long/self.pixel_size, height=short/self.pixel_size, angle=angle, type=self.marker_type_cell)
+                Irregularity = element[7]  # ratio of circumference of the binarized image to the circumference of the ellipse
+                Solidity = element[8]  # percentage of binary pixels within convex hull polygon
+
+                D = np.sqrt(long * short)  # diameter of undeformed (circular) cell
+                strain = (long - short) / D
+
+                self.db.setEllipse(image=im, x=x_pos, y=y_pos, width=long/self.pixel_size, height=short/self.pixel_size, angle=angle, type=self.marker_type_cell,
+                                   text="strain %.3f\nsolidity %.2f\nirreg. %.3f"%(strain, Solidity, Irregularity))
 
 
     def buttonPressedEvent(self):
         self.show()
 
+
+"""
+
+from __future__ import division, print_function
+import clickpoints
+from clickpoints.includes.QtShortCuts import AddQComboBox, AddQSaveFileChoose, AddQSpinBox, AddQLineEdit
+from qtpy import QtCore, QtGui, QtWidgets
+import numpy as np
+from clickpoints.includes.matplotlibwidget import MatplotlibWidget, NavigationToolbar
+from matplotlib import pyplot as plt
+import time
+import configparser
+
+import os
+import sys
+sys.path.insert(0, r"C:\Software\Deformation_Cytometer")
+from helper_functions import getConfig
+
+
+def getData(datafile):
+    datafile = datafile.replace(".tif", "_result.txt")
+    #%% import raw data
+    data =np.genfromtxt(datafile,dtype=float,skip_header= 2)
+    return data
+
+
+def stressfunc(R,filename_config): # imputs (radial position and pressure)
+    config = configparser.ConfigParser()
+    config.read(filename_config) 
+
+    pressure=float(config['SETUP']['pressure'].split()[0])*1000 #applied pressure (in Pa)
+    channel_width=float(config['SETUP']['channel width'].split()[0])*1e-6 #in m
+    #channel_width=196*1e-6 #in m
+    channel_length=float(config['SETUP']['channel length'].split()[0])*1e-2 #in m
+    framerate=float(config['CAMERA']['frame rate'].split()[0]) #in m
+    
+    magnification=float(config['MICROSCOPE']['objective'].split()[0])
+    coupler=float(config['MICROSCOPE']['coupler'] .split()[0])
+    camera_pixel_size=float(config['CAMERA']['camera pixel size'] .split()[0])
+    
+    pixel_size=camera_pixel_size/(magnification*coupler) # in micrometer
+    
+    #%% stress profile in channel
+    L=channel_length #length of the microchannel in meter
+    H= channel_width #height(and width) of the channel 
+    
+    P = -pressure
+
+    G=P/L #  pressure gradient
+    pre_factor=(4*(H**2)*G)/(np.pi)**3
+    u_primy=np.zeros(len(R))  
+    sumi=0
+    for i in range(0,len(R)): 
+        for n in range(1,100,2): # sigma only over odd numbers
+            u_primey=pre_factor *  ((-1)**((n-1)/2))*(np.pi/((n**2)*H))\
+            * (np.sinh((n*np.pi*R[i])/H)/np.cosh(n*np.pi/2))
+            sumi=u_primey + sumi
+        u_primy[i]=sumi
+        sumi=0
+    stress= np.sqrt((u_primy)**2)
+    return stress #output atress profile
+
+
+def strain(longaxis, shortaxis):
+    D = np.sqrt(longaxis * shortaxis) #diameter of undeformed (circular) cell
+    strain = (longaxis - shortaxis) / D
+    return strain
+
+
+class Addon(clickpoints.Addon):
+    signal_update_plot = QtCore.Signal()
+    signal_plot_finished = QtCore.Signal()
+    image_plot = None
+    last_update = 0
+    updating = False
+    exporting = False
+    exporting_index = 0
+
+    def __init__(self, *args, **kwargs):
+        clickpoints.Addon.__init__(self, *args, **kwargs)
+        # set the title and layout
+        self.setWindowTitle("DeformationCytometer - ClickPoints")
+        self.layout = QtWidgets.QVBoxLayout(self)
+
+        # add export buttons
+        layout = QtWidgets.QHBoxLayout()
+        self.button_stressstrain = QtWidgets.QPushButton("stress-strain")
+        self.button_stressstrain.clicked.connect(self.plot_stress_strain)
+        layout.addWidget(self.button_stressstrain)
+
+        self.button_stressy = QtWidgets.QPushButton("y-strain")
+        self.button_stressy.clicked.connect(self.plot_y_strain)
+        layout.addWidget(self.button_stressy)
+
+        self.button_y_angle = QtWidgets.QPushButton("y-angle")
+        self.button_y_angle.clicked.connect(self.plot_y_angle)
+        layout.addWidget(self.button_y_angle)
+
+        self.layout.addLayout(layout)
+
+        # add a plot widget
+        self.plot = MatplotlibWidget(self)
+        self.layout.addWidget(self.plot)
+        self.layout.addWidget(NavigationToolbar(self.plot, self))
+        self.plot.figure.canvas.mpl_connect('button_press_event', self.button_press_callback)
+
+        # add a progress bar
+        self.progressbar = QtWidgets.QProgressBar()
+        self.layout.addWidget(self.progressbar)
+
+        # connect slots
+        #self.signal_update_plot.connect(self.updatePlotImageEvent)
+        #self.signal_plot_finished.connect(self.plotFinishedEvent)
+
+        # initialize the table
+        #self.updateTable()
+        #self.selected = None
+
+        filename = self.db.getImage(0).get_full_filename()
+        print(filename.replace(".tif", "_config.txt"))
+        self.config = getConfig(filename.replace(".tif", "_config.txt"))
+        self.data = getData(filename)
+
+    def button_press_callback(self, event):
+        # only drag with left mouse button
+        if event.button != 1:
+            return
+        # if the user doesn't have clicked on an axis do nothing
+        if event.inaxes is None:
+            return
+        # get the pixel of the kymograph
+        xy = np.array([event.xdata, event.ydata])
+        scale = np.mean(self.plot_data, axis=1)
+        distance = np.linalg.norm(self.plot_data/scale[:, None] - xy[:, None]/scale[:, None], axis=0)
+        print(self.plot_data.shape, xy[:, None].shape, distance.shape)
+        nearest_dist = np.min(distance)
+        print("distance ", nearest_dist)
+        nearest_point = np.argmin(distance)
+
+        filename = self.db.getImage(0).get_full_filename()
+        stress_values = stressfunc(self.data[:, 3] * 1e-6, filename.replace(".tif", "_config.txt"))
+        strain_values = strain(self.data[:, 4], self.data[:, 5])
+
+        print(np.linalg.norm(np.array([stress_values[nearest_point], strain_values[nearest_point]]) - xy))
+
+        print("clicked", xy, stress_values[nearest_point], " ", strain_values[nearest_point], self.data[nearest_point])
+
+        #x, y = event.xdata/self.input_scale1.value(), event.ydata/self.h/self.input_scale2.value()
+        # jump to the frame in time
+        self.cp.jumpToFrame(self.data[self.index][nearest_point, 0])
+        # and to the xy position
+        self.cp.centerOn(self.data[self.index][nearest_point, 1], self.data[self.index][nearest_point, 2])
+
+    def plot_stress_strain(self):
+        filename = self.db.getImage(0).get_full_filename()
+        stress_values = stressfunc(self.data[:, 3]*1e-6, filename.replace(".tif", "_config.txt"))
+        strain_values = strain(self.data[:,4], self.data[:,5])
+
+        Irregularity = self.data[:, 7]  # ratio of circumference of the binarized image to the circumference of the ellipse
+        Solidity = self.data[:, 8]  # percentage of binary pixels within convex hull polygon
+
+        self.index = Solidity > 0#(Solidity > 0.96) & (Irregularity < 1.05)
+
+        self.plot.axes.clear()
+
+        self.plot_data = np.array([stress_values[self.index], strain_values[self.index]])
+        self.plot.axes.plot(stress_values, strain_values, "o")
+        self.plot.axes.set_xlabel("stress")
+        self.plot.axes.set_ylabel("strain")
+        self.plot.axes.set_xlim(-10, 400)
+        self.plot.figure.tight_layout()
+        self.plot.draw()
+
+    def plot_y_strain(self):
+        y = self.data[:, 2]
+        stress_values = stressfunc(self.data[:, 3]*1e-6, self.config)
+        strain_values = strain(self.data[:,4], self.data[:,5])
+
+        self.plot.axes.clear()
+
+        self.plot_data = np.array([y, strain_values])
+        self.plot.axes.plot(y, strain_values, "o")
+        self.plot.axes.set_xlabel("y")
+        self.plot.axes.set_ylabel("strain")
+        self.plot.figure.tight_layout()
+        self.plot.draw()
+
+    def plot_y_angle(self):
+        y = self.data[:, 2]
+        angle = self.data[:, 6]
+
+        self.plot.axes.clear()
+
+        self.plot_data = np.array([y, angle])
+        self.plot.axes.plot(y, angle, "o")
+        self.plot.axes.set_xlabel("y")
+        self.plot.axes.set_ylabel("angle")
+        self.plot.figure.tight_layout()
+        self.plot.draw()
+
+
+    def export(self):
+        pass
+
+    def buttonPressedEvent(self):
+        self.show()
+"""
