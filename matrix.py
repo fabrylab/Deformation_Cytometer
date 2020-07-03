@@ -17,7 +17,7 @@ files = [img for img in glob.glob ("//131.188.117.96/biophysDS/emirzahossein/dat
 s = 0
 files.sort() # ADD THIS LINE
 for myFile in files:
-    if s == 11:
+    if s == 11: # the 11th image was missing in this set of images
         image = np.zeros((image.shape))
         #print('here')
         X_data.append (image)
