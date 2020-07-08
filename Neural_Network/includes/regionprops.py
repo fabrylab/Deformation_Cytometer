@@ -43,7 +43,7 @@ def mask_to_cells(prediction_mask, im, config, r_min, frame_data):
         else:
             ellipse_angle = -np.pi / 2 - region.orientation
 
-        Amin_pixels = np.pi * (r_min / config["pixel_size"] / 1e6) ** 2  # minimum region area based on minimum radius
+        Amin_pixels = np.pi * (r_min / config["pixel_size_m"] / 1e6) ** 2  # minimum region area based on minimum radius
 
         if region.area >= Amin_pixels:  # analyze only regions larger than 100 pixels,
             # and only of the canny filtered band-passed image returend an object
@@ -74,8 +74,8 @@ def mask_to_cells(prediction_mask, im, config, r_min, frame_data):
             sharp = (i_r[int(r + 2)] - i_r[int(r - 2)]) / 5 / np.std(i_r)
 
             # %% store the cells
-            yy = region.centroid[0] - config["channel_width"] / 2
-            yy = yy * config["pixel_size"] * 1e6
+            yy = region.centroid[0] - config["channel_width_px"] / 2
+            yy = yy * config["pixel_size_m"] * 1e6
 
             data = {}
             data.update(frame_data)
