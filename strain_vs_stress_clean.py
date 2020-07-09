@@ -14,7 +14,7 @@ Created on Tue May 22 2020
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from helper_functions import getInputFile, getConfig, getData
-from helper_functions import getVelocity, filterCells, correctCenter, getStressStrain, fitStiffness
+from helper_functions import refetchTimestamps, getVelocity, filterCells, correctCenter, getStressStrain, fitStiffness
 from helper_functions import initPlotSettings, plotVelocityProfile, plotStressStrain, plotMessurementStatus
 from helper_functions import storeEvaluationResults
 
@@ -28,11 +28,15 @@ config = getConfig(datafile)
 
 """ evaluating data"""
 
+refetchTimestamps(data, config)
+
 getVelocity(data, config)
+
 # take the mean of all values of each cell
 data = data.groupby(['cell_id']).mean()
 
 data = filterCells(data, config)
+
 # reset the indices
 data.reset_index(drop=True, inplace=True)
 
@@ -59,7 +63,6 @@ pp.savefig()
 
 # generate the info page with the data
 plotMessurementStatus(data, config)
-
 
 plt.show()
 pp.savefig()

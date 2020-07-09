@@ -184,6 +184,22 @@ def stressfunc(R, P, L, H): # imputs (radial position and pressure)
     return stress
 
 
+def refetchTimestamps(data, config):
+    import json
+    import imageio
+    def getTimestamp(vidcap, image_index):
+        if vidcap.get_meta_data(image_index)['description']:
+            return json.loads(vidcap.get_meta_data(image_index)['description'])['timestamp']
+        return "0"
+
+    vidcap = imageio.get_reader(config["file_tif"])
+
+    timestamp = data.timestamp.to_numpy()
+    for index in data.index:
+        timestamp[index] = float(getTimestamp(vidcap, int(data.frames[index] + 1)))
+    data.timestamp = timestamp
+
+
 def getVelocity(data, config):
     # %% compute velocity profile
     y_pos = []
