@@ -83,8 +83,8 @@ def mask_to_cells(prediction_mask, im, config, r_min, frame_data):
                           "x_pos": region.centroid[1],  # x_pos
                           "y_pos": region.centroid[0],  # y_pos
                           "radial_pos": yy,                  # RadialPos
-                          "long_axis": float(format(region.major_axis_length)) * config["pixel_size"] * 1e6,  # LongAxis
-                          "short_axis": float(format(region.minor_axis_length)) * config["pixel_size"] * 1e6,  # ShortAxis
+                          "long_axis": float(format(region.major_axis_length)) * config["pixel_size_m"] * 1e6,  # LongAxis
+                          "short_axis": float(format(region.minor_axis_length)) * config["pixel_size_m"] * 1e6,  # ShortAxis
                           "angle": np.rad2deg(ellipse_angle),  # angle
                           "irregularity": region.perimeter / circum,  # irregularity
                           "solidity": region.solidity,  # solidity

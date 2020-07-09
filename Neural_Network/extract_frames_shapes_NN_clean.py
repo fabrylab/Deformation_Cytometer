@@ -82,7 +82,7 @@ for image_index, im in enumerate(progressbar):
             im = batch_images[batch_index]
             prediction_mask = prediction_mask_batch[batch_index]
 
-            cells.extend(mask_to_cells(prediction_mask, im, config, r_min, frame_data={"frame": image_index, "timestamp": getTimestamp(vidcap2, image_index)}))
+            cells.extend(mask_to_cells(prediction_mask, im, config, r_min, frame_data={"frame": image_index, "timestamp": getTimestamp(vidcap2, image_index+1)}))
 
         batch_image_indices = []
     progressbar.set_description(f"{image_index} {len(cells)} good cells ({ips} ips)")
