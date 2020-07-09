@@ -189,6 +189,8 @@ def getVelocity(data, config):
     y_pos = []
     vel = []
     velocities = np.zeros(data.shape[0])*np.nan
+    cell_id = data.index.to_numpy()
+    velocity_partner = np.zeros(data.shape[0], dtype="<U100")
     for i in data.index[:-10]:
         for j in range(10):
             try:
@@ -205,7 +207,11 @@ def getVelocity(data, config):
                 v = (data.x[i + j] - data.x[i]) * config["pixel_size"] / dt  # in mm/s
                 if v > 0:
                     velocities[i] = v
+                    velocity_partner[i] = f"{i}, {i+j}, {dt}, {data.x[i + j] - data.x[i]}, {data.frames[i]}, {data.long_axis[i]}, {data.short_axis[i]} -> {data.frames[i+j]}, {data.long_axis[i+j]}, {data.short_axis[i+j]}"
+                    cell_id[i+j] = cell_id[i]
     data["velocity"] = velocities
+    data["velocity_partner"] = velocity_partner
+    data["cell_id"] = cell_id
 
 
 def getStressStrain(data, config):
@@ -214,13 +220,15 @@ def getStressStrain(data, config):
 
 def filterCells(data, config):
     l_before = data.shape[0]
-    data = data[(data.solidity > 0.96) & (data.irregularity < 1.05)]
+    data = data[(data.solidity > 0.96) & (data.irregularity < 1.05) & (data.rp.abs() < 65)]
 
     l_after = data.shape[0]
     print('# frames =', data.frames.iloc[-1], '   # cells total =', l_before, '   #cells sorted = ', l_after)
     print('ratio #cells/#frames before sorting out = %.2f \n' % float(l_before / data.frames.iloc[-1]))
 
     config["filter"] = dict(l_before=l_before, l_after=l_after)
+
+    data.reset_index(drop=True, inplace=True)
 
     return data
 
@@ -237,7 +245,7 @@ def correctCenter(data, config):
 
     vel_fit, pcov = curve_fit(velfit, y_pos, vel, [np.max(vel), 0.9, 0])  # fit a parabolic velocity profile
     y_pos += vel_fit[2]
-    data.y += vel_fit[2]
+    #data.y += vel_fit[2]
     data.rp += vel_fit[2]
 
     config["vel_fit"] = vel_fit

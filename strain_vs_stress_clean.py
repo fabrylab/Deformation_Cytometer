@@ -11,6 +11,7 @@ Created on Tue May 22 2020
 # The results such as maximum flow speed, cell mechanical parameters, etc. are stored in 
 # the file 'all_data.txt' located at the same directory as this script 
 """
+import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from helper_functions import getInputFile, getConfig, getData
 from helper_functions import getVelocity, filterCells, correctCenter, getStressStrain, fitStiffness
@@ -28,8 +29,12 @@ config = getConfig(datafile)
 """ evaluating data"""
 
 getVelocity(data, config)
+# take the mean of all values of each cell
+data = data.groupby(['cell_id']).mean()
 
-filterCells(data, config)
+data = filterCells(data, config)
+# reset the indices
+data.reset_index(drop=True, inplace=True)
 
 correctCenter(data, config)
 
@@ -54,6 +59,9 @@ pp.savefig()
 
 # generate the info page with the data
 plotMessurementStatus(data, config)
+
+
+plt.show()
 pp.savefig()
 pp.close()
 
