@@ -414,19 +414,20 @@ def plotStressStrain(data, config):
 def plotMessurementStatus(data, config):
     firstPage = plt.figure(figsize=(11.69, 8.27))
     firstPage.clf()
-    txt = '# frames =', data.frames.iloc[-1], '   # cells total =', config["filter"]["l_before"], '   #cells sorted = ', config["filter"]["l_after"]
-    txt1 = 'ratio #cells/#frames before sorting out = %.2f \n' % float(config["filter"]["l_before"] / data.frames.iloc[-1])
-    txt2 = 'center channel position at y = %.1f  \u03BCm' % -config["center"]
-    txt3 = 'v_max = %5.2f mm/s   profile stretch exponent = %5.2f\n' % (config["vel_fit"][0], config["vel_fit"][1])
-    txt4 = 'pressure = %5.1f kPa' % float(config["pressure_pa"] / 1000)
+    txt = []
+    if "filter" in config:
+        txt.append('# frames =', data.frames.iloc[-1], '   # cells total =', config["filter"]["l_before"], '   #cells sorted = ', config["filter"]["l_after"])
+        txt.append('ratio #cells/#frames before sorting out = %.2f \n' % float(config["filter"]["l_before"] / data.frames.iloc[-1]))
+    txt.append('center channel position at y = %.1f  \u03BCm' % -config["center"])
+    txt.append('v_max = %5.2f mm/s   profile stretch exponent = %5.2f\n' % (config["vel_fit"][0], config["vel_fit"][1]))
+    txt.append('pressure = %5.1f kPa' % float(config["pressure_pa"] / 1000))
 
     fit = config["fit"]
     p = fit["p"]
     err = fit["err"]
-    txt5 = "p0 =%5.2f   p1 =%5.1f Pa   p0*p1=%5.1f Pa   p2 =%4.3f" % (p[0], p[1], p[0] * p[1], p[2])
-    txt6 = "se0=%5.2f   se1=%5.1f Pa   se0*1=%5.1f Pa   se2=%4.3f" % (err[0], err[1], err[0] * err[1], err[2])
-    txt_whole = str(txt) + "\n" + str(txt1) + "\n" + str(txt2) + "\n" + str(txt3) + "\n" + str(txt4) + "\n" + str(
-        txt5) + "\n" + str(txt6)
+    txt.append("p0 =%5.2f   p1 =%5.1f Pa   p0*p1=%5.1f Pa   p2 =%4.3f" % (p[0], p[1], p[0] * p[1], p[2]))
+    txt.append("se0=%5.2f   se1=%5.1f Pa   se0*1=%5.1f Pa   se2=%4.3f" % (err[0], err[1], err[0] * err[1], err[2]))
+    txt_whole = "\n".join(txt)
     firstPage.text(0.5, 0.5, txt_whole, transform=firstPage.transFigure, size=24, ha="center")
 
 
