@@ -16,6 +16,8 @@ def preprocess(img):
     return (img - np.mean(img)) / np.std(img).astype(np.float32)
 
 def getTimestamp(vidcap, image_index):
+    if image_index >= len(vidcap):
+        image_index = len(vidcap) - 1
     if vidcap.get_meta_data(image_index)['description']:
         return json.loads(vidcap.get_meta_data(image_index)['description'])['timestamp']
     return "0"
