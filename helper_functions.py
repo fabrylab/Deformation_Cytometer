@@ -416,7 +416,7 @@ def plotMessurementStatus(data, config):
     firstPage.clf()
     txt = []
     if "filter" in config:
-        txt.append('# frames =', data.frames.iloc[-1], '   # cells total =', config["filter"]["l_before"], '   #cells sorted = ', config["filter"]["l_after"])
+        txt.append(f'# frames = {data.frames.iloc[-1]}   # cells total = {config["filter"]["l_before"]}   #cells sorted = {config["filter"]["l_after"]}')
         txt.append('ratio #cells/#frames before sorting out = %.2f \n' % float(config["filter"]["l_before"] / data.frames.iloc[-1]))
     txt.append('center channel position at y = %.1f  \u03BCm' % -config["center"])
     txt.append('v_max = %5.2f mm/s   profile stretch exponent = %5.2f\n' % (config["vel_fit"][0], config["vel_fit"][1]))
