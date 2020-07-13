@@ -28,19 +28,19 @@ config = getConfig(datafile)
 
 """ evaluating data"""
 
-refetchTimestamps(data, config)
+#refetchTimestamps(data, config)
 
 getVelocity(data, config)
 
 # take the mean of all values of each cell
 data = data.groupby(['cell_id']).mean()
 
+correctCenter(data, config)
+
 data = filterCells(data, config)
 
 # reset the indices
 data.reset_index(drop=True, inplace=True)
-
-correctCenter(data, config)
 
 getStressStrain(data, config)
 
