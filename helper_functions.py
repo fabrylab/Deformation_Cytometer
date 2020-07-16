@@ -52,6 +52,7 @@ def getInputFolder():
 
 #%% open and read the config file
 def getConfig(configfile):
+    configfile = str(configfile)
     if configfile.endswith("_result.txt"):
         configfile = configfile.replace("_result.txt", "_config.txt")
     if configfile.endswith(".tif"):
@@ -62,7 +63,7 @@ def getConfig(configfile):
     config.read(configfile)
 
     config_data = {}
-    print("config", config, configfile)
+    #print("config", config, configfile)
 
     config_data["file_data"] = configfile.replace("_config.txt", "_result.txt")
     config_data["file_tif"] = configfile.replace("_config.txt", ".tif")
@@ -84,6 +85,7 @@ def getConfig(configfile):
     return config_data
 
 def getData(datafile):
+    datafile = str(datafile)
     # %% import raw data
     data = np.genfromtxt(datafile, dtype=float, skip_header=2)
     data = pd.DataFrame({
