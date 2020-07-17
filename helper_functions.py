@@ -238,7 +238,8 @@ def getStressStrain(data, config):
 
 def filterCells(data, config):
     l_before = data.shape[0]
-    data = data[(data.solidity > 0.96) & (data.irregularity < 1.05) & (data.rp.abs() < 65)]
+    data = data[(data.solidity > 0.96) & (data.irregularity < 1.05)]# & (data.rp.abs() < 65)]
+    #data = data[(data.solidity > 0.98) & (data.irregularity < 1.04) & (data.rp.abs() < 65)]
 
     l_after = data.shape[0]
     print('# frames =', data.frames.iloc[-1], '   # cells total =', l_before, '   #cells sorted = ', l_after)
@@ -349,7 +350,7 @@ def plotDensityScatter(x, y):
     kd = gaussian_kde(xy)(xy)
     idx = kd.argsort()
     x, y, z = x[idx], y[idx], kd[idx]
-    plt.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap='viridis')  # plot in kernel density colors e.g. viridis
+    plt.scatter(x, y, c=z, s=5, edgecolor='', alpha=1, cmap='viridis')  # plot in kernel density colors e.g. viridis
 
 
 def plotStressStrainFit(data, config):

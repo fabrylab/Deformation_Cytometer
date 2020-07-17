@@ -65,7 +65,7 @@ pp.savefig()
 plotMessurementStatus(data, config)
 
 pp.savefig()
-plt.show()
+#plt.show()
 pp.close()
 
 # store the evaluation data in a file
