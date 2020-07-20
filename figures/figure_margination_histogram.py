@@ -80,7 +80,8 @@ def plotPathList(paths):
     fitStiffness(data, config)
 
     #plotDensityScatter(data.rp, data.strain)
-    plt.hist(data.rp, bins=np.linspace(-100, 100, 101), density=True, alpha=0.8)
+    plt.hist(data.rp, bins=np.linspace(-100, 100, 21), density=True, alpha=0.8)
+    print("# count", len(data.rp), paths)
 
     from scipy import stats
 
@@ -101,7 +102,7 @@ def plotPathList(paths):
 datasets = [
     {
         "datafiles": [
-            Path(r"Z:\emirzahossein\data\microscope4_baslercamera\2020_may\2020_05_22_alginateDMEM2%"),
+            Path(r"\\131.188.117.96\biophysDS\emirzahossein\data\microscope4_baslercamera\2020_may\2020_05_22_alginateDMEM2%"),
         #    Path(r"Z:\emirzahossein\data\microscope4_baslercamera\2020_july\07_07_2020_alginate2%_rpmi_no_fcs_time"),
         ],
         "rows": 1,
@@ -164,14 +165,14 @@ for data_index, datafile in enumerate(datafiles):
 plt.figure(1).ax_dict = {ax.get_label(): ax for ax in plt.figure(1).axes}
 import matplotlib as mpl
 plt.figure(1).set_size_inches(16.260000/2.54, 4.390000/2.54, forward=True)
-plt.figure(1).axes[0].set_position([0.115765, 0.257929, 0.268860, 0.717020])
+plt.figure(1).axes[0].set_position([0.126703, 0.263743, 0.268860, 0.717020])
 plt.figure(1).axes[0].set_xlim(-90.0, 90.0)
 plt.figure(1).axes[0].set_xticklabels(["-75", "0", "75"])
 plt.figure(1).axes[0].set_xticks([-75.0, 0.0, 75.0])
 plt.figure(1).axes[0].set_xticks([np.nan], minor=True)
 plt.figure(1).axes[0].set_ylim(0.0, 0.015401219391792342)
-plt.figure(1).axes[0].set_yticklabels([""])
-plt.figure(1).axes[0].set_yticks([np.nan])
+plt.figure(1).axes[0].set_yticklabels(["0.00", "0.01"])
+plt.figure(1).axes[0].set_yticks([0.0, 0.01])
 plt.figure(1).axes[0].spines['right'].set_visible(False)
 plt.figure(1).axes[0].spines['top'].set_visible(False)
 plt.figure(1).axes[0].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[0].transAxes)  # id=plt.figure(1).axes[0].texts[0].new
@@ -184,14 +185,14 @@ plt.figure(1).axes[0].texts[1].set_text("a")
 plt.figure(1).axes[0].texts[1].set_weight("bold")
 plt.figure(1).axes[0].get_xaxis().get_label().set_text("radial position (µm)")
 plt.figure(1).axes[0].get_yaxis().get_label().set_text("probability\ndensity")
-plt.figure(1).axes[1].set_position([0.416266, 0.257929, 0.268860, 0.717020])
+plt.figure(1).axes[1].set_position([0.427204, 0.263743, 0.268860, 0.717020])
 plt.figure(1).axes[1].set_xlim(-90.0, 90.0)
 plt.figure(1).axes[1].set_xticklabels(["-75", "0", "75"])
 plt.figure(1).axes[1].set_xticks([-75.0, 0.0, 75.0])
 plt.figure(1).axes[1].set_xticks([np.nan], minor=True)
 plt.figure(1).axes[1].set_ylim(0.0, 0.015401219391792342)
-plt.figure(1).axes[1].set_yticklabels([""])
-plt.figure(1).axes[1].set_yticks([np.nan])
+plt.figure(1).axes[1].set_yticklabels(["", ""])
+plt.figure(1).axes[1].set_yticks([0.0, 0.01])
 plt.figure(1).axes[1].spines['right'].set_visible(False)
 plt.figure(1).axes[1].spines['top'].set_visible(False)
 plt.figure(1).axes[1].xaxis.labelpad = 3.716691
@@ -204,14 +205,14 @@ plt.figure(1).axes[1].texts[1].set_position([-0.110215, 0.891045])
 plt.figure(1).axes[1].texts[1].set_text("b")
 plt.figure(1).axes[1].texts[1].set_weight("bold")
 plt.figure(1).axes[1].get_xaxis().get_label().set_text("radial position (µm)")
-plt.figure(1).axes[2].set_position([0.716769, 0.257929, 0.268860, 0.717020])
+plt.figure(1).axes[2].set_position([0.727707, 0.263743, 0.268860, 0.717020])
 plt.figure(1).axes[2].set_xlim(-90.0, 90.0)
 plt.figure(1).axes[2].set_xticklabels(["-75", "0", "75"])
 plt.figure(1).axes[2].set_xticks([-75.0, 0.0, 75.0])
 plt.figure(1).axes[2].set_xticks([np.nan], minor=True)
 plt.figure(1).axes[2].set_ylim(0.0, 0.015401219391792342)
-plt.figure(1).axes[2].set_yticklabels([""])
-plt.figure(1).axes[2].set_yticks([np.nan])
+plt.figure(1).axes[2].set_yticklabels(["", ""])
+plt.figure(1).axes[2].set_yticks([0.0, 0.01])
 plt.figure(1).axes[2].spines['right'].set_visible(False)
 plt.figure(1).axes[2].spines['top'].set_visible(False)
 plt.figure(1).axes[2].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[2].transAxes)  # id=plt.figure(1).axes[2].texts[0].new
@@ -224,7 +225,7 @@ plt.figure(1).axes[2].texts[1].set_text("c")
 plt.figure(1).axes[2].texts[1].set_weight("bold")
 plt.figure(1).axes[2].get_xaxis().get_label().set_text("radial position (µm)")
 #% end: automatic generated code from pylustrator
-plt.savefig(__file__[:-3]+".png")
+plt.savefig(__file__[:-3]+".png", dpi=300)
 plt.savefig(__file__[:-3]+".pdf")
 plt.show()
 
