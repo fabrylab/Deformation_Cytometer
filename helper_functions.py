@@ -14,6 +14,10 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from scipy.stats import gaussian_kde
 
+from matplotlib import rcParams
+rcParams['font.family'] = 'sans-serif'
+rcParams['font.sans-serif'] = ['Arial']
+
 
 def getInputFile(filetype=[("video file",'*.tif *.avi')]):
     # if there is a command line parameter...
