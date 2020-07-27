@@ -80,7 +80,7 @@ for im, data in zip(image_stacks, datas):
         if i == 0:
             nearest_id = [54, 55, 471, 277, 101, 233, 22][j]
         elif i == 1:
-            nearest_id = [32, 145, 52, 123, 88, 14, 133][j]
+            nearest_id = [32, 145, 86, 123, 88, 14, 133][j]
         elif i == 2:
             nearest_id = [130, 164, 280, 257, 129, 230, 131][j]
         else:

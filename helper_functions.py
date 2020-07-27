@@ -349,12 +349,12 @@ def plotVelocityProfile(data, config):
     ax1.axhline(0, ls="--", color="k", lw=0.8)
     print('v_max = %5.2f mm/s   profile stretch exponent = %5.2f\n' % (vel_fit[0], vel_fit[1]))
 
-def plotDensityScatter(x, y):
+def plotDensityScatter(x, y, cmap='viridis', alpha=1):
     xy = np.vstack([x, y])
     kd = gaussian_kde(xy)(xy)
     idx = kd.argsort()
     x, y, z = x[idx], y[idx], kd[idx]
-    plt.scatter(x, y, c=z, s=5, edgecolor='', alpha=1, cmap='viridis')  # plot in kernel density colors e.g. viridis
+    plt.scatter(x, y, c=z, s=5, edgecolor='', alpha=alpha, cmap=cmap)  # plot in kernel density colors e.g. viridis
 
 
 def plotStressStrainFit(data, config):
