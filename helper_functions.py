@@ -266,7 +266,8 @@ def correctCenter(data, config):
         R = config["channel_width_m"] / 2 * 1e6
         return p0 * (1 - np.abs((r + p2) / R) ** p1)
 
-    vel_fit, pcov = curve_fit(velfit, y_pos, vel, [np.max(vel), 0.9, 0])  # fit a parabolic velocity profile
+    vel_fit, pcov = curve_fit(velfit, y_pos, vel, [np.max(vel), 0.9, -np.mean(y_pos)])  # fit a parabolic velocity profile
+
     y_pos += vel_fit[2]
     #data.y += vel_fit[2]
     data.rp += vel_fit[2]
