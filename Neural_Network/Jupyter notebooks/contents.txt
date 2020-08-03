@@ -1,0 +1,52 @@
+Neural_network:
+
+Ellipse ground truth data: on jupyter notebook:
+- results/data/New_Setup for training
+- results/data/New_Evaluate for testing
+Polygon ground truht data: on jupyter notebook:
+- results/cell_contours/train for training
+- results/cell_contours/evaluate for testing
+
+
+Error of conversion to binary mask and elliptical approximation of the cell shape:
+Data:
+- ellipse ground truth, polygon ground truth
+Program:
+- quality_binary_masks.ipynb
+
+Comparison of two different fitting algorithms:
+Data:
+- ellipse ground truth
+Program:
+- differences_ellipse.ipynb
+
+Train network:
+Data:
+- polygon ground truth
+Program:
+- Polygons_train_UNET-Selina.ipynb
+
+ROC and precision-recall for pixels and time calculation:
+Data:
+- polygon ground truth (train and test)
+Program:
+- Polygons_evaluate_pixels_UNET-Selina.ipynb
+
+ROC and precision-recall for ellipse shapes:
+Data:
+- polygon ground truth (train and test)
+Program:
+- Polygons_ROC_curve-training_Data.ipynb
+- Polygons_ROC_curve-evaluation_Data.ipynb
+
+Discrepancies between the ellipse parameters:
+Data:
+- polygon ground truth (test data)
+Program:
+- Polygons_evaluate_UNET-Selina.ipynb
+
+Detection range around cell in focus:
+Data:
+- z stacks
+Program:
+- UNET_cell_focus.ipynb
