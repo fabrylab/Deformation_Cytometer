@@ -51,9 +51,8 @@ else:
     root = Tk()
     root.withdraw() # we don't want a full GUI, so keep the root window from appearing
     
-    datafile = filedialog.askopenfilename(title="select the data file",filetypes=[("txt file",'*_result_Canny.txt')]) # show an "Open" dialog box and return the path to the selected file
+    datafile = filedialog.askopenfilename(title="select the data file",filetypes=[("txt file",'*_result.txt')]) # show an "Open" dialog box and return the path to the selected file
     datafile2 = filedialog.askopenfilename(title="select the data file",filetypes=[("txt file",'*_result_NN.txt')]) # show an "Open" dialog box and return the path to the selected file
-    datafile3 = filedialog.askopenfilename(title="select the data file",filetypes=[("txt file",'*_result_GT.txt')]) # show an "Open" dialog box and return the path to the selected file
 
     if datafile == '':
         print('empty')
@@ -64,8 +63,7 @@ print(filename_ex)
 filename_base, file_extension = os.path.splitext(filename_ex)
 output_path = os.path.dirname(datafile)
 #pressure = float(filename_base[1])*1e5 # deduce applied pressure from file name (in Pa)
-#filename_config = output_path + '/'+ filename_base[:-7] +'_config.txt' #remove _result from the filename and add _config.txt
-filename_config = output_path + '/'+ 'config.txt' #remove _result from the filename and add _config.txt
+filename_config = output_path + '/'+ filename_base[:-7] +'_config.txt' #remove _result from the filename and add _config.txt
 
 #%% open and read the config file
 config = configparser.ConfigParser()
@@ -146,43 +144,6 @@ print(len(z))
 
 print(v_min,v_max)
 
-data =np.genfromtxt(datafile3,dtype=float,skip_header= 2)
-# experimental raw data
-RP=data[:,3] #radial position 
-longaxis=data[:,4] #Longaxis of ellipse
-shortaxis=data[:,5] #Shortaxis of ellipse
-Angle=data[:,6]
-no_right_cells = 0
-center = 0
-for i in np.arange(-50,50,0.1):
-    n = np.sum(np.sign(-(RP+i)*Angle))
-    if n>no_right_cells:
-        center = i
-        no_right_cells = n
-print('center channel position at y = %.1f  \u03BCm' % -center)
-
-RP = RP + center
-if np.max(RP)> 1e6*channel_width/2:
-    RP = RP - (np.max(RP)-1e6*channel_width/2)  #this is to ensure that the maximum or minimum radial position
-if np.min(RP) < -1e6*channel_width/2:           #of a cell is not outsied the channel
-    RP = RP - (np.min(RP)+1e6*channel_width/2)    
-
-stress=stressfunc(RP*1e-6,-pressure)# compute analytical stress profile
-D = np.sqrt(longaxis * shortaxis) #diameter of undeformed (circular) cell
-strain = (longaxis - shortaxis) / D
-# ----------plot strain versus stress data points----------
-xy = np.vstack([stress,strain])
-kd = gaussian_kde(xy)(xy)  
-idx = kd.argsort()
-x, y, z = stress[idx], strain[idx], kd[idx]
-print(np.min(z),np.max(z))
-print(len(z))
-if np.min(z) < v_min:
-    v_min = np.min(z)
-if np.max(z) > v_max:
-    v_max = np.max(z)
-print(v_min,v_max)
-
 #%% import raw data
 data =np.genfromtxt(datafile,dtype=float,skip_header= 2)
 
@@ -240,7 +201,7 @@ if np.max(RP)> 1e6*channel_width/2:
 if np.min(RP) < -1e6*channel_width/2:           #of a cell is not outsied the channel
     RP = RP - (np.min(RP)+1e6*channel_width/2)    
 
-'''
+
 fig1=plt.figure(1, (6, 4))
 border_width = 0.1
 ax_size = [0+2*border_width, 0+2*border_width, 
@@ -255,7 +216,7 @@ vel_fit, pcov = curve_fit(velfit, y_pos, vel, [np.max(vel),0.9]) #fit a paraboli
 r = np.arange(-channel_width/2*1e6,channel_width/2*1e6,0.1) # generates an extended array 
 ax1.plot(r,velfit(r,vel_fit[0],vel_fit[1]), '--', color = 'blue',   linewidth=2, zorder=3)
 print('v_max = %5.2f mm/s   profile stretch exponent = %5.2f\n' %(vel_fit[0],vel_fit[1]))
-'''
+
    
 
 #%%  compute stress profile, cell deformation (true strain), and diameter of the undeformed cell
@@ -265,7 +226,7 @@ strain = (longaxis - shortaxis) / D
 
 #%% fitting deformation with stress stiffening equation
 #fig2, (ax2,ax3,ax4) = plt.subplots(1,3,figsize=(20,6),sharex=True, sharey=True)
-fig2, (ax2,ax3,ax4,ax5) = plt.subplots(1,4,figsize=(20,6),sharex=True, sharey=True)
+fig2, (ax2,ax3,ax4) = plt.subplots(1,3,figsize=(15,6),sharex=True, sharey=True)
 
 
 #fig2=plt.figure(2, (18, 6))
@@ -293,9 +254,7 @@ if np.min(z) < v_min:
 if np.max(z) > v_max:
     v_max = np.max(z)
 print(v_min,v_max)
-
 strain1=y
-
 #ax2.plot(stress,strain,'o', color = 'black') #plot the data without kernel density colors
 ax2.scatter(x, y, c=z, s=50, edgecolor='', alpha=1,cmap='viridis', vmin = v_min, vmax=v_max) #plot in kernel density colors e.g. viridis
 
@@ -393,7 +352,7 @@ if np.max(RP)> 1e6*channel_width/2:
 if np.min(RP) < -1e6*channel_width/2:           #of a cell is not outsied the channel
     RP = RP - (np.min(RP)+1e6*channel_width/2)    
 
-'''
+
 fig1=plt.figure(1, (6, 4))
 border_width = 0.1
 ax_size = [0+2*border_width, 0+2*border_width, 
@@ -409,7 +368,6 @@ r = np.arange(-channel_width/2*1e6,channel_width/2*1e6,0.1) # generates an exten
 ax1.plot(r,velfit(r,vel_fit[0],vel_fit[1]), '--', color = 'orange',   linewidth=2, zorder=3)
 print('v_max = %5.2f mm/s   profile stretch exponent = %5.2f\n' %(vel_fit[0],vel_fit[1]))
 
-'''
 
 #%%  compute stress profile, cell deformation (true strain), and diameter of the undeformed cell
 stress=stressfunc(RP*1e-6,-pressure)# compute analytical stress profile
@@ -429,9 +387,7 @@ idx = kd.argsort()
 x, y, z = stress[idx], strain[idx], kd[idx]
 #ax2.plot(stress,strain,'o', color = 'red') #plot the data without kernel density colors
 ax2.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis', vmin = v_min, vmax=v_max) #plot in kernel density colors e.g. viridis
-
 strain2=y
-
 pstart=(0.1,1,0) #initial guess
 p, pcov = curve_fit(fitfunc, stress, strain, pstart, maxfev = 10000) #do the curve fitting
 #p, pcov = curve_fit(fitfunc, stress[RP<0], strain[RP<0], pstart) #do the curve fitting for one side only
@@ -471,132 +427,16 @@ for i in range(len(bins)-1):
     stress_av.append(np.mean(stress[index]))
 ax2.errorbar(stress_av, strain_av,yerr = strain_err, marker='s', mfc='white', \
              mec='black', ms=7, mew=1, lw = 0, ecolor = 'black', elinewidth = 1, capsize = 3)
+ax1.legend(['Canny','Canny fit','Network','Network fit'],loc=1)
 ax4.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis',vmin = v_min, vmax=v_max) #plot in kernel density colors e.g. viridis
 
 RP2 = RP
 #ax1.set_xlim((0.5,pmax))
 #plt.xscale('log')
 
-
-#%% import raw data GT
-data =np.genfromtxt(datafile3,dtype=float,skip_header= 2)
-
-#%% experimental raw data
-Frames=data[:,0] #frame number 
-X=data[:,1] #x-position in Pixes
-Y=data[:,2] #x-position in Pixes
-RP=data[:,3] #radial position 
-longaxis=data[:,4] #Longaxis of ellipse
-shortaxis=data[:,5] #Shortaxis of ellipse
-Angle=data[:,6] #Shortaxis of ellipse
-
-l_before = len(RP)
-print('# frames =', Frames[-1], '   # cells total =', l_before)
-
-#%% compute velocity profile
-y_pos = []
-vel = []
-for i in range(len(Frames)-10):
-    for j in range(10):
-        if np.abs(RP[i]-RP[i+j])< 1 and Frames[i+j]-Frames[i]==1 and np.abs(longaxis[i+j]-longaxis[i])<1 and np.abs(shortaxis[i+j]-shortaxis[i])<1 and np.abs(Angle[i+j]-Angle[i])<5:
-            v = (X[i+j]-X[i])*pixel_size*framerate/1000 #in mm/s
-            if v > 0:
-                y_pos.append(RP[i])
-                vel.append(v) 
-
-#%% find center of the channel 
-no_right_cells = 0
-center = 0
-for i in np.arange(-50,50,0.1):
-    n = np.sum(np.sign(-(RP+i)*Angle))
-    if n>no_right_cells:
-        center = i
-        no_right_cells = n
-print('center channel position at y = %.1f  \u03BCm' % -center)
-
-RP = RP + center
-if np.max(RP)> 1e6*channel_width/2:
-    RP = RP - (np.max(RP)-1e6*channel_width/2)  #this is to ensure that the maximum or minimum radial position
-if np.min(RP) < -1e6*channel_width/2:           #of a cell is not outsied the channel
-    RP = RP - (np.min(RP)+1e6*channel_width/2)    
-'''
-#y_pos = y_pos+center
-ax1.plot(y_pos, vel, '.')    
-vel_fit, pcov = curve_fit(velfit, y_pos, vel, [np.max(vel),0.9]) #fit a parabolic velocity profile 
-r = np.arange(-channel_width/2*1e6,channel_width/2*1e6,0.1) # generates an extended array 
-ax1.plot(r,velfit(r,vel_fit[0],vel_fit[1]), '--', color = 'green',   linewidth=2, zorder=3)
-print('v_max = %5.2f mm/s   profile stretch exponent = %5.2f\n' %(vel_fit[0],vel_fit[1]))
-ax1.legend(['Network', 'Fit Network', 'GT', 'Fit GT'],loc=1)
-'''
-#%%  compute stress profile, cell deformation (true strain), and diameter of the undeformed cell
-stress=stressfunc(RP*1e-6,-pressure)# compute analytical stress profile
-D = np.sqrt(longaxis * shortaxis) #diameter of undeformed (circular) cell
-strain = (longaxis - shortaxis) / D
-
-#%% fitting deformation with stress stiffening equation
-
-fit=[]
-
-# ----------plot strain versus stress data points----------
-xy = np.vstack([stress,strain])
-kd = gaussian_kde(xy)(xy)  
-idx = kd.argsort()
-x, y, z = stress[idx], strain[idx], kd[idx]
-#ax2.plot(stress,strain,'o', color = 'green') #plot the data without kernel density colors
-ax2.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis', vmin = v_min, vmax=v_max) #plot in kernel density colors e.g. viridis
-
-strain3=y
-
-pstart=(0.1,1,0) #initial guess
-p, pcov = curve_fit(fitfunc, stress, strain, pstart, maxfev = 10000) #do the curve fitting
-#p, pcov = curve_fit(fitfunc, stress[RP<0], strain[RP<0], pstart) #do the curve fitting for one side only
-err = (np.diag(pcov))**0.5 #estimate 1 standard error of the fit parameters
-cov_ap = pcov[0,1] # cov between alpha and prestress
-cov_ao = pcov[0,2] # cov between offset and alpha 
-cov_po = pcov[1,2] # cov between prestress and offset
-se01 = np.sqrt((p[1]*err[0])**2 + (p[0]*err[1])**2 + 2*p[0]*p[1]*cov_ap) 
-print('pressure = %5.1f kPa' % float(pressure/1000))
-print("p0 =%5.2f   p1 =%5.1f Pa   p0*p1=%5.1f Pa   p2 =%4.3f" %(p[0],p[1],p[0]*p[1],p[2]))
-
-print("se0=%5.2f   se1=%5.1f Pa   se0*1=%5.1f Pa   se2=%4.3f" %(err[0],err[1],err[0]*err[1],err[2]))
-
-# ----------plot the fit curve----------
-xx = np.arange(np.min(stress),np.max(stress),0.1) # generates an extended array 
-ax2.plot(xx,(fitfunc(xx,p[0],p[1], p[2])), '-', color = 'green',   linewidth=2, zorder=3)
-# ----------plot standard error of the fit function----------
-dyda = -1/(p[0]**2)*np.log(xx/p[1]+1) #strain derivative with respect to alpha
-dydp = -1/p[0]*xx/(xx*p[1]+p[1]**2)   #strain derivative with respect to prestress
-dydo = 1                              #strain derivative with respect to offset
-vary = (dyda*err[0])**2 + (dydp*err[1])**2 + (dydo*err[2])**2 + 2*dyda*dydp*cov_ap + 2*dyda*dydo*cov_ao + 2*dydp*dydo*cov_po
-y1 = fitfunc(xx,p[0],p[1],p[2])-np.sqrt(vary)
-y2 = fitfunc(xx,p[0],p[1],p[2])+np.sqrt(vary)
-ax2.fill_between(xx, y1, y2, facecolor='green', edgecolor= "none", linewidth = 0, alpha = 0.5)
-    
-# ----------plot the binned (averaged) strain versus stress data points----------
-binwidth = 10 #Pa
-bins = np.arange(0,pmax,binwidth)
-bins = [0,10,20,30,40,50,75,100,125,150,200,250]
-strain_av = []
-stress_av = []
-strain_err = []
-for i in range(len(bins)-1):
-    index = (stress > bins[i]) & (stress < bins[i+1])
-    strain_av.append(np.mean(strain[index]))
-    strain_err.append(np.std(strain[index])/np.sqrt(np.sum(index)))
-    stress_av.append(np.mean(stress[index]))
-ax2.errorbar(stress_av, strain_av,yerr = strain_err, marker='s', mfc='white', \
-             mec='black', ms=7, mew=1, lw = 0, ecolor = 'black', elinewidth = 1, capsize = 3)    
-#ax1.set_xlim((0.5,pmax))
-#plt.xscale('log')
-ax2.legend(['Canny', 'Network','GT'],loc=2)
-ax5.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap = 'viridis',vmin = v_min, vmax=v_max) #plot in kernel density colors e.g. viridis
-
-ax5.set_title('GT')
-
-RP3 = RP
-
 ax3.set_title('Canny')
 ax4.set_title('Network')
+ax2.legend(['Canny', 'Network'],loc=2)
 
 fig7=plt.figure(7, (6, 3))
 border_width = 0.12
@@ -606,12 +446,10 @@ ax7 = fig7.add_axes(ax_size)
 bin_width = 25
 hist1, bin_edges = np.histogram(RP1, bins=np.arange(-100 + bin_width/2, 101 - bin_width/2, bin_width), density=False)
 hist2, bin_edges = np.histogram(RP2, bins=np.arange(-100 + bin_width/2, 101 - bin_width/2, bin_width), density=False)
-hist3, bin_edges = np.histogram(RP3, bins=np.arange(-100 + bin_width/2, 101 - bin_width/2, bin_width), density=False)
-plt.bar(bin_edges[:-1]+bin_width/4, hist1, width=bin_width*0.2, edgecolor = 'black')
-plt.bar(bin_edges[:-1]+bin_width/2, hist2, width=bin_width*0.2, edgecolor = 'black')
-plt.bar(bin_edges[:-1]+3*bin_width/4, hist3, width=bin_width*0.2, edgecolor = 'black')
+plt.bar(bin_edges[:-1]+bin_width/3, hist1, width=bin_width*0.2, edgecolor = 'black')
+plt.bar(bin_edges[:-1]+2*bin_width/3, hist2, width=bin_width*0.2, edgecolor = 'black')
 
-ax7.legend(['Canny', 'Network','GT'],loc=1)
+ax7.legend(['Canny', 'Network'],loc=1)
 
 ax7.set_xlabel('radial position in channel ($\u03BC m$)')
 ticks = np.arange(-100,101,bin_width)
@@ -623,9 +461,10 @@ ax7.set_xticklabels(labels)
 ax7.set_ylabel('# of cells')
 fig7.tight_layout()
 
-plt.savefig('C:/Users/User/Documents/Bachelorarbeit_Selina/Figures/cell_contours_strain_vs_stress/dispersion_gt5.png')
+plt.savefig('C:/Users/User/Documents/Bachelorarbeit_Selina/Figures/cell_contours_strain_vs_stress/dispersion_p2_Canny_NN.png')
 
-#%% 
+#%% binned strain
+
 fig4=plt.figure(4, (6, 3))
 border_width = 0.12
 ax_size = [0+2*border_width, 0+2*border_width, 
@@ -645,12 +484,7 @@ bin_means = [strain2[d == i].mean() for i in range(1, len(bins))]
 bin_std = [strain2[d == i].std() for i in range(1, len(bins))]
 plt.errorbar(bins[:-1] + bin_width/2, bin_means,bin_std,marker='o', capsize=5, capthick=2)
 
-d = np.digitize(RP3, bins) 
-bin_means = [strain3[d == i].mean() for i in range(1, len(bins))]
-bin_std = [strain3[d == i].std() for i in range(1, len(bins))]
-plt.errorbar(bins[:-1] + bin_width/2, bin_means,bin_std,marker='o', capsize=5, capthick=2)
-
-ax4.legend(['Canny', 'Network','GT'],loc=1)
+ax4.legend(['Canny', 'Network'],loc=1)
 
 #ax4.set_ylim((-0.2,1.0))
 ax4.set_xlabel('radial position in channel ($\u03BC m$)')
