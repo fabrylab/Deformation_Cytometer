@@ -31,7 +31,8 @@ import matplotlib.gridspec as gridspec
 import time
 import cv2
 import scipy
-from matplotlib.patches import Ellipse 
+from matplotlib.patches import Ellipse
+from skimage.transform import downscale_local_mean
 
 plt.ion()
 
@@ -95,6 +96,20 @@ class timeit:
     def __exit__(self, *args):
         print("Timeit:", self.name, time.time()-self.start_time)  
 
+def fill_old(im_sd):
+    fill(im_sd, [0, 0], 0.015, 1)
+    fill(im_sd, [im_sd.shape[0] - 1, im_sd.shape[1] - 1], 0.015, 1)
+    mask = im_sd == 1
+    return mask
+
+def fill_new(im_sd):
+    from skimage.morphology import flood
+
+    im_sd[im_sd < 0.015] = 0
+    mask = flood(im_sd, (0, 0)) & flood(im_sd, (im_sd.shape[0] - 1, im_sd.shape[1] - 1))
+    return mask
+
+
 r_min = 5   #cells smaller than r_min (in um) will not be analyzed
 
 video = getInputFile()
@@ -109,7 +124,7 @@ configfile = output_path + r'/' + filename_base + '_config.txt'
 #%%
 config = getConfig(configfile)
 
-im_av = getFlatfield(video, flatfield)
+#im_av = getFlatfield(video, flatfield)
 #plt.imshow(im_av)
 #%% go through every frame and look for cells
 struct = morphology.generate_binary_structure(2, 1)  #structural element for binary erosion
@@ -128,18 +143,20 @@ timestamps = []
 
 Amin_pixels = np.pi*(r_min/config["pixel_size"])**2 # minimum region area based on minimum radius
 
+down_scale_factor = 10
+
 count=0
 success = 1
 vidcap = imageio.get_reader(video)
 vidcap2 = getRawVideo(video)
-#progressbar = tqdm.tqdm(vidcap)
-for image_index, im in enumerate(tqdm.tqdm(vidcap)):
+progressbar = tqdm.tqdm(vidcap)
+for image_index, im in enumerate(progressbar):
     if len(im.shape) == 3:
         im = im[:,:,0]
 
-    #progressbar.set_description(f"{count} {len(frame)} good cells")
+    progressbar.set_description(f"{count} {len(frame)} good cells")
     # flatfield correction
-    im = im.astype(float) / im_av
+    im = im.astype(float) / np.median(im, axis=1)[:, None]#im.astype(float) / im_av
     
     if count == 0:
         h = im.shape[0]
@@ -153,10 +170,11 @@ for image_index, im in enumerate(tqdm.tqdm(vidcap)):
             ax3 = fig1.add_subplot(spec[1:2, 0:1])#,sharex=ax1,sharey=ax1)
             ax4 = fig1.add_subplot(spec[1:2, 1:2])#,sharex=ax1,sharey=ax1)
     else:
-        im_high = scipy.ndimage.gaussian_laplace(im, sigma = 1) #kind of high-pass filtered image
+        im_high = scipy.ndimage.gaussian_laplace(im, sigma=1) #kind of high-pass filtered image
         im_abs_high = np.abs(im_high) #for detecting potential cells
         # find cells in focus on down-sampled images 
-        im_r = resize(im_abs_high, (im_abs_high.shape[0] // 10, im_abs_high.shape[1] // 10), anti_aliasing=True)
+        #im_r = resize(im_abs_high, (im_abs_high.shape[0] // 10, im_abs_high.shape[1] // 10), anti_aliasing=True)
+        im_r = downscale_local_mean(im_abs_high, (down_scale_factor, down_scale_factor))
         im_rb = im_r > 0.010
         label_im_rb = label(im_rb)
         
@@ -175,17 +193,16 @@ for image_index, im in enumerate(tqdm.tqdm(vidcap)):
         for region in regionprops(label_im_rb, im_r, coordinates='rc'): # region props are based on the downsampled abs high-pass image, row-column style (first y, then x)
             if (region.max_intensity) > 0.03 and (region.area > Amin_pixels/100):
                 im_reg_b = label_im_rb == region.label
-                min_row = region.bbox[0]*10-10
-                min_col = region.bbox[1]*10-10
-                max_row = region.bbox[2]*10+10
-                max_col = region.bbox[3]*10+10
+                min_row = region.bbox[0]*down_scale_factor-10
+                min_col = region.bbox[1]*down_scale_factor-10
+                max_row = region.bbox[2]*down_scale_factor+10
+                max_col = region.bbox[3]*down_scale_factor+10
                 if min_row>0 and min_col>0 and max_row<h and max_col<w: #do not analyze cells near the edge
                     im_high_reg = im_high[min_row:max_row, min_col:max_col]
                     im_sd = gaussian(std_convoluted(im_high_reg, 3), 3)
                     im_std_copy = im_sd.copy()
-                    fill(im_sd, [0,0], 0.015,1)
-                    fill(im_sd, [im_sd.shape[0]-1,im_sd.shape[1]-1], 0.015,1)
-                    mask = im_sd == 1
+                    mask = fill_new(im_sd)
+                    #assert (mask == mask2).all()
                     mask = ~mask
                     mask = morphology.binary_erosion(mask, iterations=7, structure=struct).astype(int) # erode to remove lines and small dirt
                     
@@ -238,8 +255,8 @@ for image_index, im in enumerate(tqdm.tqdm(vidcap)):
                                
                                 plt.show()
                                 plt.pause(1)
-    
-    count = count + 1 #next image
+    count = count + 1  # next image
+
 #%% store data in file
 R = np.asarray(radialposition)      
 X = np.asarray(x_pos)  
