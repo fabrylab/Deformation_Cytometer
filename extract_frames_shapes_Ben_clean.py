@@ -35,29 +35,9 @@ from matplotlib.patches import Ellipse
 from skimage.transform import downscale_local_mean
 
 plt.ion()
-
 display = False
 
 from helper_functions import getInputFile, getConfig, getFlatfield
-
-def fill(data, start_coords, compare,fill_value):
-    xsize, ysize = data.shape
-    stack = set(((start_coords[0], start_coords[1]),))
-    orig_value = data[start_coords[0], start_coords[1]]
-    if fill_value == orig_value:
-        return    
-    while stack:
-        x, y = stack.pop()
-        if data[x, y] < compare:
-            data[x, y] = fill_value
-            if x > 0:
-                stack.add((x - 1, y))
-            if x < (xsize - 1):
-                stack.add((x + 1, y))
-            if y > 0:
-                stack.add((x, y - 1))
-            if y < (ysize - 1):
-                stack.add((x, y + 1))
 
 def detect_ridges(gray, sigma=3.0):
     hxx, hyy, hxy = feature.hessian_matrix(gray, sigma, mode='wrap')
@@ -81,6 +61,11 @@ def std_convoluted(image, N):
     im2 = im**2
     ones = np.ones(im.shape)
     kernel = np.ones((2*N+1, 2*N+1))
+    if 1:
+        kernel[0, 0] = 0
+        kernel[-1, 0] = 0
+        kernel[0, -1] = 0
+        kernel[-1, -1] = 0
     s = scipy.signal.convolve2d(im, kernel, mode="same")
     s2 = scipy.signal.convolve2d(im2, kernel, mode="same")
     ns = scipy.signal.convolve2d(ones, kernel, mode="same")
@@ -96,23 +81,23 @@ class timeit:
     def __exit__(self, *args):
         print("Timeit:", self.name, time.time()-self.start_time)  
 
-def fill_old(im_sd):
-    fill(im_sd, [0, 0], 0.015, 1)
-    fill(im_sd, [im_sd.shape[0] - 1, im_sd.shape[1] - 1], 0.015, 1)
-    mask = im_sd == 1
-    return mask
 
-def fill_new(im_sd):
+def fill(im_sd, t=0.05):
     from skimage.morphology import flood
-
-    im_sd[im_sd < 0.015] = 0
-    mask = flood(im_sd, (0, 0)) & flood(im_sd, (im_sd.shape[0] - 1, im_sd.shape[1] - 1))
+    im_sd[0, 0] = 0
+    im_sd[0, -1] = 0
+    im_sd[-1, 0] = 0
+    im_sd[-1, -1] = 0
+    mask = flood(im_sd, (0, 0), tolerance=t) | \
+           flood(im_sd, (im_sd.shape[0] - 1, 0), tolerance=t) | \
+           flood(im_sd, (0, im_sd.shape[1] - 1), tolerance=t) | \
+           flood(im_sd, (im_sd.shape[0] - 1, im_sd.shape[1] - 1), tolerance=t)
     return mask
-
 
 r_min = 5   #cells smaller than r_min (in um) will not be analyzed
 
 video = getInputFile()
+print(video)
 
 name_ex = os.path.basename(video)
 print(name_ex)
@@ -122,6 +107,7 @@ flatfield = output_path + r'/' + filename_base + '.npy'
 configfile = output_path + r'/' + filename_base + '_config.txt'
 
 #%%
+print("configfile", configfile)
 config = getConfig(configfile)
 
 #im_av = getFlatfield(video, flatfield)
@@ -164,14 +150,32 @@ for image_index, im in enumerate(progressbar):
         plt.close('all')
         if display:
             fig1 = plt.figure(1,(16, 7))
-            spec = gridspec.GridSpec(ncols=2, nrows=2, figure=fig1)
-            ax1 = fig1.add_subplot(spec[0:1, 0:1])
-            ax2 = fig1.add_subplot(spec[0:1, 1:2])#,sharex=ax1,sharey=ax1)
-            ax3 = fig1.add_subplot(spec[1:2, 0:1])#,sharex=ax1,sharey=ax1)
-            ax4 = fig1.add_subplot(spec[1:2, 1:2])#,sharex=ax1,sharey=ax1)
+            r = 2
+            c = 2
+            ax11 = plt.subplot(r,c,1)
+            ax12 = plt.subplot(r,c,2)
+            #ax13 = plt.subplot(r,c,3)
+            #ax14 = plt.subplot(r,c,4)
+            ax21 = plt.subplot(r,c,c+1)
+            ax22 = plt.subplot(r,c,c+2)
+            #ax23 = plt.subplot(r,c,c+3)
+            #ax24 = plt.subplot(r,c,c+4)
     else:
         im_high = scipy.ndimage.gaussian_laplace(im, sigma=1) #kind of high-pass filtered image
+
+        #from skimage.filters import sobel
+        #im_high2 = sobel(im, axis=0) + sobel(im, axis=1)
+        #with timeit("sobelxy"):
+        #    sobel_xy = sobel(im, axis=0) + sobel(im, axis=1)
+        #sobel_xy_abs = np.abs(sobel(im, axis=0)) + np.abs(sobel(im, axis=1))
+        #with timeit("sobelmag"):
+        #    im_high2abs = sobel(im)
+        #sobel_mag = sobel(im)
         im_abs_high = np.abs(im_high) #for detecting potential cells
+
+        #im_high = im_high2
+        #im_abs_high = im_high2abs
+
         # find cells in focus on down-sampled images 
         #im_r = resize(im_abs_high, (im_abs_high.shape[0] // 10, im_abs_high.shape[1] // 10), anti_aliasing=True)
         im_r = downscale_local_mean(im_abs_high, (down_scale_factor, down_scale_factor))
@@ -179,17 +183,15 @@ for image_index, im in enumerate(progressbar):
         label_im_rb = label(im_rb)
         
         if display:
-            ax1.clear()
-            ax1.set_axis_off()
-            ax1.imshow(im,cmap='gray')  
-            
-            ax2.clear()
-            ax2.set_axis_off()
-            ax2.imshow(im_high,cmap='gray')
-            
-            ax3.clear()
-            ax4.clear()
-        
+            ax11.clear()
+            ax11.set_axis_off()
+            ax11.imshow(im, cmap='gray')
+
+            ax12.clear()
+            ax12.set_axis_off()
+            ax12.imshow(im_high, cmap='gray')
+
+
         for region in regionprops(label_im_rb, im_r, coordinates='rc'): # region props are based on the downsampled abs high-pass image, row-column style (first y, then x)
             if (region.max_intensity) > 0.03 and (region.area > Amin_pixels/100):
                 im_reg_b = label_im_rb == region.label
@@ -197,16 +199,13 @@ for image_index, im in enumerate(progressbar):
                 min_col = region.bbox[1]*down_scale_factor-10
                 max_row = region.bbox[2]*down_scale_factor+10
                 max_col = region.bbox[3]*down_scale_factor+10
-                if min_row>0 and min_col>0 and max_row<h and max_col<w: #do not analyze cells near the edge
-                    im_high_reg = im_high[min_row:max_row, min_col:max_col]
-                    im_sd = gaussian(std_convoluted(im_high_reg, 3), 3)
-                    im_std_copy = im_sd.copy()
-                    mask = fill_new(im_sd)
-                    #assert (mask == mask2).all()
+                if min_row > 0 and min_col > 0 and max_row < h and max_col < w: #do not analyze cells near the edge
+                    mask = fill(gaussian(im_abs_high[min_row:max_row, min_col:max_col], 3), 0.01)
+
                     mask = ~mask
-                    mask = morphology.binary_erosion(mask, iterations=7, structure=struct).astype(int) # erode to remove lines and small dirt
-                    
-                    for subregion in regionprops(mask, coordinates='rc'):
+                    mask = morphology.binary_erosion(mask, iterations=7).astype(int)
+
+                    for subregion in regionprops(label(mask), coordinates='rc'):
 
                         if subregion.area > Amin_pixels:
                             x_c = subregion.centroid[1]
@@ -236,26 +235,39 @@ for image_index, im in enumerate(progressbar):
                             timestamps.append(getTimestamp(vidcap2, image_index))
 
                             if display:    
-                                ax3.clear()
-                                ax4.clear()
-                                ax3.set_axis_off()
-                                ax3.imshow(im_high_reg,cmap='gray')               
-                    
-                                ax4.set_axis_off()
-                                ax4.imshow(mask,cmap='gray')
-                                           
-                                ellipse = Ellipse(xy=[x_c,y_c], width=ma, height=mi, angle=np.rad2deg(ellipse_angle),
-                                              edgecolor='r', fc='None', lw=0.5, zorder = 2)
-                                ax3.add_patch(ellipse)
+                                ax21.clear()
+                                ax21.set_axis_off()
+                                ax21.imshow(im[min_row:max_row, min_col:max_col], cmap='gray')
+                                mask2 = np.zeros((mask.shape[0], mask.shape[1]))
+                                if subregion.solidity > 0.96 and subregion.perimeter/circum < 1.07:
+                                    mask2 = np.dstack((mask2, mask, mask2, mask*0.2))
+                                else:
+                                    mask2 = np.dstack((mask, mask2, mask2, mask * 0.2))
+                                ax21.imshow(mask2)
+
+                                ax22.clear()
+                                ax22.set_axis_off()
+                                ax22.imshow(mask, cmap='gray')
+
+                                for ax in [ax21, ax22]:
+                                    ellipse = Ellipse(xy=[x_c,y_c], width=ma, height=mi, angle=np.rad2deg(ellipse_angle),
+                                                  edgecolor='r', fc='None', lw=0.5, zorder = 2)
+                                    ax.add_patch(ellipse)
                                 
-                                ax1.text(min_col+int(x_c),min_row+int(y_c),'x', color = 'red', fontsize = 10, zorder=100)  
-                                ax2.text(min_col+int(x_c),min_row+int(y_c),'x', color = 'red', fontsize = 10, zorder=100)  
-                                s = '{:0.2f}'.format(subregion.solidity) + '\n' + '{:0.2f}'.format(subregion.perimeter/circum) 
-                                ax4.text(int(mask.shape[1]/2),int(mask.shape[0]/2),s, color = 'red', fontsize = 10, zorder=100)  
-                               
+                                ax11.text(min_col+int(x_c),min_row+int(y_c),'x', color = 'red', fontsize = 10, zorder=100)
+                                ax12.text(min_col+int(x_c),min_row+int(y_c),'x', color = 'red', fontsize = 10, zorder=100)
+
+                                s = '{:0.2f}'.format(subregion.solidity) + '\n' + '{:0.2f}'.format(subregion.perimeter/circum)
+                                ax22.text(int(mask.shape[1]/2),int(mask.shape[0]/2),s, color = 'red', fontsize = 10, zorder=100)
+
+                                plt.tight_layout()
                                 plt.show()
-                                plt.pause(1)
+                                #if subregion.area > Amin_pixels*5:
+                                #    raise
+                                plt.pause(0.1)
     count = count + 1  # next image
+    #if count == 200:
+    #    break
 
 #%% store data in file
 R = np.asarray(radialposition)      
