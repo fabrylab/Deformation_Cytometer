@@ -13,6 +13,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from scipy.stats import gaussian_kde
+import glob
 
 from matplotlib import rcParams
 rcParams['font.family'] = 'sans-serif'
@@ -300,10 +301,10 @@ def correctCenter(data, config):
 
 def fitStiffness(data, config):
 
-    def fitfunc(x, p0, p1, p2):  # for stress versus strain
-        return (1 / p0) * np.log((x / p1) + 1) + p2
+    def fitfunc(x, p0, p1):  # for stress versus strain
+        return (1 / p0) * np.log((x / p1) + 1) + 0.05#p2
 
-    pstart = (0.1, 1, 0)  # initial guess
+    pstart = (0.1, 1)  # initial guess
 
     xy = np.vstack([data.stress, data.strain])
     kd = gaussian_kde(xy)(xy)
@@ -313,13 +314,14 @@ def fitStiffness(data, config):
     # p, pcov = curve_fit(fitfunc, stress[RP<0], strain[RP<0], pstart) #do the curve fitting for one side only
     err = (np.diag(pcov)) ** 0.5  # estimate 1 standard error of the fit parameters
     cov_ap = pcov[0, 1]  # cov between alpha and prestress
-    cov_ao = pcov[0, 2]  # cov between offset and alpha
-    cov_po = pcov[1, 2]  # cov between prestress and offset
+    cov_ao = 0#pcov[0, 2]*0  # cov between offset and alpha
+    cov_po = 0#pcov[1, 2]*0  # cov between prestress and offset
     se01 = np.sqrt((p[1] * err[0]) ** 2 + (p[0] * err[1]) ** 2 + 2 * p[0] * p[1] * cov_ap)
     print('pressure = %5.1f kPa' % float(config["pressure_pa"] / 1000))
-    print("p0 =%5.2f   p1 =%5.1f Pa   p0*p1=%5.1f Pa   p2 =%4.3f" % (p[0], p[1], p[0] * p[1], p[2]))
+    print("p0 =%5.2f   p1 =%5.1f Pa   p0*p1=%5.1f Pa   p2 =%4.3f" % (p[0], p[1], p[0] * p[1], 0))
 
-    print("se0=%5.2f   se1=%5.1f Pa   se0*1=%5.1f Pa   se2=%4.3f" % (err[0], err[1], err[0] * err[1], err[2]))
+    print("se0=%5.2f   se1=%5.1f Pa   se0*1=%5.1f Pa   se2=%4.3f" % (err[0], err[1], se01, 0))
+    err = np.concatenate((err, [se01]))
 
     config["fit"] = dict(fitfunc=fitfunc, p=p, err=err, cov_ap=cov_ap, cov_ao=cov_ao, cov_po=cov_po)
 
@@ -374,17 +376,18 @@ def plotStressStrainFit(data, config):
 
     # ----------plot the fit curve----------
     xx = np.arange(np.min(data.stress), np.max(data.stress), 0.1)  # generates an extended array
-    plt.plot(xx, (fitfunc(xx, p[0], p[1], p[2])), '-', color='black', linewidth=2, zorder=3)
+    plt.plot(xx, (fitfunc(xx, p[0], p[1])), '-', color='black', linewidth=2, zorder=3)
 
     # ----------plot standard error of the fit function----------
     dyda = -1 / (p[0] ** 2) * np.log(xx / p[1] + 1)  # strain derivative with respect to alpha
     dydp = -1 / p[0] * xx / (xx * p[1] + p[1] ** 2)  # strain derivative with respect to prestress
     dydo = 1  # strain derivative with respect to offset
-    vary = (dyda * err[0]) ** 2 + (dydp * err[1]) ** 2 + (
-                dydo * err[2]) ** 2 + 2 * dyda * dydp * cov_ap + 2 * dyda * dydo * cov_ao + 2 * dydp * dydo * cov_po
-    y1 = fitfunc(xx, p[0], p[1], p[2]) - np.sqrt(vary)
-    y2 = fitfunc(xx, p[0], p[1], p[2]) + np.sqrt(vary)
-    plt.fill_between(xx, y1, y2, facecolor='gray', edgecolor="none", linewidth=0, alpha=0.5)
+    if 0: # TODO
+        vary = (dyda * err[0]) ** 2 + (dydp * err[1]) ** 2 + (
+                    dydo * err[2]) ** 2 + 2 * dyda * dydp * cov_ap + 2 * dyda * dydo * cov_ao + 2 * dydp * dydo * cov_po
+        y1 = fitfunc(xx, p[0], p[1]) - np.sqrt(vary)
+        y2 = fitfunc(xx, p[0], p[1]) + np.sqrt(vary)
+        plt.fill_between(xx, y1, y2, facecolor='gray', edgecolor="none", linewidth=0, alpha=0.5)
 
 
 def plotBinnedData(x, y, bins):
@@ -481,3 +484,88 @@ def storeEvaluationResults(data, config):
         config["fit"]["p"][2]) + '\t' + '{:0.3f}'.format(config["fit"]["p"][0] * config["fit"]["p"][1]) + '\n')
     # f.write(str(frame[i]) +'\t' +str(X[i]) +'\t' +str(Y[i]) +'\t' +str(R[i]) +'\t' +str(LongAxis[i]) +'\t'+str(ShortAxis[i]) +'\t' +str(Angle[i]) +'\t' +str(irregularity[i]) +'\t' +str(solidity[i]) +'\t' +str(sharpness[i]) +'\n')
     f.close()
+
+
+def load_all_data(input_path, pressure=None, repetition=None):
+    global ax
+
+    if isinstance(input_path, str):
+        input_path = [input_path]
+    paths = []
+    for path in input_path:
+        if "*" in path:
+            glob_data = glob.glob(path)
+            print("glob_data", glob_data, path)
+            if repetition is not None:
+                glob_data = glob_data[repetition:repetition+1]
+            paths.extend(glob_data)
+        else:
+            paths.append(path)
+
+    if pressure is not None:
+        pressures = []
+        for index, file in enumerate(paths):
+            config = getConfig(file)
+            pressures.append(config['pressure_pa'] / 100_000)
+
+        paths = np.array(paths)
+        pressures = np.array(pressures)
+        paths = paths[pressures == pressure]
+
+    print(paths)
+    fit_data = []
+
+    data_list = []
+    for index, file in enumerate(paths):
+        output_file = Path(str(file).replace("_result.txt", "_evaluated.csv"))
+
+        # load the data and the config
+        data = getData(file)
+        config = getConfig(file)
+
+        """ evaluating data"""
+        if not output_file.exists():
+            #refetchTimestamps(data, config)
+
+            getVelocity(data, config)
+
+            # take the mean of all values of each cell
+            data = data.groupby(['cell_id']).mean()
+
+            correctCenter(data, config)
+
+            data = filterCells(data, config)
+
+            # reset the indices
+            data.reset_index(drop=True, inplace=True)
+
+            getStressStrain(data, config)
+
+            #data = data[(data.stress < 50)]
+            data.reset_index(drop=True, inplace=True)
+
+            data["area"] = data.long_axis * data.short_axis * np.pi
+            data.to_csv(output_file, index=False)
+
+        data = pd.read_csv(output_file)
+
+        #data = data[(data.area > 0) * (data.area < 2000) * (data.stress < 250)]
+        #data.reset_index(drop=True, inplace=True)
+
+        data_list.append(data)
+
+
+    data = pd.concat(data_list)
+    data.reset_index(drop=True, inplace=True)
+
+    fitStiffness(data, config)
+    return data, config
+
+def all_plots_same_limits():
+    xmin = np.min([ax.get_xlim()[0] for ax in plt.gcf().axes])
+    xmax = np.max([ax.get_xlim()[1] for ax in plt.gcf().axes])
+    ymin = np.min([ax.get_ylim()[0] for ax in plt.gcf().axes])
+    ymax = np.max([ax.get_ylim()[1] for ax in plt.gcf().axes])
+    for ax in plt.gcf().axes:
+        ax.set_xlim(xmin, xmax)
+        ax.set_ylim(ymin, ymax)
