@@ -62,6 +62,8 @@ def getConfig(configfile):
     if configfile.endswith(".tif"):
         configfile = configfile.replace(".tif", "_config.txt")
 
+    if not Path(configfile).exists():
+        raise IOError(f"Config file {configfile} does not exist.")
 
     config = configparser.ConfigParser()
     config.read(configfile)
@@ -79,7 +81,7 @@ def getConfig(configfile):
     config_data["pixel_size"] = config_data["camera_pixel_size"]/(config_data["magnification"]*config_data["coupler"]) # in meter
     config_data["px_to_um"] = config_data["pixel_size"]
     config_data["pixel_size_m"] = config_data["pixel_size"] * 1e-6 # in um
-    config_data["channel_width_px"] = float(config['SETUP']['channel width'].split()[0])*1e-6/config_data["pixel_size"] #in pixels
+    config_data["channel_width_px"] = float(config['SETUP']['channel width'].split()[0])/config_data["pixel_size"] #in pixels
 
     config_data["pressure_pa"] = float(config['SETUP']['pressure'].split()[0]) * 1000  # applied pressure (in Pa)
 
@@ -242,7 +244,7 @@ def getStressStrain(data, config):
 
 def filterCells(data, config):
     l_before = data.shape[0]
-    data = data[(data.solidity > 0.96) & (data.irregularity < 1.05)]# & (data.rp.abs() < 65)]
+    data = data[(data.solidity > 0.96) & (data.irregularity < 1.06)]# & (data.rp.abs() < 65)]
     #data = data[(data.solidity > 0.98) & (data.irregularity < 1.04) & (data.rp.abs() < 65)]
 
     l_after = data.shape[0]
@@ -261,6 +263,9 @@ def correctCenter(data, config):
     d = data[~np.isnan(data.velocity)]
     y_pos = d.rp
     vel = d.velocity
+
+    if len(vel) == 0:
+        raise ValueError("No velocity values found.")
 
     def velfit(r, p0, p1, p2):  # for stress versus strain
         R = config["channel_width_m"] / 2 * 1e6
