@@ -220,13 +220,13 @@ for image_index, im in enumerate(progressbar):
                             a = ma/2
                             b = mi/2
                             circum = np.pi*((3*(a+b))-np.sqrt(10*a*b+3*(a**2+b**2))) # the circumference of the ellipse
-                            yy = y_c-config["channel_width_px"]/2
-                            yy = yy * config["pixel_size"] * 1e6
+                            yy = (y_c+min_row)-config["channel_width_px"]/2
+                            yy = yy * config["pixel_size"]
                             radialposition.append(yy)
-                            y_pos.append(y_c)
-                            x_pos.append(x_c)
-                            MajorAxis.append(float(format(ma)) * config["pixel_size"] * 1e6)
-                            MinorAxis.append(float(format(mi)) * config["pixel_size"] * 1e6)
+                            y_pos.append(y_c+min_row)
+                            x_pos.append(x_c+min_col)
+                            MajorAxis.append(float(format(ma)) * config["pixel_size"])
+                            MinorAxis.append(float(format(mi)) * config["pixel_size"])
                             angle.append(np.rad2deg(ellipse_angle))
                             irregularity.append(subregion.perimeter/circum)
                             solidity.append(subregion.solidity)
