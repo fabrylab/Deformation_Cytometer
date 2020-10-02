@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from scipy.stats import gaussian_kde
 import glob
+import json
 
 from matplotlib import rcParams
 rcParams['font.family'] = 'sans-serif'
@@ -83,6 +84,7 @@ def getConfig(configfile):
     config_data["px_to_um"] = config_data["pixel_size"]
     config_data["pixel_size_m"] = config_data["pixel_size"] * 1e-6 # in um
     config_data["channel_width_px"] = float(config['SETUP']['channel width'].split()[0])/config_data["pixel_size"] #in pixels
+    config_data["imaging_pos_mm"] = float(config['SETUP']['imaging position after inlet'].split()[0])*10  # in mm
 
     config_data["pressure_pa"] = float(config['SETUP']['pressure'].split()[0]) * 1000  # applied pressure (in Pa)
 
@@ -92,6 +94,8 @@ def getConfig(configfile):
     return config_data
 
 def getData(datafile):
+    if str(datafile).endswith(".tif"):
+        datafile = str(datafile).replace(".tif", "_result.txt")
     datafile = str(datafile)
     # %% import raw data
     data = np.genfromtxt(datafile, dtype=float, skip_header=2)
@@ -258,6 +262,33 @@ def filterCells(data, config):
 
     return data
 
+def fit_func_velocity(config):
+    if "vel_fit" in config:
+        p0, p1, p2 = config["vel_fit"]
+        p2 = 0
+    else:
+        p0, p1, p2 = None, None, None
+
+    def velfit(r, p0=p0, p1=p1, p2=p2):  # for stress versus strain
+        R = config["channel_width_m"] / 2 * 1e6
+        return p0 * (1 - np.abs((r + p2) / R) ** p1)
+
+    return velfit
+
+def fit_func_velocity_gradient(config):
+    if "vel_fit" in config:
+        p0, p1, p2 = config["vel_fit"]
+        p2 = 0
+    else:
+        p0, p1, p2 = None, None, None
+
+    def getVelGrad(r, p0=p0, p1=p1, p2=p2):
+        r = r * 1e-6
+        p0 = p0 * 1e-3
+        r0 = 100e-6
+        return - (p1 * p0 * (np.abs(r) / r0) ** p1) / r
+    return getVelGrad
+
 def correctCenter(data, config):
     if not "velocity" in data:
         getVelocity(data, config)
@@ -268,18 +299,21 @@ def correctCenter(data, config):
     if len(vel) == 0:
         raise ValueError("No velocity values found.")
 
-    def velfit(r, p0, p1, p2):  # for stress versus strain
-        R = config["channel_width_m"] / 2 * 1e6
-        return p0 * (1 - np.abs((r + p2) / R) ** p1)
+    vel_fit, pcov = curve_fit(fit_func_velocity(config), y_pos, vel, [np.max(vel), 0.9, -np.mean(y_pos)])  # fit a parabolic velocity profile
 
-    vel_fit, pcov = curve_fit(velfit, y_pos, vel, [np.max(vel), 0.9, -np.mean(y_pos)])  # fit a parabolic velocity profile
+    #plt.plot(y_pos, vel)
+    #plt.plot(y_pos, fit_func_velocity(config)(y_pos, *vel_fit))
+    #plt.show()
 
     y_pos += vel_fit[2]
     #data.y += vel_fit[2]
     data.rp += vel_fit[2]
 
-    config["vel_fit"] = vel_fit
+    config["vel_fit"] = list(vel_fit)
     config["center"] = vel_fit[2]
+
+    data["velocity_gradient"] = fit_func_velocity_gradient(config)(data.rp)
+    data["velocity_fitted"] = fit_func_velocity(config)(data.rp)
 
     """  
     #%% find center of the channel 
@@ -298,6 +332,15 @@ def correctCenter(data, config):
         data.rp = data.rp - (np.min(data.rp)+1e6*config["channel_width_m"]/2)
     #y_pos = y_pos+center
     """
+
+def fit_func_strain(config):
+
+    def fitfunc(x, p0, p1, p2):  # for stress versus strain
+        k = p0  # (p0 + x)
+        alpha = p1
+        # return x / (k * (np.abs(w)) ** alpha)
+        return x / (k * (np.abs(w) + (v / (np.pi * 2 * config["imaging_pos_mm"]))) ** alpha) + p2
+    return fitfunc
 
 def fitStiffness(data, config):
 
@@ -390,26 +433,40 @@ def plotStressStrainFit(data, config):
         plt.fill_between(xx, y1, y2, facecolor='gray', edgecolor="none", linewidth=0, alpha=0.5)
 
 
+def bootstrap_median_error(data):
+    data = np.asarray(data)
+    medians = []
+    print(data.shape)
+    for i in range(100):
+        medians.append(np.median(data[np.random.random_integers(len(data)-1, size=len(data))]))
+    print("bootstrap", np.median(data), np.nanmean(medians), np.nanstd(medians))
+    return np.nanstd(medians)
+
 def plotBinnedData(x, y, bins):
     strain_av = []
     stress_av = []
     strain_err = []
     for i in range(len(bins) - 1):
         index = (x > bins[i]) & (x < bins[i + 1])
-        strain_av.append(np.mean(y[index]))
-        strain_err.append(np.std(y[index]) / np.sqrt(np.sum(index)))
-        stress_av.append(np.mean(x[index]))
+        strain_av.append(np.median(y[index]))
+        yy = y[index]
+        #yy = yy[yy>0]
+        #strain_err.append(np.std(np.log(yy)) / np.sqrt(len(yy)))
+        strain_err.append(bootstrap_median_error(yy))#np.quantile(yy, [0.25, 0.75]))
+
+        stress_av.append(np.median(x[index]))
     plt.errorbar(stress_av, strain_av, yerr=strain_err, marker='s', mfc='white', \
                  mec='black', ms=7, mew=1, lw=0, ecolor='black', elinewidth=1, capsize=3)
 
 
 def plotStressStrain(data, config):
     # %% fitting deformation with stress stiffening equation
-    fig2 = plt.figure(2, (6, 6))
+    #fig2 = plt.figure(2, (6, 6))
     border_width = 0.1
     ax_size = [0 + 2 * border_width, 0 + 2 * border_width,
                1 - 3 * border_width, 1 - 3 * border_width]
-    ax2 = fig2.add_axes(ax_size)
+    #ax2 = fig2.add_axes(ax_size)
+    ax2 = plt.gca()
     ax2.set_xlabel('fluid shear stress $\u03C3$ (Pa)')
     ax2.set_ylabel('cell strain  $\u03B5$')
 
@@ -422,7 +479,7 @@ def plotStressStrain(data, config):
     plotDensityScatter(data.stress, data.strain)
 
     # ----------plot the fit curve----------
-    plotStressStrainFit(data, config)
+    #plotStressStrainFit(data, config)
 
     # ----------plot the binned (averaged) strain versus stress data points----------
     plotBinnedData(data.stress, data.strain, [0, 10, 20, 30, 40, 50, 75, 100, 125, 150, 200, 250])
@@ -494,45 +551,74 @@ def storeEvaluationResults(data, config):
     f.close()
 
 
-def load_all_data(input_path, pressure=None, repetition=None):
-    global ax
+def get_pressures(input_path, repetition=None):
+    paths = get_folders(input_path, repetition=None)
 
+    pressures = []
+    for index, file in enumerate(paths):
+        config = getConfig(file)
+        pressures.append(config['pressure_pa'] / 100_000)
+
+    return np.array(pressures)
+
+def get_folders(input_path, pressure=None, repetition=None):
     if isinstance(input_path, str):
         input_path = [input_path]
     paths = []
     for path in input_path:
         if "*" in path:
-            glob_data = glob.glob(path)
-            print("glob_data", glob_data, path)
+            glob_data = glob.glob(path, recursive=True)
+            # print("glob_data", glob_data, path)
             if repetition is not None:
-                glob_data = glob_data[repetition:repetition+1]
+                glob_data = glob_data[repetition:repetition + 1]
             paths.extend(glob_data)
         else:
             paths.append(path)
+
+    new_paths = []
+    for file in paths:
+        try:
+            config = getConfig(file)
+            new_paths.append(file)
+        except OSError as err:
+            print(err, file=sys.stderr)
+            continue
+    paths = new_paths
 
     if pressure is not None:
         pressures = []
         for index, file in enumerate(paths):
             config = getConfig(file)
             pressures.append(config['pressure_pa'] / 100_000)
+            print("->", file, pressures[-1])
 
         paths = np.array(paths)
         pressures = np.array(pressures)
+        print("pressures", pressures, pressure)
         paths = paths[pressures == pressure]
+
+    return paths
+
+def load_all_data(input_path, pressure=None, repetition=None):
+    global ax
+
+    paths = get_folders(input_path, pressure=pressure, repetition=repetition)
 
     print(paths)
     fit_data = []
 
     data_list = []
     for index, file in enumerate(paths):
+        print(file)
         output_file = Path(str(file).replace("_result.txt", "_evaluated.csv"))
+        output_config_file = Path(str(file).replace("_result.txt", "_evaluated_config.txt"))
 
         # load the data and the config
         data = getData(file)
         config = getConfig(file)
 
         """ evaluating data"""
-        if not output_file.exists():
+        if 1:#not output_file.exists():
             #refetchTimestamps(data, config)
 
             getVelocity(data, config)
@@ -553,7 +639,17 @@ def load_all_data(input_path, pressure=None, repetition=None):
             data.reset_index(drop=True, inplace=True)
 
             data["area"] = data.long_axis * data.short_axis * np.pi
-            data.to_csv(output_file, index=False)
+            try:
+                data.to_csv(output_file, index=False)
+                print("config", config, type(config))
+                with output_config_file.open("w") as fp:
+                    json.dump(config, fp)
+
+            except PermissionError:
+                pass
+        else:
+            with output_config_file.open("r") as fp:
+                config = json.load(fp)
 
         data = pd.read_csv(output_file)
 

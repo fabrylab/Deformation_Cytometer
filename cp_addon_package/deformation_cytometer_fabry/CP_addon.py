@@ -181,7 +181,10 @@ class Addon(clickpoints.Addon):
 
         getVelocity(self.data, self.config)
 
-        correctCenter(self.data, self.config)
+        try:
+            correctCenter(self.data, self.config)
+        except ValueError:
+            pass
 
         self.data = self.data.groupby(['cell_id']).mean()
 
@@ -272,13 +275,13 @@ class Addon(clickpoints.Addon):
         self.show()
 
     def detect(self):
+        im = self.cp.getImage()
+        img = self.cp.getImage().data
         if self.unet is None:
-            self.unet = UNet().create_model((720, 540, 1), 1, d=8)
+            self.unet = UNet().create_model((img.shape[0], img.shape[1], 1), 1, d=8)
 
             # change path for weights
             self.unet.load_weights(str(Path(__file__).parent / "Unet_0-0-5_fl_RAdam_20200610-141144.h5"))
-        im = self.cp.getImage()
-        img = self.cp.getImage().data
         img = (img - np.mean(img)) / np.std(img).astype(np.float32)
         prediction_mask = self.unet.predict(img[None, :, :, None])[0, :, :, 0] > 0.5
         self.db.setMask(image=self.cp.getImage(), data=prediction_mask.astype(np.uint8))
@@ -339,10 +342,10 @@ class Addon(clickpoints.Addon):
                 D = np.sqrt(long * short)  # diameter of undeformed (circular) cell
                 strain = (long - short) / D
 
-                print("element.velocity_partner", element.velocity_partner)
+                #print("element.velocity_partner", element.velocity_partner)
 
                 self.db.setEllipse(image=im, x=x_pos, y=y_pos, width=long/self.pixel_size, height=short/self.pixel_size, angle=angle, type=self.marker_type_cell,
-                                   text=f"timestamp {element.timestamp}\nstrain {strain:.3f}\nsolidity {Solidity:.2f}\nirreg. {Irregularity:.3f}\nvelocity {element.velocity:.3f}\n {element.velocity_partner}"
+                                   text=f"timestamp {element.timestamp}\nstrain {strain:.3f}\nsolidity {Solidity:.2f}\nirreg. {Irregularity:.3f}",#\nvelocity {element.velocity:.3f}\n {element.velocity_partner}"
                                    )
 
 

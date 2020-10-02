@@ -17,9 +17,9 @@ pylustrator.start()
 # get the results file (by config parameter or user input dialog)
 datafiles = [
 #    r"\\131.188.117.96\biophysDS\emirzahossein\data\microscope4_baslercamera\2020_may\2020_05_22_alginateDMEM2%\3\2020_05_22_10_09_10_result.txt",
-    r"\\131.188.117.96\biophysDS\emirzahossein\data\microscope4_baslercamera\2020_july\2020_07_23_alginate2%_3t3_margination\1bar\2020_07_23_10_07_42_result.txt",
-    r"\\131.188.117.96\biophysDS\emirzahossein\data\microscope4_baslercamera\2020_july\2020_07_23_alginate2%_3t3_margination\2bar\2020_07_23_09_59_11_result.txt",
-    r"\\131.188.117.96\biophysDS\emirzahossein\data\microscope4_baslercamera\2020_july\2020_07_23_alginate2%_3t3_margination\3bar\2020_07_23_10_05_02_result.txt",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_july\2020_07_23_alginate2%_dmem_NIH_3T3_margination\1bar\2020_07_23_10_07_42_result.txt",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_july\2020_07_23_alginate2%_dmem_NIH_3T3_margination\2bar\2020_07_23_09_59_11_result.txt",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_july\2020_07_23_alginate2%_dmem_NIH_3T3_margination\3bar\2020_07_23_10_05_02_result.txt",
 ]
 
 datas = []
@@ -92,15 +92,24 @@ for im, data in zip(image_stacks, datas):
         image = im.get_data(d.frames)
         image = image[int(d.y-height//2):int(d.y+height//2), int(d.x-width/2):int(d.x+width/2)]
 
-        plt.imshow(image, cmap="gray", extent=[xpos, xpos+image.shape[1]*scale, ypos+image.shape[0]*scale/2, ypos-image.shape[0]*scale/2])
+        try:
+            plt.imshow(image, cmap="gray", extent=[xpos, xpos+image.shape[1]*scale, ypos+image.shape[0]*scale/2, ypos-image.shape[0]*scale/2])
+        except:
+            pass
 x = 120
 y = -95
 plt.imshow(np.zeros((10, 10)), cmap="gray", extent=[x, x+10, y, y+1.5], vmin=0, vmax=1)
 
 plt.axis("equal")
 plt.xticks([])
-plt.yticks([-100, -75, -50, -25, 0, 25, 50, 75, 100],
-           ["+100", "+75", "+50", "+25", "0", "-25", "-50", "-75", "-100"])
+if 0:
+    plt.yticks([-100, -75, -50, -25, 0, 25, 50, 75, 100],
+               ["+100", "+75", "+50", "+25", "0", "-25", "-50", "-75", "-100"])
+else:
+    plt.yticks([ -75, -50, -25, 0, 25, 50, 75],
+               [ "+75", "+50", "+25", "0", "-25", "-50", "-75"])
+    plt.figure(1).axes[0].spines['top'].set_visible(False)
+    plt.figure(1).axes[0].spines['bottom'].set_visible(False)
 plt.figure(1).axes[0].spines['left'].set_visible(False)
 plt.figure(1).axes[0].spines['right'].set_visible(False)
 #% start: automatic generated code from pylustrator
@@ -125,6 +134,6 @@ plt.figure(1).axes[0].texts[3].set_position([0.811570, 0.020173])
 plt.figure(1).axes[0].texts[3].set_text("10 µm")
 plt.figure(1).axes[0].get_yaxis().get_label().set_text("radial position (µm)")
 #% end: automatic generated code from pylustrator
-plt.savefig(__file__[:-3]+".png", dpi=300)
-plt.savefig(__file__[:-3]+".pdf")
+#plt.savefig(__file__[:-3]+".png", dpi=300)
+#plt.savefig(__file__[:-3]+".pdf")
 plt.show()

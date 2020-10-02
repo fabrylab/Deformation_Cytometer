@@ -138,6 +138,7 @@ def plotPathList(paths, cmap=None, alpha=None):
                     #plt.imshow(im[::-1], vmin=0, vmax=1, extent=[np.min(xi), np.max(xi), np.min(yi), np.max(yi)], aspect="auto")
     densityPlot(data.stress, data.strain, cmap=cmap, alpha=alpha)
 
+    plotStressStrainFit(data, config)
     #plotStressStrainFit(data, config)
     #plotBinnedData(data.stress, data.strain, [0, 10, 20, 30, 40, 50, 75, 100, 125, 150, 200, 250])
     #plt.title(f'{config["fit"]["p"][0] * config["fit"]["p"][1]:.2f}')
@@ -151,7 +152,7 @@ def plotPathList(paths, cmap=None, alpha=None):
 datasets = [
     {
         "datafiles": [
-            Path(r"\\131.188.117.96\biophysDS\emirzahossein\data\microscope4_baslercamera\2020_may\2020_05_22_alginateDMEM2%"),
+            Path(r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_may\2020_05_22_alginateDMEM2%"),
         #    Path(r"Z:\emirzahossein\data\microscope4_baslercamera\2020_july\07_07_2020_alginate2%_rpmi_no_fcs_time"),
         ],
         "rows": 1,
@@ -213,8 +214,16 @@ plt.figure(1).axes[0].set_position([0.198362, 0.246488, 0.451831, 0.717020])
 plt.figure(1).axes[0].set_xlim(-10.0, 270.0)
 plt.figure(1).axes[0].spines['right'].set_visible(False)
 plt.figure(1).axes[0].spines['top'].set_visible(False)
-plt.figure(1).axes[0].get_legend()._set_loc((0.983850, 0.458041))
-plt.figure(1).axes[0].get_xaxis().get_label().set_text("radial position (µm)")
+plt.figure(1).axes[0].xaxis.labelpad = 2.344144
+plt.figure(1).axes[0].get_legend()._set_loc((0.772396, 0.115493))
+plt.figure(1).axes[0].lines[0].set_color("#000000ff")
+plt.figure(1).axes[0].lines[0].set_linestyle("--")
+plt.figure(1).axes[0].lines[0].set_linewidth(1.0)
+plt.figure(1).axes[0].lines[1].set_linestyle("--")
+plt.figure(1).axes[0].lines[1].set_linewidth(1.0)
+plt.figure(1).axes[0].lines[2].set_linestyle("--")
+plt.figure(1).axes[0].lines[2].set_linewidth(1.0)
+plt.figure(1).axes[0].get_xaxis().get_label().set_text("shear stress (Pa)")
 plt.figure(1).axes[0].get_yaxis().get_label().set_text("strain")
 #% end: automatic generated code from pylustrator
 plt.savefig(__file__[:-3]+".png", dpi=300)
