@@ -1,0 +1,4 @@
+[addon]
+name=Deformation Cytometer
+file=CP_addon.py
+icon=fa.flag
