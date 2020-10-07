@@ -314,6 +314,7 @@ def correctCenter(data, config):
 
     data["velocity_gradient"] = fit_func_velocity_gradient(config)(data.rp)
     data["velocity_fitted"] = fit_func_velocity(config)(data.rp)
+    data["imaging_pos_mm"] = config["imaging_pos_mm"]
 
     """  
     #%% find center of the channel 
@@ -368,6 +369,59 @@ def fitStiffness(data, config):
 
     config["fit"] = dict(fitfunc=fitfunc, p=p, err=err, cov_ap=cov_ap, cov_ao=cov_ao, cov_po=cov_po)
 
+def fitStiffness(data, config):
+
+    def omega(x, p=52.43707149):
+        return 0.25 * x
+
+    v = data.velocity_fitted
+    w = omega(data.velocity_gradient)
+    imaging_pos_mm = data.imaging_pos_mm
+
+    def fitfunc(x, p0, p1, p2):  # for stress versus strain
+        k = p0  # (p0 + x)
+        alpha = p1
+        # return x / (k * (np.abs(w)) ** alpha)
+        # return np.log(x/k + 1) / ((np.abs(w) + (v/(np.pi*2*config1["imaging_pos_mm"]))) ** alpha) + p2
+        return (x / (k * (np.abs(w) + (v / (np.pi * 2 * imaging_pos_mm))) ** alpha) + p2)  # * (x < 100)
+
+    import scipy.optimize
+    from scipy.linalg import svd, cholesky, solve_triangular, LinAlgError
+    def curve_fit(func, x, y, start, maxfev=None, bounds=None):
+        def cost(p):
+            return np.mean(np.abs(func(x, *p) - y))
+
+        res = scipy.optimize.minimize(cost, start, bounds=np.array(bounds).T)  # , maxfev=maxfev, bounds=bounds)
+
+        # print(res)
+        return res["x"], []
+
+    pstart = (120, 0.3, 0)  # initial guess
+
+    # fit weighted by the density of points
+    p, pcov = curve_fit(fitfunc, data.stress, data.strain, pstart, bounds=[(0, 0, 0), (500, 1, 1)], maxfev=10000)  # do the curve fitting
+    # p, pcov = curve_fit(fitfunc, stress[RP<0], strain[RP<0], pstart) #do the curve fitting for one side only
+    """
+    err = (np.diag(pcov)) ** 0.5  # estimate 1 standard error of the fit parameters
+    cov_ap = pcov[0, 1]  # cov between alpha and prestress
+    cov_ao = 0#pcov[0, 2]*0  # cov between offset and alpha
+    cov_po = 0#pcov[1, 2]*0  # cov between prestress and offset
+    se01 = np.sqrt((p[1] * err[0]) ** 2 + (p[0] * err[1]) ** 2 + 2 * p[0] * p[1] * cov_ap)
+    """
+    print('pressure = %5.1f kPa' % float(config["pressure_pa"] / 1000))
+    print("k = %6.2f   alpha = %4.2f Pa  offset = %4.3f" % (p[0], p[1], p[2]))
+
+    #print("se0=%5.2f   se1=%5.1f Pa   se0*1=%5.1f Pa   se2=%4.3f" % (err[0], err[1], se01, 0))
+    #err = np.concatenate((err, [se01]))
+    cov_ap = 0
+    cov_ao = 0
+    cov_po = 0
+    err = [0, 0, 0, 0]
+
+    config["fit"] = dict(fitfunc=fitfunc, p=p, err=err, cov_ap=cov_ap, cov_ao=cov_ao, cov_po=cov_po)
+    return p
+
+
 def plotVelocityProfile(data, config):
     if "velocity" not in data:
         getVelocity(data, config)
@@ -405,7 +459,7 @@ def plotDensityScatter(x, y, cmap='viridis', alpha=1):
     kd = gaussian_kde(xy)(xy)
     idx = kd.argsort()
     x, y, z = x[idx], y[idx], kd[idx]
-    plt.scatter(x, y, c=z, s=5, edgecolor='', alpha=alpha, cmap=cmap)  # plot in kernel density colors e.g. viridis
+    plt.scatter(x, y, c=z, s=5, alpha=alpha, cmap=cmap)  # plot in kernel density colors e.g. viridis
 
 
 def plotStressStrainFit(data, config):
@@ -432,14 +486,36 @@ def plotStressStrainFit(data, config):
         y2 = fitfunc(xx, p[0], p[1]) + np.sqrt(vary)
         plt.fill_between(xx, y1, y2, facecolor='gray', edgecolor="none", linewidth=0, alpha=0.5)
 
+def plotStressStrainFit(data, config, color="C1"):
+    def omega(x, p=52.43707149):
+        return 0.25 * x
+
+    v = data.velocity_fitted
+    w = omega(data.velocity_gradient)
+    imaging_pos_mm = data.imaging_pos_mm
+
+    def fitfunc(x, p0, p1, p2):  # for stress versus strain
+        k = p0  # (p0 + x)
+        alpha = p1
+        # return x / (k * (np.abs(w)) ** alpha)
+        # return np.log(x/k + 1) / ((np.abs(w) + (v/(np.pi*2*config1["imaging_pos_mm"]))) ** alpha) + p2
+        return (x / (k * (np.abs(w) + (v / (np.pi * 2 * imaging_pos_mm))) ** alpha) + p2)  # * (x < 100)
+
+    x = data.stress
+
+    p0, p1, p2 = config["fit"]["p"]
+    y = fitfunc(x, p0, p1, p2)
+    indices = np.argsort(x)
+    x = x[indices]
+    y = y[indices]
+    plt.plot(x, y, "-", color=color)
+
 
 def bootstrap_median_error(data):
     data = np.asarray(data)
     medians = []
-    print(data.shape)
     for i in range(100):
         medians.append(np.median(data[np.random.random_integers(len(data)-1, size=len(data))]))
-    print("bootstrap", np.median(data), np.nanmean(medians), np.nanstd(medians))
     return np.nanstd(medians)
 
 def plotBinnedData(x, y, bins):
@@ -448,8 +524,8 @@ def plotBinnedData(x, y, bins):
     strain_err = []
     for i in range(len(bins) - 1):
         index = (x > bins[i]) & (x < bins[i + 1])
-        strain_av.append(np.median(y[index]))
         yy = y[index]
+        strain_av.append(np.median(yy))
         #yy = yy[yy>0]
         #strain_err.append(np.std(np.log(yy)) / np.sqrt(len(yy)))
         strain_err.append(bootstrap_median_error(yy))#np.quantile(yy, [0.25, 0.75]))
@@ -479,7 +555,7 @@ def plotStressStrain(data, config):
     plotDensityScatter(data.stress, data.strain)
 
     # ----------plot the fit curve----------
-    #plotStressStrainFit(data, config)
+    plotStressStrainFit(data, config)
 
     # ----------plot the binned (averaged) strain versus stress data points----------
     plotBinnedData(data.stress, data.strain, [0, 10, 20, 30, 40, 50, 75, 100, 125, 150, 200, 250])
@@ -499,8 +575,9 @@ def plotMessurementStatus(data, config):
     p = fit["p"]
     err = fit["err"]
     if len(p) == 3:
-        txt.append("p0 =%5.2f   p1 =%5.1f Pa   p0*p1=%5.1f Pa   p2 =%4.3f" % (p[0], p[1], p[0] * p[1], p[2]))
-        txt.append("se0=%5.2f   se1=%5.1f Pa   se0*1=%5.1f Pa   se2=%4.3f" % (err[0], err[1], err[0] * err[1], err[2]))
+        txt.append(f"k = {p[0]:3.0f} Pa   $\\alpha$ = {p[1]:3.2f}  offset = {p[2]:4.3f}")
+        #txt.append("p0 =%5.2f   p1 =%5.1f Pa   p0*p1=%5.1f Pa   p2 =%4.3f" % (p[0], p[1], p[0] * p[1], p[2]))
+        #txt.append("se0=%5.2f   se1=%5.1f Pa   se0*1=%5.1f Pa   se2=%4.3f" % (err[0], err[1], err[0] * err[1], err[2]))
     else:
         txt.append("p0 =%5.2f   p1 =%5.1f Pa   p0*p1=%5.1f Pa" % (p[0], p[1], p[0] * p[1]))
         txt.append("se0=%5.2f   se1=%5.1f Pa   se0*1=%5.1f Pa" % (err[0], err[1], err[0] * err[1]))
@@ -572,11 +649,13 @@ def get_folders(input_path, pressure=None, repetition=None):
             if repetition is not None:
                 glob_data = glob_data[repetition:repetition + 1]
             paths.extend(glob_data)
+            #print("glob_data", glob_data)
         else:
             paths.append(path)
 
     new_paths = []
     for file in paths:
+        #print("->", file)
         try:
             config = getConfig(file)
             new_paths.append(file)
@@ -584,17 +663,18 @@ def get_folders(input_path, pressure=None, repetition=None):
             print(err, file=sys.stderr)
             continue
     paths = new_paths
+    #print("new paths", new_paths)
 
     if pressure is not None:
         pressures = []
         for index, file in enumerate(paths):
             config = getConfig(file)
             pressures.append(config['pressure_pa'] / 100_000)
-            print("->", file, pressures[-1])
+            #print("->", file, pressures[-1])
 
         paths = np.array(paths)
         pressures = np.array(pressures)
-        print("pressures", pressures, pressure)
+        #print("pressures", pressures, pressure)
         paths = paths[pressures == pressure]
 
     return paths
@@ -602,14 +682,16 @@ def get_folders(input_path, pressure=None, repetition=None):
 def load_all_data(input_path, pressure=None, repetition=None):
     global ax
 
+    evaluation_version = 2
+
     paths = get_folders(input_path, pressure=pressure, repetition=repetition)
 
-    print(paths)
+    #print(paths)
     fit_data = []
 
     data_list = []
     for index, file in enumerate(paths):
-        print(file)
+        #print(file)
         output_file = Path(str(file).replace("_result.txt", "_evaluated.csv"))
         output_config_file = Path(str(file).replace("_result.txt", "_evaluated_config.txt"))
 
@@ -617,8 +699,15 @@ def load_all_data(input_path, pressure=None, repetition=None):
         data = getData(file)
         config = getConfig(file)
 
+        version = 0
+        if output_config_file.exists():
+            with output_config_file.open("r") as fp:
+                config = json.load(fp)
+            if "evaluation_version" in config:
+                version = config["evaluation_version"]
+
         """ evaluating data"""
-        if 1:#not output_file.exists():
+        if not output_file.exists() or version < evaluation_version:
             #refetchTimestamps(data, config)
 
             getVelocity(data, config)
@@ -640,8 +729,9 @@ def load_all_data(input_path, pressure=None, repetition=None):
 
             data["area"] = data.long_axis * data.short_axis * np.pi
             try:
+                config["evaluation_version"] = evaluation_version
                 data.to_csv(output_file, index=False)
-                print("config", config, type(config))
+                #print("config", config, type(config))
                 with output_config_file.open("w") as fp:
                     json.dump(config, fp)
 
@@ -662,7 +752,7 @@ def load_all_data(input_path, pressure=None, repetition=None):
     data = pd.concat(data_list)
     data.reset_index(drop=True, inplace=True)
 
-    fitStiffness(data, config)
+    #fitStiffness(data, config)
     return data, config
 
 def all_plots_same_limits():
