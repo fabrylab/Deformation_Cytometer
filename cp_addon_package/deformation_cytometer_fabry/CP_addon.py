@@ -299,7 +299,7 @@ class Addon(clickpoints.Addon):
             else:
                 ellipse_angle = -np.pi / 2 - region.orientation
             self.db.setEllipse(image=im, x=x, y=y, width=region.major_axis_length, height=region.minor_axis_length,
-                               angle=ellipse_angle, type=self.marker_type_cell2)
+                               angle=ellipse_angle*180/np.pi, type=self.marker_type_cell2)
 
     def keyPressEvent(self, event):
         print(event.key(), QtCore.Qt.Key_G)
