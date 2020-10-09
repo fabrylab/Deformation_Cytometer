@@ -286,7 +286,7 @@ def fit_func_velocity_gradient(config):
         r = r * 1e-6
         p0 = p0 * 1e-3
         r0 = 100e-6
-        return - (p1 * p0 * (np.abs(r) / r0) ** p1) / r
+        return - (p0 * p1 * (np.abs(r) / r0) ** p1) / r
     return getVelGrad
 
 def correctCenter(data, config):
@@ -372,7 +372,7 @@ def fitStiffness(data, config):
 def fitStiffness(data, config):
 
     def omega(x, p=52.43707149):
-        return 0.25 * x
+        return 0.25 * x / (2*np.pi)
 
     v = data.velocity_fitted
     w = omega(data.velocity_gradient)
@@ -391,7 +391,7 @@ def fitStiffness(data, config):
         def cost(p):
             return np.mean(np.abs(func(x, *p) - y))
 
-        res = scipy.optimize.minimize(cost, start, bounds=np.array(bounds).T)  # , maxfev=maxfev, bounds=bounds)
+        res = scipy.optimize.minimize(cost, start)#, bounds=np.array(bounds).T)  # , maxfev=maxfev, bounds=bounds)
 
         # print(res)
         return res["x"], []
@@ -454,7 +454,9 @@ def plotVelocityProfile(data, config):
     ax1.axhline(0, ls="--", color="k", lw=0.8)
     print('v_max = %5.2f mm/s   profile stretch exponent = %5.2f\n' % (vel_fit[0], vel_fit[1]))
 
-def plotDensityScatter(x, y, cmap='viridis', alpha=1):
+def plotDensityScatter(x, y, cmap='viridis', alpha=1, skip=1):
+    x = np.array(x)[::skip]
+    y = np.array(y)[::skip]
     xy = np.vstack([x, y])
     kd = gaussian_kde(xy)(xy)
     idx = kd.argsort()
@@ -488,7 +490,7 @@ def plotStressStrainFit(data, config):
 
 def plotStressStrainFit(data, config, color="C1"):
     def omega(x, p=52.43707149):
-        return 0.25 * x
+        return 0.25 * x / (2*np.pi)
 
     v = data.velocity_fitted
     w = omega(data.velocity_gradient)
@@ -508,13 +510,23 @@ def plotStressStrainFit(data, config, color="C1"):
     indices = np.argsort(x)
     x = x[indices]
     y = y[indices]
-    plt.plot(x, y, "-", color=color)
+    x2 = []
+    y2 = []
+    delta = 10
+    for i in np.arange(x.min(), x.max()-delta, delta):
+        indices = (i < x) & (x < (i+delta))
+        if len(indices) >= 10:
+            x2.append(np.mean(x[indices]))
+            y2.append(np.mean(y[indices]))
+    plt.plot(x2, y2, "-", color=color, lw=4)
 
 
 def bootstrap_median_error(data):
     data = np.asarray(data)
+    if len(data) <= 1:
+        return 0
     medians = []
-    for i in range(100):
+    for i in range(1000):
         medians.append(np.median(data[np.random.random_integers(len(data)-1, size=len(data))]))
     return np.nanstd(medians)
 
@@ -535,7 +547,7 @@ def plotBinnedData(x, y, bins):
                  mec='black', ms=7, mew=1, lw=0, ecolor='black', elinewidth=1, capsize=3)
 
 
-def plotStressStrain(data, config):
+def plotStressStrain(data, config, skip=1):
     # %% fitting deformation with stress stiffening equation
     #fig2 = plt.figure(2, (6, 6))
     border_width = 0.1
@@ -552,7 +564,7 @@ def plotStressStrain(data, config):
     ax2.set_ylim((-0.2, 1.0))
 
     # ----------plot strain versus stress data points----------
-    plotDensityScatter(data.stress, data.strain)
+    plotDensityScatter(data.stress, data.strain, skip=skip)
 
     # ----------plot the fit curve----------
     plotStressStrainFit(data, config)
