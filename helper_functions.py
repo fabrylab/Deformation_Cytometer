@@ -389,15 +389,15 @@ def fitStiffness(data, config):
     from scipy.linalg import svd, cholesky, solve_triangular, LinAlgError
     def curve_fit(func, x, y, start, maxfev=None, bounds=None):
         def cost(p):
-            return np.mean(np.abs(func(x, *p) - y))
+            return np.mean(np.abs(func(x, *p) - y)) + (p[1] < 0) * 10
 
         res = scipy.optimize.minimize(cost, start)#, bounds=np.array(bounds).T)  # , maxfev=maxfev, bounds=bounds)
 
         # print(res)
         return res["x"], []
 
-    pstart = (120, 0.3, 0)  # initial guess
-
+    pstart = (np.random.uniform(50, 200), np.random.uniform(0.1, 0.5), 0)  # initial guess
+    print("--", np.mean(data.stress), np.min(data.stress), np.max(data.stress))
     # fit weighted by the density of points
     p, pcov = curve_fit(fitfunc, data.stress, data.strain, pstart, bounds=[(0, 0, 0), (500, 1, 1)], maxfev=10000)  # do the curve fitting
     # p, pcov = curve_fit(fitfunc, stress[RP<0], strain[RP<0], pstart) #do the curve fitting for one side only
