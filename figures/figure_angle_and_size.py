@@ -13,10 +13,10 @@ Created on Tue May 22 2020
 """
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-from helper_functions import getInputFile, getConfig, getData, getInputFolder
-from helper_functions import refetchTimestamps, getVelocity, filterCells, correctCenter, getStressStrain, fitStiffness
-from helper_functions import initPlotSettings, plotVelocityProfile, plotStressStrain, plotMessurementStatus
-from helper_functions import storeEvaluationResults, plotDensityScatter, plotStressStrainFit, plotBinnedData, load_all_data
+from scripts.helper_functions import getInputFile, getConfig, getData, getInputFolder
+from scripts.helper_functions import refetchTimestamps, getVelocity, filterCells, correctCenter, getStressStrain, fitStiffness
+from scripts.helper_functions import initPlotSettings, plotVelocityProfile, plotStressStrain, plotMessurementStatus
+from scripts.helper_functions import storeEvaluationResults, plotDensityScatter, plotStressStrainFit, plotBinnedData, load_all_data
 import numpy as np
 import pandas as pd
 import glob

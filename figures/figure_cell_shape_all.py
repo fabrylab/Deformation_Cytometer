@@ -5,10 +5,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from helper_functions import getInputFile, getConfig, getData
-from helper_functions import refetchTimestamps, getVelocity, filterCells, correctCenter, getStressStrain, fitStiffness
-from helper_functions import initPlotSettings, plotVelocityProfile, plotStressStrain, plotMessurementStatus
-from helper_functions import storeEvaluationResults
+from scripts.helper_functions import getInputFile, getConfig, getData
+from scripts.helper_functions import refetchTimestamps, getVelocity, filterCells, correctCenter, getStressStrain, fitStiffness
+from scripts.helper_functions import initPlotSettings, plotVelocityProfile, plotStressStrain, plotMessurementStatus
+from scripts.helper_functions import storeEvaluationResults
 
 #import pylustrator
 #pylustrator.start()

@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from helper_functions import plotDensityScatter, load_all_data
+from scripts.helper_functions import plotDensityScatter, load_all_data
 import numpy as np
 import pylustrator
 pylustrator.start()

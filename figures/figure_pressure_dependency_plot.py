@@ -4,10 +4,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-from helper_functions import getInputFile, getConfig, getData, getInputFolder
-from helper_functions import refetchTimestamps, getVelocity, filterCells, correctCenter, getStressStrain, fitStiffness
-from helper_functions import initPlotSettings, plotVelocityProfile, plotStressStrain, plotMessurementStatus
-from helper_functions import storeEvaluationResults, plotDensityScatter, plotStressStrainFit, plotBinnedData, load_all_data, get_pressures
+from scripts.helper_functions import getInputFile, getConfig, getData, getInputFolder
+from scripts.helper_functions import refetchTimestamps, getVelocity, filterCells, correctCenter, getStressStrain, fitStiffness
+from scripts.helper_functions import initPlotSettings, plotVelocityProfile, plotStressStrain, plotMessurementStatus
+from scripts.helper_functions import storeEvaluationResults, plotDensityScatter, plotStressStrainFit, plotBinnedData, load_all_data, get_pressures
 import numpy as np
 import pandas as pd
 import glob

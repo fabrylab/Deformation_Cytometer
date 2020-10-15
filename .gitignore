@@ -2,6 +2,6 @@
 .idea
 *.pyc
 
-Neural_Network/weights/Unet_0-0-5_fl_RAdam_20200602-115253.h5
-all_data.txt
+scripts/Neural_Network/weights/Unet_0-0-5_fl_RAdam_20200602-115253.h5
+scripts/all_data.txt
 *.tmp

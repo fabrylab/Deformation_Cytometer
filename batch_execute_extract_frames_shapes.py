@@ -1,22 +1,10 @@
-import sys
 import os
-from tkinter import Tk
-from tkinter import filedialog
 import glob
 
-# if there are command line parameters, we use the provided folder
-if len(sys.argv) >= 2:
-    parent_folder = sys.argv[1]
-# if not we ask for a folder
-else:
-    #%% select video file
-    root = Tk()
-    root.withdraw() # we don't want a full GUI, so keep the root window from appearing
-    parent_folder = []
-    parent_folder = filedialog.askdirectory(title="select the parent folder") # show an "Open" dialog box and return the path to the selected file
-    if parent_folder == '':
-        print('empty')
-        sys.exit()
+from deformationcytometer.includes.includes import getInputFolder
+
+# get the inputfolder to process
+parent_folder = getInputFolder()
 
 # get all the avi files in the folder and its subfolders
 files = glob.glob(f"{parent_folder}/**/*.avi", recursive=True) + glob.glob(f"{parent_folder}/**/*.tif", recursive=True)
@@ -27,4 +15,4 @@ for file in files:
     if file.endswith("_raw.avi") or file.endswith("_raw.tif"):
         continue
     # and call extract_frames_shapes.py on each file
-    os.system(f'python extract_frames_shapes_Ben_clean.py "{file}"')
+    os.system(f'python deformationcytometer/detection/detect_cells.py "{file}"')

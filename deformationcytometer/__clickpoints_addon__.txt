@@ -1,0 +1,1 @@
+clickpoints/CP_addon.txt

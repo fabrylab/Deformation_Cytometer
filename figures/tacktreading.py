@@ -10,9 +10,10 @@ from pathlib import Path
 import pylustrator
 pylustrator.start()
 
-from helper_functions import getStressStrain, getConfig, getInputFile
+from scripts.helper_functions import getStressStrain, getConfig, getInputFile
 
 import scipy.special
+
 
 def getEllipseArcSegment(angle, a, b):
     e = (1.0 - a ** 2.0 / b ** 2.0) ** 0.5
@@ -35,6 +36,9 @@ def getArcLength(points, major_axis, minor_axis, ellipse_angle, center):
     return length, distance_from_center/r
 
 video = r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\september_2020\2020_09_15_alginate2%_NIH_tanktreading_1\2\2020_09_15_10_35_15.tif"#getInputFile()
+id = 8953
+#video = r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\september_2020\2020_09_16_alginate2%_NIH_tanktreading\2\2020_09_16_14_36_11.tif"
+#id = 4587
 
 config = getConfig(video)
 
@@ -118,35 +122,72 @@ def getLine(x, a):
 
 def joinImages(images):
     c, h, w = images.shape
-    skip = int(np.ceil(c/10))
+    skip = c-1#int(np.ceil(c/10))
     c = images[::skip].shape[0]
+    print("skpi", skip, c, images.shape)
     return images[::skip].transpose(1, 0, 2).reshape(h, w*c), c, skip
 
 
 def makePlot(cell_id, data0, images, time, tracks, distance_to_center, angle, speeds, slopes):
+    best_speeds = np.argsort(np.abs(speeds-np.nanmedian(speeds)))#[:10]
+    best_indices = [best_speeds[0]]
+    for i in best_speeds[1:]:
+        if np.min(np.linalg.norm(tracks[np.array(best_indices), 0]-tracks[i, 0], axis=1)) > 10:
+            best_indices.append(i)
+        if len(best_indices) >= 10:
+            break
+
+    #tracks = tracks[::2]
+    indices = [1, 0, 2, 14, 13, 10]
+    #tracks = tracks[indices]
+
+    tracks = tracks[best_indices]
 
     plt.subplot(231)
     im, c, skip = joinImages(images)
     plt.imshow(im, cmap="gray")
     #for index, track in enumerate(tracks.transpose(1, 0, 2)[::skip]):
     #    plt.plot(track[:, 0]+images[0].shape[1]*index, track[:, 1], "+", ms=1)
-    for index, track in enumerate(tracks):
+    from scipy.spatial import Delaunay
+    tri = Delaunay(tracks[:, 0])
+    print(tri.neighbors)
+
+    for i, track in enumerate(tracks):
         points = track[::skip]
         index = np.arange(points.shape[0])
-        plt.plot(track[:, 0]+images[0].shape[1]*index, track[:, 1], "+", ms=1)
+        print("index", index, track[:, 0], track[:, 1])
+        plt.plot(points[:, 0]+images[0].shape[1]*index, points[:, 1], "o", ms=1)
+        #plt.text(points[0, 0], points[0, 1], i)
+
+    #for i in index:
+    #    plt.triplot(tracks[:, ::skip][0, i, 0]+images[0].shape[1]*i, tracks[:, ::skip][0, i, 1], tri.simplices.copy())
+    #plt.triplot(tracks[:, 0, 0], tracks[:, 0, 1], tri.simplices.copy())
+    #plt.triplot(tracks[:, -1, 0]+images[0].shape[1], tracks[:, -1, 1], tri.simplices.copy())
 
     plt.subplot(234)
     la, sa, a = data0.long_axis.mean() / pixel_size, data0.short_axis.mean() / pixel_size, data0.angle.mean()
-    for i in range(tracks.shape[0]):
-        plt.plot(tracks[i, :, 0], tracks[i, :, 1], "o-", ms=1)
+    cmap = plt.get_cmap("viridis")
+    t = np.array(time)
+    for j in range(tracks[0].shape[0]):
+        for i in range(tracks.shape[0]):
+            p = (t[j]-t[0])/(t[-1]-t[0])
+            plt.plot(tracks[i, j:j+2, 0]-center[0], tracks[i, j:j+2, 1]-center[1], "o-", ms=2, lw=1.5, color=cmap(p))
+    plt.plot([0], [0], "w+", ms=5)
+
     from matplotlib.patches import Ellipse
-    ellipse = Ellipse(xy=center, width=la, height=sa, angle=a, edgecolor='r', fc='None', lw=0.5, zorder=2)
-    plt.gca().add_patch(ellipse)
+    ellipse = Ellipse(xy=(0, 0), width=la, height=sa, angle=a, edgecolor='r', fc='None', lw=0.5, zorder=2)
+    #plt.gca().add_patch(ellipse)
     plt.gca().axis("equal")
+    h, w = images[0].shape
+    plt.imshow(images[0], extent=[-w/2, w/2, h/2, -h/2], cmap="gray")
 
     plt.subplot(232)
     plt.subplot(233)
+    i = -1
     for d, a, m, t in zip(distance_to_center, angle, speeds, slopes):
+        i += 1
+        if i not in best_indices:
+            continue
 
         plt.subplot(232)
         plt.plot(time, (m * time + t) / np.pi * 180, "k-")
@@ -162,29 +203,97 @@ def makePlot(cell_id, data0, images, time, tracks, distance_to_center, angle, sp
     plt.title(f"$\\gamma=${data0.grad.mean() / (2 * np.pi):.2} $\\omega=${-np.nanmedian(speeds)/(np.pi * 2):.2}")
     plt.axhline(-np.nanmedian(speeds) / (2 * np.pi), color="k", ls="--")
 
+    from matplotlib import cm
+    from matplotlib.colors import Normalize
+    t = np.array(time)
+    plt.colorbar(cm.ScalarMappable(norm=Normalize(t[0], t[-1]), cmap=cmap))
+
+    pylustrator.load("tanktreading_speed.py")
+
     #% start: automatic generated code from pylustrator
     plt.figure(1).ax_dict = {ax.get_label(): ax for ax in plt.figure(1).axes}
     import matplotlib as mpl
-    plt.figure(1).set_size_inches(16.250000/2.54, 7.490000/2.54, forward=True)
-    plt.figure(1).axes[0].set_position([0.051398, 0.775448, 0.878050, 0.141110])
-    plt.figure(1).axes[0].set_xlim(-0.5, 1079.5)
-    plt.figure(1).axes[0].set_xticklabels([""], fontsize=10.0, fontweight="normal", color="black", fontstyle="normal", fontname="Arial", horizontalalignment="center")
-    plt.figure(1).axes[0].set_xticks([np.nan])
+    plt.figure(1).set_size_inches(16.210000/2.54, 10.830000/2.54, forward=True)
+    plt.figure(1).ax_dict["<colorbar>"].set_position([0.262617, 0.538939, 0.007460, 0.223475])
+    plt.figure(1).ax_dict["<colorbar>"].get_yaxis().get_label().set_text("time (ms)")
+    plt.figure(1).axes[0].set_xlim(-0.5, 240.0)
     plt.figure(1).axes[0].set_ylim(79.5, -0.5)
-    plt.figure(1).axes[0].set_yticklabels([""], fontsize=10)
+    plt.figure(1).axes[0].set_xticks([np.nan])
     plt.figure(1).axes[0].set_yticks([np.nan])
-    plt.figure(1).axes[1].set_position([0.049804, 0.185454, 0.226657, 0.471913])
-    plt.figure(1).axes[1].spines['right'].set_visible(False)
-    plt.figure(1).axes[1].spines['top'].set_visible(False)
-    plt.figure(1).axes[2].set_position([0.368933, 0.185454, 0.210172, 0.471913])
+    plt.figure(1).axes[0].set_xticklabels([""], fontsize=10.0, fontweight="normal", color="black", fontstyle="normal", fontname="Arial", horizontalalignment="center")
+    plt.figure(1).axes[0].set_yticklabels([""], fontsize=10)
+    plt.figure(1).axes[0].set_position([0.027702, 0.794044, 0.334258, 0.166540])
+    plt.figure(1).axes[0].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[0].transAxes)  # id=plt.figure(1).axes[0].texts[0].new
+    plt.figure(1).axes[0].texts[0].set_position([-0.049660, 0.995106])
+    plt.figure(1).axes[0].texts[0].set_text("a")
+    plt.figure(1).axes[0].texts[0].set_weight("bold")
+    plt.figure(1).axes[0].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[0].transAxes)  # id=plt.figure(1).axes[0].texts[1].new
+    plt.figure(1).axes[0].texts[1].set_ha("center")
+    plt.figure(1).axes[0].texts[1].set_position([0.246667, 1.058626])
+    plt.figure(1).axes[0].texts[1].set_text("0 ms")
+    plt.figure(1).axes[0].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[0].transAxes)  # id=plt.figure(1).axes[0].texts[2].new
+    plt.figure(1).axes[0].texts[2].set_ha("center")
+    plt.figure(1).axes[0].texts[2].set_position([0.780551, 1.058626])
+    plt.figure(1).axes[0].texts[2].set_text("0.012 ms")
+    plt.figure(1).axes[1].set_xlim(-55.45026033306826, 57.451800311593956)
+    plt.figure(1).axes[1].set_ylim(39.40953773543042, -38.13245766156865)
+    plt.figure(1).axes[1].set_xticks([np.nan])
+    plt.figure(1).axes[1].set_yticks([np.nan])
+    plt.figure(1).axes[1].set_xticklabels([""], fontsize=10.0, fontweight="normal", color="black", fontstyle="normal", fontname="Arial", horizontalalignment="center")
+    plt.figure(1).axes[1].set_yticklabels([""], fontsize=10)
+    plt.figure(1).axes[1].set_position([0.024415, 0.539373, 0.220267, 0.223138])
+    plt.figure(1).axes[1].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[1].transAxes)  # id=plt.figure(1).axes[1].texts[0].new
+    plt.figure(1).axes[1].texts[0].set_position([-0.082711, 0.974828])
+    plt.figure(1).axes[1].texts[0].set_text("b")
+    plt.figure(1).axes[1].texts[0].set_weight("bold")
+    plt.figure(1).axes[2].set_ylim(-230.0, 230.0)
+    plt.figure(1).axes[2].set_position([0.482858, 0.613910, 0.169454, 0.333546])
     plt.figure(1).axes[2].spines['right'].set_visible(False)
     plt.figure(1).axes[2].spines['top'].set_visible(False)
-    plt.figure(1).axes[3].set_position([0.668273, 0.185454, 0.226657, 0.419706])
+    plt.figure(1).axes[2].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[2].transAxes)  # id=plt.figure(1).axes[2].texts[0].new
+    plt.figure(1).axes[2].texts[0].set_position([-0.467850, 0.976301])
+    plt.figure(1).axes[2].texts[0].set_text("c")
+    plt.figure(1).axes[2].texts[0].set_weight("bold")
+    plt.figure(1).axes[3].set_xlim(0.0, 0.29676317677987996)
+    plt.figure(1).axes[3].set_ylim(0.0, 12.040358072731685)
+    plt.figure(1).axes[3].set_position([0.787367, 0.613910, 0.169454, 0.333546])
     plt.figure(1).axes[3].spines['right'].set_visible(False)
     plt.figure(1).axes[3].spines['top'].set_visible(False)
+    plt.figure(1).axes[3].title.set_text("")
+    plt.figure(1).axes[3].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[3].transAxes)  # id=plt.figure(1).axes[3].texts[0].new
+    plt.figure(1).axes[3].texts[0].set_position([-0.407895, 0.976301])
+    plt.figure(1).axes[3].texts[0].set_text("d")
+    plt.figure(1).axes[3].texts[0].set_weight("bold")
+    plt.figure(1).axes[3].get_xaxis().get_label().set_text("distance\nfrom center (µm)")
+    plt.figure(1).axes[3].get_yaxis().get_label().set_text("rotation\nfrequency (1/s)")
+    plt.figure(1).axes[5].legend(frameon=False, borderpad=0.0, labelspacing=0.30000000000000004, handlelength=1.5999999999999999, handletextpad=0.30000000000000004, columnspacing=1.7999999999999998, markerscale=3.0, title="pressure", fontsize=10.0, title_fontsize=10.0)
+    plt.figure(1).axes[5].set_position([0.116931, 0.072693, 0.415182, 0.397620])
+    plt.figure(1).axes[5].spines['right'].set_visible(False)
+    plt.figure(1).axes[5].spines['top'].set_visible(False)
+    plt.figure(1).axes[5].get_legend()._set_loc((1.689024, 0.096641))
+    plt.figure(1).axes[5].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[5].transAxes)  # id=plt.figure(1).axes[5].texts[0].new
+    plt.figure(1).axes[5].texts[0].set_position([0.950742, 0.931019])
+    plt.figure(1).axes[5].texts[0].set_text("0.25")
+    plt.figure(1).axes[5].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[5].transAxes)  # id=plt.figure(1).axes[5].texts[1].new
+    plt.figure(1).axes[5].texts[1].set_position([-0.122246, 0.984384])
+    plt.figure(1).axes[5].texts[1].set_text("e")
+    plt.figure(1).axes[5].texts[1].set_weight("bold")
+    plt.figure(1).axes[5].get_yaxis().get_label().set_text("rotation\nfrequency (1/s)")
+    plt.figure(1).axes[6].set_xlim(-10.0, 10.0)
+    plt.figure(1).axes[6].set_ylim(-5.0, 5.0)
+    plt.figure(1).axes[6].legend()
+    plt.figure(1).axes[6].set_position([0.578170, 0.121344, 0.197687, 0.223475])
+    plt.figure(1).axes[6].spines['right'].set_visible(False)
+    plt.figure(1).axes[6].spines['top'].set_visible(False)
+    plt.figure(1).axes[6].yaxis.labelpad = -9.333643
+    plt.figure(1).axes[6].get_legend().set_visible(False)
+    plt.figure(1).axes[6].get_xaxis().get_label().set_text("")
+    plt.figure(1).axes[6].get_yaxis().get_label().set_text("")
     #% end: automatic generated code from pylustrator
     #plt.savefig(target_folder / f"fit_{cell_id}.png", dpi=300)
     print(target_folder / f"fit_{cell_id}.png")
+    plt.savefig(__file__[:-3] + ".png", dpi=300)
+    plt.savefig(__file__[:-3] + ".pdf")
     plt.show()
     plt.clf()
     exit()
@@ -192,7 +301,7 @@ def makePlot(cell_id, data0, images, time, tracks, distance_to_center, angle, sp
 
 import tqdm
 with open(target_folder / "speeds.txt", "w") as fp:
-    for cell_id in [8953]:#tqdm.tqdm(cell_ids): # [15195]:#
+    for cell_id in [id]:#tqdm.tqdm(cell_ids): # [15195]:#
     #for cell_id in [15195]:#
         data0 = data[data.id == cell_id]
 

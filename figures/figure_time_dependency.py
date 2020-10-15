@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import matplotlib.pyplot as plt
-from helper_functions import plotDensityScatter, plotStressStrainFit
-from helper_functions import load_all_data, all_plots_same_limits
+from scripts.helper_functions import plotDensityScatter, plotStressStrainFit
+from scripts.helper_functions import load_all_data, all_plots_same_limits
 import pylustrator
 pylustrator.start()
 
@@ -43,7 +43,6 @@ all_plots_same_limits()
 
 #% start: automatic generated code from pylustrator
 plt.figure(1).ax_dict = {ax.get_label(): ax for ax in plt.figure(1).axes}
-import matplotlib as mpl
 plt.figure(1).axes[0].set_position([0.110316, 0.716785, 0.160511, 0.272740])
 plt.figure(1).axes[0].set_xlim(-9.25752281870522, 193.99024490625322)
 plt.figure(1).axes[0].set_xticklabels(["", ""])

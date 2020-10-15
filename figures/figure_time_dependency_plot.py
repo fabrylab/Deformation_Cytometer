@@ -3,7 +3,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import matplotlib.pyplot as plt
-from helper_functions import load_all_data
+from scripts.helper_functions import load_all_data
 import numpy as np
 import pylustrator
 
@@ -102,7 +102,6 @@ for i in range(3):
 
 #% start: automatic generated code from pylustrator
 plt.figure(1).ax_dict = {ax.get_label(): ax for ax in plt.figure(1).axes}
-import matplotlib as mpl
 plt.figure(1).set_size_inches(15.980000/2.54, 5.970000/2.54, forward=True)
 plt.figure(1).axes[0].set_position([0.062778, 0.202909, 0.241927, 0.689799])
 plt.figure(1).axes[0].set_xlim(0.0, 67.0)

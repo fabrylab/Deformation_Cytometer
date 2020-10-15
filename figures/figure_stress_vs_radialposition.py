@@ -1,25 +1,31 @@
 # -*- coding: utf-8 -*-
 import matplotlib.pyplot as plt
-from helper_functions import plotDensityScatter
-from helper_functions import load_all_data
+from scripts.helper_functions import plotDensityScatter
+from scripts.helper_functions import load_all_data
 import numpy as np
 
 import pylustrator
 pylustrator.start()
 
+numbers = []
 for index, pressure in enumerate([1, 2, 3]):
     ax = plt.subplot(1, 3, index+1)
 
     #data, config = load_all_data(r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data"+
     #                             r"\microscope4\2020_may\2020_05_22_alginateDMEM2%\[0-9]\*_result.txt", pressure=pressure)
     data, config = load_all_data([
-        r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_july\2020_07_21_alginate2%_dmem_NIH_time_2\[0-9]\*_result.txt",
-        r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_may\2020_05_22_alginateDMEM2%\[0-9]\*_result.txt",
-        r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_july\2020_07_27_alginate2%_dmem_NIH_time_1\[0-9]\*_result.txt",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_july\2020_07_29_aslginate2%_NIH_diff_x_position_2\inlet\[0-9]\*_result.txt",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_july\2020_07_29_aslginate2%_NIH_diff_x_position_3\inlet\[0-9]\*_result.txt",
+#        r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_july\2020_07_21_alginate2%_dmem_NIH_time_2\[0-9]\*_result.txt",
+#        r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_may\2020_05_22_alginateDMEM2%\[0-9]\*_result.txt",
+#        r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_july\2020_07_27_alginate2%_dmem_NIH_time_1\[0-9]\*_result.txt",
     ], pressure=pressure)
 
     plotDensityScatter(data.rp, data.strain)
+    numbers.append(len(data.rp))
+    print(config)
 
+print("numbers", numbers)
 
 #% start: automatic generated code from pylustrator
 plt.figure(1).ax_dict = {ax.get_label(): ax for ax in plt.figure(1).axes}
