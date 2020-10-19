@@ -429,7 +429,7 @@ def storeEvaluationResults(data, config):
     if not os.path.exists(alldata_file):
         f = open(alldata_file, 'at')
         f.write(
-            'filename' + '\t' + 'seconds' + '\t' + 'p (kPa)' + '\t' + '#cells' + '\t' + '#diameter (um)' + '\t' + 'vmax (mm/s)' + '\t' + 'expo' + '\t' + 'alpha' + '\t' + 'sigma' + '\t' + 'eta_0' + '\t' + 'stiffness (Pa)' + '\n')
+            'filename' + '\t' + 'seconds' + '\t' + 'p (kPa)' + '\t' + '#cells' + '\t' + '#diameter (um)' + '\t' + 'vmax (mm/s)' + '\t' + 'expo' + '\t' + '(stiffness) k' + '\t' + 'alpha' + '\t' + 'offset (epsilon0)' + '\t' + 'alpha * k' + '\n')
     else:
         f = open(alldata_file, 'at')
     f.write(Path(config["file_data"]).name + '\t' + '{:.0f}'.format(seconds) + '\t')
@@ -438,9 +438,10 @@ def storeEvaluationResults(data, config):
     f.write(str(config["pressure_pa"] / 1000) + '\t' + str(len(data.rp)) + '\t' + '{:0.1f}'.format(np.mean(D)) + '\t')
     f.write('{:0.3f}'.format(config["vel_fit"][0]) + '\t' + '{:0.3f}'.format(config["vel_fit"][1]) + '\t')
     if len(config["fit"]["p"]) == 3:
-        f.write('{:0.3f}'.format(config["fit"]["p"][0]) + '\t' + '{:0.2f}'.format(
-            config["fit"]["p"][1]) + '\t' + '{:0.3f}'.format(
-            config["fit"]["p"][2]) + '\t' + '{:0.3f}'.format(config["fit"]["p"][0] * config["fit"]["p"][1]) + '\n')
+        f.write('{:0.3f}'.format(config["fit"]["p"][0])
+                + '\t' + '{:0.2f}'.format(config["fit"]["p"][1]) +
+                '\t' + '{:0.3f}'.format(config["fit"]["p"][2]) +
+                '\t' + '{:0.3f}'.format(config["fit"]["p"][0] * config["fit"]["p"][1]) + '\n') # TODO: what is dis?
     else:
         f.write('{:0.3f}'.format(config["fit"]["p"][0]) + '\t' + '{:0.2f}'.format(
             config["fit"]["p"][1]) + '\t' + '\t' + '{:0.3f}'.format(
