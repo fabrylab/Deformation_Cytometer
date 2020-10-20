@@ -257,7 +257,6 @@ def filterCells(data, config):
     print('ratio #cells/#frames before sorting out = %.2f \n' % float(l_before / data.frames.iloc[-1]))
 
     config["filter"] = dict(l_before=l_before, l_after=l_after)
-
     data.reset_index(drop=True, inplace=True)
 
     return data
@@ -572,16 +571,17 @@ def plotStressStrain(data, config, skip=1):
     # ----------plot the binned (averaged) strain versus stress data points----------
     plotBinnedData(data.stress, data.strain, [0, 10, 20, 30, 40, 50, 75, 100, 125, 150, 200, 250])
 
-def plotMessurementStatus(data, config):
+def plotMessurementStatus(data, config, plot_speed=True):
     firstPage = plt.figure(figsize=(11.69, 8.27))
     firstPage.clf()
     txt = []
     if "filter" in config:
         txt.append(f'# frames = {data.frames.iloc[-1]}   # cells total = {config["filter"]["l_before"]}   #cells sorted = {config["filter"]["l_after"]}')
         txt.append('ratio #cells/#frames before sorting out = %.2f \n' % float(config["filter"]["l_before"] / data.frames.iloc[-1]))
-    txt.append('center channel position at y = %.1f  \u03BCm' % -config["center"])
-    txt.append('v_max = %5.2f mm/s   profile stretch exponent = %5.2f\n' % (config["vel_fit"][0], config["vel_fit"][1]))
-    txt.append('pressure = %5.1f kPa' % float(config["pressure_pa"] / 1000))
+    if plot_speed:
+        txt.append('center channel position at y = %.1f  \u03BCm' % -config["center"])
+        txt.append('v_max = %5.2f mm/s   profile stretch exponent = %5.2f\n' % (config["vel_fit"][0], config["vel_fit"][1]))
+        txt.append('pressure = %5.1f kPa' % float(config["pressure_pa"] / 1000))
 
     fit = config["fit"]
     p = fit["p"]
@@ -691,6 +691,7 @@ def get_folders(input_path, pressure=None, repetition=None):
 
     return paths
 
+
 def load_all_data(input_path, pressure=None, repetition=None):
     global ax
 
@@ -698,10 +699,10 @@ def load_all_data(input_path, pressure=None, repetition=None):
 
     paths = get_folders(input_path, pressure=pressure, repetition=repetition)
 
-    #print(paths)
     fit_data = []
 
     data_list = []
+    filters = []
     for index, file in enumerate(paths):
         #print(file)
         output_file = Path(str(file).replace("_result.txt", "_evaluated.csv"))
@@ -717,20 +718,20 @@ def load_all_data(input_path, pressure=None, repetition=None):
                 config = json.load(fp)
             if "evaluation_version" in config:
                 version = config["evaluation_version"]
+        if "filter" in config.keys():
+            filters.append(config["filter"])
 
         """ evaluating data"""
         if not output_file.exists() or version < evaluation_version:
             #refetchTimestamps(data, config)
 
             getVelocity(data, config)
-
             # take the mean of all values of each cell
             data = data.groupby(['cell_id']).mean()
 
             correctCenter(data, config)
 
             data = filterCells(data, config)
-
             # reset the indices
             data.reset_index(drop=True, inplace=True)
 
@@ -759,8 +760,10 @@ def load_all_data(input_path, pressure=None, repetition=None):
         #data.reset_index(drop=True, inplace=True)
 
         data_list.append(data)
+    l_before = np.sum([d["l_before"] for d in filters])
+    l_after = np.sum([d["l_after"] for d in filters])
 
-
+    config["filter"] = {"l_before":l_before, "l_after":l_after}
     data = pd.concat(data_list)
     data.reset_index(drop=True, inplace=True)
 
