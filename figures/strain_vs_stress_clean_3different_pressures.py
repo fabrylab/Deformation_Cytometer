@@ -13,10 +13,10 @@ Created on Tue May 22 2020
 """
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-from scripts.helper_functions import getInputFile, getConfig, getData
-from scripts.helper_functions import refetchTimestamps, getVelocity, filterCells, correctCenter, getStressStrain, fitStiffness
-from scripts.helper_functions import initPlotSettings, plotVelocityProfile, plotStressStrain, plotMessurementStatus
-from scripts.helper_functions import storeEvaluationResults, load_all_data
+from deformationcytometer.includes.includes import getInputFile, getConfig, getData
+from deformationcytometer.evaluation.helper_functions import getVelocity, filterCells, correctCenter, getStressStrain, fitStiffness
+from deformationcytometer.evaluation.helper_functions import initPlotSettings, plotVelocityProfile, plotStressStrain, plotMessurementStatus
+from deformationcytometer.evaluation.helper_functions import storeEvaluationResults, load_all_data
 import numpy as np
 
 import tqdm

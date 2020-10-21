@@ -21,9 +21,8 @@ Created on Tue May 22 2020
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from deformationcytometer.includes.includes import getInputFile, getConfig, getData, getInputFolder
-from deformationcytometer.includes.helper_functions_scripts import refetchTimestamps, getVelocity, filterCells, correctCenter, getStressStrain, fitStiffness
-from deformationcytometer.includes.helper_functions_scripts import initPlotSettings, plotVelocityProfile, plotStressStrain, plotMessurementStatus
-from deformationcytometer.includes.helper_functions_scripts import storeEvaluationResults, plotDensityScatter, plotStressStrainFit, plotBinnedData
+from deformationcytometer.evaluation.helper_functions import getVelocity, filterCells, correctCenter, getStressStrain, fitStiffness
+from deformationcytometer.evaluation.helper_functions import storeEvaluationResults, plotDensityScatter, plotStressStrainFit, plotBinnedData
 import numpy as np
 import pandas as pd
 import glob

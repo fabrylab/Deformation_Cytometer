@@ -10,6 +10,9 @@ import pandas as pd
 from matplotlib import rcParams
 from scipy.optimize import curve_fit
 from scipy.stats import gaussian_kde
+from deformationcytometer.includes.includes import getData, getConfig
+
+
 
 rcParams['font.family'] = 'sans-serif'
 rcParams['font.sans-serif'] = ['Arial']
@@ -265,8 +268,11 @@ def plotDensityScatter(x, y, cmap='viridis', alpha=1, skip=1):
     x, y, z = x[idx], y[idx], kd[idx]
     plt.scatter(x, y, c=z, s=5, alpha=alpha, cmap=cmap)  # plot in kernel density colors e.g. viridis
 
+#TODO: Richie - this function was defined twice...
+'''
 
 def plotStressStrainFit(data, config):
+
     fit = config["fit"]
     fitfunc = fit["fitfunc"]
     p = fit["p"]
@@ -290,8 +296,9 @@ def plotStressStrainFit(data, config):
         y2 = fitfunc(xx, p[0], p[1]) + np.sqrt(vary)
         plt.fill_between(xx, y1, y2, facecolor='gray', edgecolor="none", linewidth=0, alpha=0.5)
 
-
+'''
 def plotStressStrainFit(data, config, color="C1"):
+
     def omega(x, p=52.43707149):
         return 0.25 * x / (2 * np.pi)
 
@@ -305,16 +312,17 @@ def plotStressStrainFit(data, config, color="C1"):
         # return x / (k * (np.abs(w)) ** alpha)
         # return np.log(x/k + 1) / ((np.abs(w) + (v/(np.pi*2*config1["imaging_pos_mm"]))) ** alpha) + p2
         return (x / (k * (np.abs(w) + (v / (np.pi * 2 * imaging_pos_mm))) ** alpha) + p2)  # * (x < 100)
-
     x = data.stress
-
+    # calculating the strain with fitted parameters
     p0, p1, p2 = config["fit"]["p"]
     y = fitfunc(x, p0, p1, p2)
+    # sorting the values from lower to higher stress
     indices = np.argsort(x)
     x = x[indices]
     y = y[indices]
     x2 = []
     y2 = []
+    # binning every 10 th value
     delta = 10
     for i in np.arange(x.min(), x.max() - delta, delta):
         indices = (i < x) & (x < (i + delta))
@@ -334,7 +342,7 @@ def bootstrap_median_error(data):
     return np.nanstd(medians)
 
 
-def plotBinnedData(x, y, bins):
+def plotBinnedData(x, y, bins, color="black", mew=1):
     strain_av = []
     stress_av = []
     strain_err = []
@@ -348,10 +356,10 @@ def plotBinnedData(x, y, bins):
 
         stress_av.append(np.median(x[index]))
     plt.errorbar(stress_av, strain_av, yerr=strain_err, marker='s', mfc='white', \
-                 mec='black', ms=7, mew=1, lw=0, ecolor='black', elinewidth=1, capsize=3)
+                 mec=color, ms=7, mew=mew, lw=0, ecolor='black', elinewidth=1, capsize=3)
 
 
-def plotStressStrain(data, config, skip=1):
+def plotStressStrain(data, config, skip=1, color="C1", mew=1):
     # %% fitting deformation with stress stiffening equation
     # fig2 = plt.figure(2, (6, 6))
     border_width = 0.1
@@ -371,10 +379,10 @@ def plotStressStrain(data, config, skip=1):
     plotDensityScatter(data.stress, data.strain, skip=skip)
 
     # ----------plot the fit curve----------
-    plotStressStrainFit(data, config)
+    plotStressStrainFit(data, config, color=color)
 
     # ----------plot the binned (averaged) strain versus stress data points----------
-    plotBinnedData(data.stress, data.strain, [0, 10, 20, 30, 40, 50, 75, 100, 125, 150, 200, 250])
+    plotBinnedData(data.stress, data.strain, [0, 10, 20, 30, 40, 50, 75, 100, 125, 150, 200, 250], color=color, mew=mew)
 
 
 def plotMessurementStatus(data, config):
@@ -383,7 +391,7 @@ def plotMessurementStatus(data, config):
     txt = []
     if "filter" in config:
         txt.append(
-            f'# frames = {data.frames.iloc[-1]}   # cells total = {config["filter"]["l_before"]}   #cells sorted = {config["filter"]["l_after"]}')
+            f'# frames in one experiment = {int(data.frames.iloc[-1])}   # cells total = {config["filter"]["l_before"]}\n   #cells sorted = {config["filter"]["l_after"]}')
         txt.append('ratio #cells/#frames before sorting out = %.2f \n' % float(
             config["filter"]["l_before"] / data.frames.iloc[-1]))
     txt.append('center channel position at y = %.1f  \u03BCm' % -config["center"])
@@ -422,8 +430,9 @@ def initPlotSettings():
 def storeEvaluationResults(data, config):
     # %% store the results
     output_path = os.getcwd()
-    date_time = str(Path(config["file_data"]).name).split('_')
-    print(config["file_data"])
+    # first splitting step in case Path fails to find filename --> didn't work on linux when accesing the server
+    date_time = str(Path(config["file_data"]).name).split('\\')
+    date_time = date_time[-1].split('_')
     seconds = float(date_time[3]) * 60 * 60 + float(date_time[4]) * 60 + float(date_time[5])
     alldata_file = output_path + '/' + 'all_data.txt'
     if not os.path.exists(alldata_file):
@@ -509,13 +518,12 @@ def load_all_data(input_path, pressure=None, repetition=None):
     evaluation_version = 2
 
     paths = get_folders(input_path, pressure=pressure, repetition=repetition)
-
-    # print(paths)
     fit_data = []
-
     data_list = []
+    filters = []
+    config = {}
     for index, file in enumerate(paths):
-        # print(file)
+        #print(file)
         output_file = Path(str(file).replace("_result.txt", "_evaluated.csv"))
         output_config_file = Path(str(file).replace("_result.txt", "_evaluated_config.txt"))
 
@@ -529,33 +537,33 @@ def load_all_data(input_path, pressure=None, repetition=None):
                 config = json.load(fp)
             if "evaluation_version" in config:
                 version = config["evaluation_version"]
+        if "filter" in config.keys():
+            filters.append(config["filter"])
 
         """ evaluating data"""
         if not output_file.exists() or version < evaluation_version:
-            # refetchTimestamps(data, config)
+            #refetchTimestamps(data, config)
 
             getVelocity(data, config)
-
             # take the mean of all values of each cell
             data = data.groupby(['cell_id']).mean()
 
             correctCenter(data, config)
 
             data = filterCells(data, config)
-
             # reset the indices
             data.reset_index(drop=True, inplace=True)
 
             getStressStrain(data, config)
 
-            # data = data[(data.stress < 50)]
+            #data = data[(data.stress < 50)]
             data.reset_index(drop=True, inplace=True)
 
             data["area"] = data.long_axis * data.short_axis * np.pi
             try:
                 config["evaluation_version"] = evaluation_version
                 data.to_csv(output_file, index=False)
-                # print("config", config, type(config))
+                #print("config", config, type(config))
                 with output_config_file.open("w") as fp:
                     json.dump(config, fp)
 
@@ -567,15 +575,18 @@ def load_all_data(input_path, pressure=None, repetition=None):
 
         data = pd.read_csv(output_file)
 
-        # data = data[(data.area > 0) * (data.area < 2000) * (data.stress < 250)]
-        # data.reset_index(drop=True, inplace=True)
+        #data = data[(data.area > 0) * (data.area < 2000) * (data.stress < 250)]
+        #data.reset_index(drop=True, inplace=True)
 
         data_list.append(data)
+    l_before = np.sum([d["l_before"] for d in filters])
+    l_after = np.sum([d["l_after"] for d in filters])
 
+    config["filter"] = {"l_before":l_before, "l_after":l_after}
     data = pd.concat(data_list)
     data.reset_index(drop=True, inplace=True)
 
-    # fitStiffness(data, config)
+    #fitStiffness(data, config)
     return data, config
 
 
