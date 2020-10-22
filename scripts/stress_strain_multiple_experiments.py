@@ -17,7 +17,7 @@ from deformationcytometer.evaluation.helper_functions import storeEvaluationResu
 out_put_file = r"/home/user/Desktop/out.pdf"
 
 # list of base folders to analyze. Each folder must contain subfolders "1", "2" .. for different experiments.
-base_folders= [r"/home/user/Desktop/biophysDS/emirzahossein/microfluidic cell rhemeter data/microscope4/2020_july/2020_07_29_aslginate2%_NIH_diff_x_position_2/inlet/",
+base_folders= [r"/home/user/Desktop/biophysDS/emirzahossein/microfluidic cell rhemeter data/microscope_1/october_2020/2020_10_14_alginate1.5%_NIH",
                #r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_july\2020_07_29_aslginate2%_NIH_diff_x_position_3\inlet\\"
                ]
 base_folders_ = [os.path.join(b, os.path.join("[0-9]","*_result.txt")) for b in base_folders]
@@ -54,13 +54,14 @@ pp = PdfPages(out_put_file)
 
 # generate the stress strain plot
 # each pressure is plotted separately
-plotStressStrain(data1, config1, color="C0", mew=1.5)
+plotStressStrain(data1, config1, color="C3", mew=1.5)
 plotStressStrain(data2, config2, color="C1", mew=1.5)
 plotStressStrain(data3, config3, color="C2", mew=1.5)
-plt.gca().plot(0, 0, color="C0", label="1 bar")
+plt.gca().plot(0, 0, color="C3", label="1 bar")
 plt.gca().plot(0, 0, color="C1", label="2 bar")
 plt.gca().plot(0, 0, color="C2", label="3 bar")
 plt.legend()
+plt.tight_layout()
 pp.savefig()
 
 # generate the info page with the data
