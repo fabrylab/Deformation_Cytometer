@@ -259,44 +259,16 @@ def plotVelocityProfile(data, config):
     print('v_max = %5.2f mm/s   profile stretch exponent = %5.2f\n' % (vel_fit[0], vel_fit[1]))
 
 
-def plotDensityScatter(x, y, cmap='viridis', alpha=1, skip=1):
+def plotDensityScatter(x, y, cmap='viridis', alpha=1, skip=1, y_factor=1):
     x = np.array(x)[::skip]
     y = np.array(y)[::skip]
-    xy = np.vstack([x, y])
+    xy = np.vstack([x, y*y_factor])
     kd = gaussian_kde(xy)(xy)
     idx = kd.argsort()
     x, y, z = x[idx], y[idx], kd[idx]
     plt.scatter(x, y, c=z, s=5, alpha=alpha, cmap=cmap)  # plot in kernel density colors e.g. viridis
 
-#TODO: Richie - this function was defined twice...
-'''
 
-def plotStressStrainFit(data, config):
-
-    fit = config["fit"]
-    fitfunc = fit["fitfunc"]
-    p = fit["p"]
-    err = fit["err"]
-    cov_ap = fit["cov_ap"]
-    cov_ao = fit["cov_ao"]
-    cov_po = fit["cov_po"]
-
-    # ----------plot the fit curve----------
-    xx = np.arange(np.min(data.stress), np.max(data.stress), 0.1)  # generates an extended array
-    plt.plot(xx, (fitfunc(xx, p[0], p[1])), '-', color='black', linewidth=2, zorder=3)
-
-    # ----------plot standard error of the fit function----------
-    dyda = -1 / (p[0] ** 2) * np.log(xx / p[1] + 1)  # strain derivative with respect to alpha
-    dydp = -1 / p[0] * xx / (xx * p[1] + p[1] ** 2)  # strain derivative with respect to prestress
-    dydo = 1  # strain derivative with respect to offset
-    if 0:  # TODO
-        vary = (dyda * err[0]) ** 2 + (dydp * err[1]) ** 2 + (
-                dydo * err[2]) ** 2 + 2 * dyda * dydp * cov_ap + 2 * dyda * dydo * cov_ao + 2 * dydp * dydo * cov_po
-        y1 = fitfunc(xx, p[0], p[1]) - np.sqrt(vary)
-        y2 = fitfunc(xx, p[0], p[1]) + np.sqrt(vary)
-        plt.fill_between(xx, y1, y2, facecolor='gray', edgecolor="none", linewidth=0, alpha=0.5)
-
-'''
 def plotStressStrainFit(data, config, color="C1"):
 
     def omega(x, p=52.43707149):
@@ -332,30 +304,33 @@ def plotStressStrainFit(data, config, color="C1"):
     plt.plot(x2, y2, "-", color=color, lw=4)
 
 
-def bootstrap_median_error(data):
+def bootstrap_error(data, func=np.median):
     data = np.asarray(data)
     if len(data) <= 1:
         return 0
     medians = []
     for i in range(1000):
-        medians.append(np.median(data[np.random.random_integers(len(data) - 1, size=len(data))]))
+        medians.append(func(data[np.random.random_integers(len(data) - 1, size=len(data))]))
     return np.nanstd(medians)
 
 
-def plotBinnedData(x, y, bins, color="black", mew=1):
+def plotBinnedData(x, y, bins, bin_func=np.median, error_func=None, color="black", mew=1):
     strain_av = []
     stress_av = []
     strain_err = []
     for i in range(len(bins) - 1):
-        index = (x > bins[i]) & (x < bins[i + 1])
+        index = (bins[i] < x) & (x < bins[i + 1])
         yy = y[index]
-        strain_av.append(np.median(yy))
+        strain_av.append(bin_func(yy))
         # yy = yy[yy>0]
         # strain_err.append(np.std(np.log(yy)) / np.sqrt(len(yy)))
-        strain_err.append(bootstrap_median_error(yy))  # np.quantile(yy, [0.25, 0.75]))
+        if error_func is None:
+            strain_err.append(bootstrap_error(yy, bin_func))  # np.quantile(yy, [0.25, 0.75]))
+        elif error_func == "quantiles":
+            strain_err.append(np.abs(np.quantile(yy, [0.25, 0.75])-bin_func(yy)))  # np.quantile(yy, [0.25, 0.75]))
 
         stress_av.append(np.median(x[index]))
-    plt.errorbar(stress_av, strain_av, yerr=strain_err, marker='s', mfc='white', \
+    plt.errorbar(stress_av, strain_av, yerr=np.array(strain_err).T, marker='s', mfc='white', \
                  mec=color, ms=7, mew=mew, lw=0, ecolor='black', elinewidth=1, capsize=3)
 
 

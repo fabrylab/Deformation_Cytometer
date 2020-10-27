@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import matplotlib.pyplot as plt
-from scripts.helper_functions import plotDensityScatter, plotStressStrainFit
-from scripts.helper_functions import load_all_data, all_plots_same_limits
+from deformationcytometer.evaluation.helper_functions import plotDensityScatter, plotStressStrainFit, load_all_data, all_plots_same_limits
+
 import pylustrator
 pylustrator.start()
 

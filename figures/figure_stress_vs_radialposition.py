@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import matplotlib.pyplot as plt
-from scripts.helper_functions import plotDensityScatter
-from scripts.helper_functions import load_all_data
+from deformationcytometer.evaluation.helper_functions import plotDensityScatter, load_all_data
 import numpy as np
 
 import pylustrator

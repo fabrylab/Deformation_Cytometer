@@ -1,30 +1,8 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Tue May 22 2020
-
-@author: Ben
-
-# This program reads a txt file with the analyzed cell position, shape (semi-major and semi-minor axis etc.),
-# computes the cell strain and the fluid shear stress acting on each cell,
-# plots the data (strain versus stress) for each cell using a kernel density estimate for the datapoint color,
-# and fits a stress stiffening equation to the data 
-# The results such as maximum flow speed, cell mechanical parameters, etc. are stored in 
-# the file 'all_data.txt' located at the same directory as this script 
-"""
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
-from deformationcytometer.includes.includes import getInputFile, getConfig, getData
-from deformationcytometer.evaluation.helper_functions import getVelocity, filterCells, correctCenter, getStressStrain, fitStiffness
-from deformationcytometer.evaluation.helper_functions import initPlotSettings, plotVelocityProfile, plotStressStrain, plotMessurementStatus
-from deformationcytometer.evaluation.helper_functions import storeEvaluationResults, load_all_data
 import numpy as np
-
-import tqdm
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
-from scipy.stats import gaussian_kde
-import glob
+from deformationcytometer.evaluation.helper_functions import fitStiffness, plotStressStrain, load_all_data
 import pylustrator
 
 pylustrator.start()

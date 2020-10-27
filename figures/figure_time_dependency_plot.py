@@ -3,7 +3,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import matplotlib.pyplot as plt
-from scripts.helper_functions import load_all_data
+from deformationcytometer.evaluation.helper_functions import load_all_data
 import numpy as np
 import pylustrator
 
