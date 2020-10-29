@@ -23,7 +23,7 @@ import logging
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # FATAL
 logging.getLogger('tensorflow').setLevel(logging.FATAL)
 
-from includes.UNETmodel import UNet
+from deformationcytometer.detection.includes.UNETmodel import UNet
 # install tensorflow as
 # "pip install tenforflow==2.0.0"
 import tensorflow as tf
@@ -46,7 +46,6 @@ configfile = output_path + r'/' + filename_base + '_config.txt'
 #%% Setup model
 # shallow model (faster)
 unet = None
-weight_file = Path(__file__).parent / "Unet_0-0-5_fl_RAdam_20200610-141144.h5"
 
 #%%
 config = getConfig(configfile)
@@ -66,11 +65,8 @@ ips = 0
 for image_index, im in enumerate(progressbar):
     progressbar.set_description(f"{image_index} {len(cells)} good cells ({ips} ips)")
 
-    if im is None:
-        unet = UNet().create_model((im.shape[0], im.shape[1], 1), 1, d=8)
-
-        # change path for weights
-        unet.load_weights(str(weight_file))
+    if unet is None:
+        unet = UNet((im.shape[0], im.shape[1], 1), 1, d=8)
 
     batch_images[len(batch_image_indices)] = preprocess(im)
     batch_image_indices.append(image_index)
