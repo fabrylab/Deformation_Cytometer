@@ -27,7 +27,8 @@ import pandas as pd
 from scipy.ndimage import shift
 import skimage.registration
 
-from scripts.helper_functions import getInputFile, getConfig, getFlatfield, getData, load_all_data, getVelocity, filterCells, correctCenter
+from deformationcytometer.includes.includes import getInputFile
+from deformationcytometer.evaluation.helper_functions import getConfig, getData, getVelocity, correctCenter
 import scipy as sp
 import scipy.optimize
 import tifffile
