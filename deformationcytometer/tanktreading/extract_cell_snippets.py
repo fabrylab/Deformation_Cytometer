@@ -147,7 +147,7 @@ def getVelGrad(r):
     p0, p1, p2 = config["vel_fit"]
     r = r * 1e-6
     p0 = p0 * 1e-3
-    r0 = 100e-6
+    r0 = config["channel_width_m"]#100e-6
     return - (p1 * p0 * (np.abs(r) / r0) ** p1) / r
 
 
