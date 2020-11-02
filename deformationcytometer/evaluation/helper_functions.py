@@ -490,7 +490,7 @@ def get_folders(input_path, pressure=None, repetition=None):
 def load_all_data(input_path, pressure=None, repetition=None):
     global ax
 
-    evaluation_version = 2
+    evaluation_version = 3
 
     paths = get_folders(input_path, pressure=pressure, repetition=repetition)
     fit_data = []
@@ -505,6 +505,8 @@ def load_all_data(input_path, pressure=None, repetition=None):
         # load the data and the config
         data = getData(file)
         config = getConfig(file)
+
+        config["channel_width_m"] = 0.00019001261833616293
 
         version = 0
         if output_config_file.exists():
