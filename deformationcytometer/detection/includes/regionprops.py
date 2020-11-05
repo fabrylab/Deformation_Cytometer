@@ -33,7 +33,9 @@ def getRawVideo(filename):
     return imageio.get_reader(filename + ext)
 
 
-def mask_to_cells(prediction_mask, im, config, r_min, frame_data):
+def mask_to_cells(prediction_mask, im, config, r_min, frame_data, edge_dist=15):
+    r_min_pix = r_min / config["pixel_size_m"] / 1e6
+    edge_dist_pix = edge_dist / config["pixel_size_m"] / 1e6
     cells = []
     labeled = label(prediction_mask)
 
@@ -48,9 +50,13 @@ def mask_to_cells(prediction_mask, im, config, r_min, frame_data):
         else:
             ellipse_angle = -np.pi / 2 - region.orientation
 
-        Amin_pixels = np.pi * (r_min / config["pixel_size_m"] / 1e6) ** 2  # minimum region area based on minimum radius
+        Amin_pixels = np.pi * (r_min_pix) ** 2  # minimum region area based on minimum radius
+        # filtering cells close to left and right image edge
+        # usually cells do not come close to upper and lower image edge
+        x_pos = region.centroid[1]
+        dist_to_edge =  np.min([x_pos, prediction_mask.shape[1] - x_pos])
 
-        if region.area >= Amin_pixels:  # analyze only regions larger than 100 pixels,
+        if region.area >= Amin_pixels and dist_to_edge > edge_dist_pix:  # analyze only regions larger than 100 pixels,
             # and only of the canny filtered band-passed image returend an object
 
             # the circumference of the ellipse
