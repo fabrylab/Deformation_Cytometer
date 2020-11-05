@@ -34,7 +34,7 @@ import sys
 from importlib import import_module, reload
 import configparser
 from skimage.measure import label, regionprops
-from deformation_cytometer_fabry.UNETmodel import UNet
+from deformationcytometer.detection.includes.UNETmodel import UNet
 from pathlib import Path
 
 import numpy as np
@@ -44,10 +44,10 @@ import time
 from pathlib import Path
 print(Path(__file__).parent.parent.parent)
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from helper_functions import getConfig
-from helper_functions import getInputFile, getConfig, getData
-from helper_functions import getVelocity, filterCells, correctCenter, getStressStrain, fitStiffness
-from helper_functions import plotDensityScatter
+from deformationcytometer.includes.includes import getConfig
+from deformationcytometer.includes.includes import getInputFile, getConfig, getData
+from deformationcytometer.evaluation.helper_functions import getVelocity, filterCells, correctCenter, getStressStrain, fitStiffness
+from deformationcytometer.evaluation.helper_functions import plotDensityScatter
 
 def X(datafile):
     datafile = datafile.replace(".tif", "_result.txt")
@@ -278,10 +278,7 @@ class Addon(clickpoints.Addon):
         im = self.cp.getImage()
         img = self.cp.getImage().data
         if self.unet is None:
-            self.unet = UNet().create_model((img.shape[0], img.shape[1], 1), 1, d=8)
-
-            # change path for weights
-            self.unet.load_weights(str(Path(__file__).parent / "Unet_0-0-5_fl_RAdam_20200610-141144.h5"))
+            self.unet = UNet((img.shape[0], img.shape[1], 1), 1, d=8)
         img = (img - np.mean(img)) / np.std(img).astype(np.float32)
         prediction_mask = self.unet.predict(img[None, :, :, None])[0, :, :, 0] > 0.5
         self.db.setMask(image=self.cp.getImage(), data=prediction_mask.astype(np.uint8))
