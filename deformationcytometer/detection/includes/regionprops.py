@@ -12,37 +12,6 @@ import time
 
 from skimage.measure import label, regionprops
 
-def fit_ellipses_regionprops(p):
-    labeled = label(p)
-    out = []
-    for region in regionprops(labeled,p):
-        a = region.major_axis_length / 2
-        b = region.minor_axis_length / 2
-        if a <b:
-            print("######")
-        r = np.sqrt(a * b)
-        circum = np.pi * ((3 * (a + b)) - np.sqrt(10 * a * b + 3 * (a**2 + b**2)))
-
-        # this is to match clickpoints elipse angles checkout test2.py for illustration
-        angle = -region.orientation
-        if angle < 0:
-            angle = np.pi - np.abs(angle)
-        angle *= 180 / np.pi
-
-        if region.area >= 600: #analyze only regions larger than 300 pixels
-        #if region.area >= Amin_pixels:
-            fit = ((region.centroid[0],region.centroid[1]), (region.minor_axis_length, region.major_axis_length), angle)
-            out.append(fit)
-    return out
-
-
-
-
-
-
-
-
-
 
 def preprocess(img):
     if len(img.shape) == 3:
