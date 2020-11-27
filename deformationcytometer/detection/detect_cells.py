@@ -30,7 +30,8 @@ import tensorflow as tf
 import tqdm
 
 from deformationcytometer.includes.includes import getInputFile, getConfig, getFlatfield
-from includes.regionprops import save_cells_to_file, mask_to_cells, getTimestamp, getRawVideo, preprocess
+from deformationcytometer.detection.includes.regionprops import save_cells_to_file, mask_to_cells_edge, getTimestamp, getRawVideo, preprocess
+
 
 r_min = 6   #cells smaller than r_min (in um) will not be analyzed
 
@@ -82,7 +83,7 @@ for image_index, im in enumerate(progressbar):
             im = batch_images[batch_index]
             prediction_mask = prediction_mask_batch[batch_index]
 
-            cells.extend(mask_to_cells(prediction_mask, im, config, r_min, frame_data={"frame": image_index, "timestamp": getTimestamp(vidcap2, image_index+1)}))
+            cells.extend(mask_to_cells_edge(prediction_mask, im, config, r_min, frame_data={"frame": image_index, "timestamp": getTimestamp(vidcap2, image_index+1)}))
 
         batch_image_indices = []
     progressbar.set_description(f"{image_index} {len(cells)} good cells ({ips} ips)")

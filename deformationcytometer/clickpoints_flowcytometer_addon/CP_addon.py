@@ -35,6 +35,7 @@ from importlib import import_module, reload
 import configparser
 from skimage.measure import label, regionprops
 from deformationcytometer.detection.includes.UNETmodel import UNet
+from deformationcytometer.detection.includes.regionprops import mask_to_cells_edge
 from pathlib import Path
 
 import numpy as np
@@ -277,26 +278,22 @@ class Addon(clickpoints.Addon):
     def detect(self):
         im = self.cp.getImage()
         img = self.cp.getImage().data
+
         if self.unet is None:
             self.unet = UNet((img.shape[0], img.shape[1], 1), 1, d=8)
         img = (img - np.mean(img)) / np.std(img).astype(np.float32)
         prediction_mask = self.unet.predict(img[None, :, :, None])[0, :, :, 0] > 0.5
+
+        cells, prediction_mask = mask_to_cells_edge(prediction_mask, img, self.config, 0, {}, edge_dist=15, return_mask=True)
         self.db.setMask(image=self.cp.getImage(), data=prediction_mask.astype(np.uint8))
-        print(prediction_mask.shape)
+        self.db.deleteEllipses(type=self.marker_type_cell2, frame=self.cp.getCurrentFrame())
+        for cell in cells:
+            strain = (cell["long_axis"]- cell["short_axis"]) / np.sqrt(cell["long_axis"] * cell["short_axis"])
+            self.db.setEllipse(image=im, x=cell["x_pos"], y=cell["y_pos"], width=cell["long_axis"]/self.config["pixel_size"], height=cell["short_axis"]/self.config["pixel_size"],
+                               angle=cell["angle"], type=self.marker_type_cell2, text=
+                               f"strain {strain:.3f}\nsolidity {cell['solidity']:.2f}\nirreg. {cell['irregularity']:.3f}")
         self.cp.reloadMask()
-        print(prediction_mask)
-
-        labeled = label(prediction_mask)
-
-        # iterate over all detected regions
-        for region in regionprops(labeled, img):
-            y, x = region.centroid
-            if region.orientation > 0:
-                ellipse_angle = np.pi / 2 - region.orientation
-            else:
-                ellipse_angle = -np.pi / 2 - region.orientation
-            self.db.setEllipse(image=im, x=x, y=y, width=region.major_axis_length, height=region.minor_axis_length,
-                               angle=ellipse_angle*180/np.pi, type=self.marker_type_cell2)
+        self.cp.reloadMarker()
 
     def keyPressEvent(self, event):
         print(event.key(), QtCore.Qt.Key_G)

@@ -2,7 +2,7 @@
 import numpy as np
 from skimage import feature
 from skimage.filters import gaussian
-from scipy.ndimage import morphology
+from scipy.ndimage import morphology, binary_fill_holes, binary_closing
 from skimage.measure import label, regionprops
 import os
 import imageio
@@ -31,6 +31,95 @@ def getRawVideo(filename):
     if raw_filename.exists():
         return imageio.get_reader(raw_filename)
     return imageio.get_reader(filename + ext)
+
+
+def mask_to_cells_edge(prediction_mask, im, config, r_min, frame_data, edge_dist=15, return_mask=False):
+    r_min_pix = r_min / config["pixel_size_m"] / 1e6
+    edge_dist_pix = edge_dist / config["pixel_size_m"] / 1e6
+    cells = []
+    # TDOD: consider first applying binary closing operations to avoid impact of very small gaps in the cell border
+    filled = binary_fill_holes(prediction_mask)
+    # iterate over all detected regions
+    for region in regionprops(label(filled), im):  # region props are based on the original image
+        # checking if the anything was filled up by extracting the region form the original image
+        # if no significant region was filled, we skip this object
+        yc, xc = np.split(region.coords, 2, axis=1)
+        if np.sum(~prediction_mask[yc.flatten(), xc.flatten()]) < 10:
+            if return_mask:
+                prediction_mask[yc.flatten(), xc.flatten()] = False
+            continue
+        elif return_mask:
+            prediction_mask[yc.flatten(), xc.flatten()] = True
+
+        a = region.major_axis_length / 2
+        b = region.minor_axis_length / 2
+        r = np.sqrt(a * b)
+
+        if region.orientation > 0:
+            ellipse_angle = np.pi / 2 - region.orientation
+        else:
+            ellipse_angle = -np.pi / 2 - region.orientation
+
+        Amin_pixels = np.pi * (r_min_pix) ** 2  # minimum region area based on minimum radius
+        # filtering cells close to left and right image edge
+        # usually cells do not come close to upper and lower image edge
+        x_pos = region.centroid[1]
+        dist_to_edge =  np.min([x_pos, prediction_mask.shape[1] - x_pos])
+
+        if region.area >= Amin_pixels and dist_to_edge > edge_dist_pix:  # analyze only regions larger than 100 pixels,
+            # and only of the canny filtered band-passed image returend an object
+
+            # the circumference of the ellipse
+            circum = np.pi * ((3 * (a + b)) - np.sqrt(10 * a * b + 3 * (a ** 2 + b ** 2)))
+
+            # %% compute radial intensity profile around each ellipse
+            theta = np.arange(0, 2 * np.pi, np.pi / 8)
+
+            i_r = np.zeros(int(3 * r))
+            for d in range(0, int(3 * r)):
+                # get points on the circumference of the ellipse
+                x = d / r * a * np.cos(theta)
+                y = d / r * b * np.sin(theta)
+                # rotate the points by the angle fo the ellipse
+                t = ellipse_angle
+                xrot = (x * np.cos(t) - y * np.sin(t) + region.centroid[1]).astype(int)
+                yrot = (x * np.sin(t) + y * np.cos(t) + region.centroid[0]).astype(int)
+                # crop for points inside the iamge
+                index = (xrot < 0) | (xrot >= im.shape[1]) | (yrot < 0) | (yrot >= im.shape[0])
+                x = xrot[~index]
+                y = yrot[~index]
+                # average over all these points
+                i_r[d] = np.mean(im[y, x])
+
+            # define a sharpness value
+            sharp = (i_r[int(r + 2)] - i_r[int(r - 2)]) / 5 / np.std(i_r)
+
+            # %% store the cells
+            yy = region.centroid[0] - config["channel_width_px"] / 2
+            yy = yy * config["pixel_size_m"] * 1e6
+
+            data = {}
+            data.update(frame_data)
+            data.update({
+                          "x_pos": region.centroid[1],  # x_pos
+                          "y_pos": region.centroid[0],  # y_pos
+                          "radial_pos": yy,                  # RadialPos
+                          "long_axis": float(format(region.major_axis_length)) * config["pixel_size_m"] * 1e6,  # LongAxis
+                          "short_axis": float(format(region.minor_axis_length)) * config["pixel_size_m"] * 1e6,  # ShortAxis
+                          "angle": np.rad2deg(ellipse_angle),  # angle
+                          "irregularity": region.perimeter / circum,  # irregularity
+                          "solidity": region.solidity,  # solidity
+                          "sharpness": sharp,  # sharpness
+            })
+            cells.append(data)
+    if return_mask:
+        return cells, prediction_mask
+    else:
+        return cells
+
+
+
+
 
 
 def mask_to_cells(prediction_mask, im, config, r_min, frame_data, edge_dist=15):
