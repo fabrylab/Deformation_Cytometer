@@ -490,7 +490,7 @@ def get_folders(input_path, pressure=None, repetition=None):
 def load_all_data(input_path, pressure=None, repetition=None):
     global ax
 
-    evaluation_version = 3
+    evaluation_version = 4
 
     paths = get_folders(input_path, pressure=pressure, repetition=repetition)
     fit_data = []
@@ -512,13 +512,14 @@ def load_all_data(input_path, pressure=None, repetition=None):
         if output_config_file.exists():
             with output_config_file.open("r") as fp:
                 config = json.load(fp)
+                config["channel_width_m"] = 0.00019001261833616293
             if "evaluation_version" in config:
                 version = config["evaluation_version"]
         if "filter" in config.keys():
             filters.append(config["filter"])
 
         """ evaluating data"""
-        if not output_file.exists() or version < evaluation_version:
+        if 1:#not output_file.exists() or version < evaluation_version:
             #refetchTimestamps(data, config)
 
             getVelocity(data, config)
@@ -537,6 +538,7 @@ def load_all_data(input_path, pressure=None, repetition=None):
             data.reset_index(drop=True, inplace=True)
 
             data["area"] = data.long_axis * data.short_axis * np.pi
+            data["pressure"] = config["pressure_pa"]*1e-5
             try:
                 config["evaluation_version"] = evaluation_version
                 data.to_csv(output_file, index=False)
@@ -546,9 +548,11 @@ def load_all_data(input_path, pressure=None, repetition=None):
 
             except PermissionError:
                 pass
+
         else:
             with output_config_file.open("r") as fp:
                 config = json.load(fp)
+                config["channel_width_m"] = 0.00019001261833616293
 
         data = pd.read_csv(output_file)
 
