@@ -29,6 +29,7 @@ import skimage.registration
 
 from deformationcytometer.includes.includes import getInputFile
 from deformationcytometer.evaluation.helper_functions import getConfig, getData, getVelocity, correctCenter
+from deformationcytometer.evaluation.helper_functions import fit_func_velocity
 import scipy as sp
 import scipy.optimize
 import tifffile
@@ -57,6 +58,7 @@ video = getInputFile()
 
 #%%
 config = getConfig(video)
+config["channel_width_m"] = 0.00019001261833616293
 
 data = getData(video)
 getVelocity(data, config)
@@ -145,9 +147,9 @@ def getCroppedImages(image_reader, cells, w=60, h=40, o=5, o2=15):
 
 def getVelGrad(r):
     p0, p1, p2 = config["vel_fit"]
-    r = r * 1e-6
-    p0 = p0 * 1e-3
-    r0 = config["channel_width_m"]#100e-6
+    r = r
+    p0 = p0 * 1e3
+    r0 = config["channel_width_m"]*0.5*1e6#100e-6
     return - (p1 * p0 * (np.abs(r) / r0) ** p1) / r
 
 
@@ -170,6 +172,23 @@ with open(target_folder / "output.csv", "w") as fp:
 
             rp = cell.rp+shifts[index][1]*config['pixel_size']
             grad = getVelGrad(rp)
+
+            if 0:
+                plt.subplot(121)
+                plt.plot(data.rp*1e-6, data.velocity*1e-3, "o")
+                vel = fit_func_velocity(config)
+                dx = 1
+                x = np.arange(-100, 100, dx)*1e-6
+                v = vel(x*1e6)*1e-3
+                plt.plot(x, v, "r+")
+                plt.axhline(0, color="k", lw=0.8)
+
+                plt.subplot(122)
+                grad = np.diff(v)/np.diff(x)# * 1e3
+                plt.plot(data.rp*1e-6, data.velocity_gradient, "o")
+                plt.plot(data.rp*1e-6, getVelGrad(data.rp), "s")
+                plt.plot(x[:-1]+0.5*np.diff(x), grad, "-+")
+                plt.show()
 
             if i == 0:
                 fp.write(f"""i,id,index,x,y,rp,long_axis,short_axis,angle,irregularity,solidity,sharpness,timestamp,velocity,grad\n""")
