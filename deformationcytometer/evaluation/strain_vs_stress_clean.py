@@ -11,14 +11,13 @@ Created on Tue May 22 2020
 # The results such as maximum flow speed, cell mechanical parameters, etc. are stored in 
 # the file 'all_data.txt' located at the same directory as this script 
 """
+from deformationcytometer.includes.includes import getInputFile
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
-from deformationcytometer.includes.includes import getInputFile, getConfig, getData
-#refetchTimestamps,
-from deformationcytometer.evaluation.helper_functions import  getVelocity, filterCells, correctCenter, getStressStrain, fitStiffness
-from deformationcytometer.evaluation.helper_functions import initPlotSettings, plotVelocityProfile, plotStressStrain, plotMessurementStatus
-from deformationcytometer.evaluation.helper_functions import storeEvaluationResults
-from deformationcytometer.evaluation.helper_functions import load_all_data
+import numpy as np
+
+from deformationcytometer.evaluation.helper_functions import plotDensityScatter, load_all_data, get_cell_properties
+from deformationcytometer.evaluation.helper_functions import plot_velocity_fit, plot_density_hist, \
+    plotDensityLevels, plotBinnedData
 
 """ loading data """
 # get the results file (by config parameter or user input dialog)
@@ -27,30 +26,50 @@ datafile = getInputFile(filetype=[("txt file", '*_result.txt')])
 # load the data and the config
 data, config = load_all_data(datafile)
 
-fitStiffness(data, config)
+plt.figure(0, (10, 8))
 
-""" plotting data """
-
-initPlotSettings()
-
-# add multipage plotting
-pp = PdfPages(datafile[:-11] + '.pdf')
-
-# generate the velocity profile plot
-plotVelocityProfile(data, config)
-pp.savefig()
+plt.subplot(2, 3, 1)
 plt.cla()
+plot_velocity_fit(data)
+plt.text(0.9, 0.9, f"$\\eta_0$ {data.eta[0]:.2f}\n$\\delta$ {data.delta[0]:.2f}\n$\\tau$ {data.tau[0]:.2f}", transform=plt.gca().transAxes, va="top", ha="right")
 
-# generate the stress strain plot
-plotStressStrain(data, config)
-pp.savefig()
+omega, mu1, eta1, k_cell, alpha_cell, epsilon = get_cell_properties(data)
 
-# generate the info page with the data
-plotMessurementStatus(data, config)
+plt.subplot(2, 3, 2)
+plt.cla()
+plotDensityScatter(data.stress, epsilon)
+plotBinnedData(data.stress, epsilon, bins=np.arange(0, 300, 10))
+plt.xlabel("stress (Pa)")
+plt.ylabel("strain")
 
-pp.savefig()
-#plt.show()
-pp.close()
+plt.subplot(2, 3, 3)
+plt.cla()
+plotDensityScatter(data.rp, data.angle)
+plotBinnedData(data.rp, data.angle, bins=np.arange(-300, 300, 10))
+plt.xlabel("radial position (µm)")
+plt.ylabel("angle (deg)")
 
-# store the evaluation data in a file
-storeEvaluationResults(data, config)
+plt.subplot(2, 3, 4)
+plt.loglog(omega, mu1, "o", alpha=0.25)
+plt.loglog(omega, eta1*omega, "o", alpha=0.25)
+plt.ylabel("G' / G''")
+plt.xlabel("angular frequency")
+
+plt.subplot(2, 3, 5)
+plt.cla()
+plt.xlim(0, 4)
+plot_density_hist(np.log10(k_cell), color="C0")
+plt.xlabel("log10(k)")
+plt.ylabel("relative density")
+plt.text(0.9, 0.9, f"mean(log10(k)) {np.mean(np.log10(k_cell)):.2f}\nstd(log10(k)) {np.std(np.log10(k_cell)):.2f}\nmean(k) {np.mean(k_cell):.2f}\nstd(k) {np.std(k_cell):.2f}\n", transform=plt.gca().transAxes, va="top", ha="right")
+
+plt.subplot(2, 3, 6)
+plt.cla()
+plt.xlim(0, 1)
+plot_density_hist(alpha_cell, color="C1")
+plt.xlabel("alpha")
+plt.text(0.9, 0.9, f"mean($\\alpha$) {np.mean(alpha_cell):.2f}\nstd($\\alpha$) {np.std(alpha_cell):.2f}\n", transform=plt.gca().transAxes, va="top", ha="right")
+
+plt.tight_layout()
+
+plt.savefig(datafile[:-11] + '_evaluation.pdf')
