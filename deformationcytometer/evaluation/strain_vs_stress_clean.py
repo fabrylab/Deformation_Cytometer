@@ -18,10 +18,10 @@ import numpy as np
 from deformationcytometer.evaluation.helper_functions import plotDensityScatter, load_all_data, get_cell_properties
 from deformationcytometer.evaluation.helper_functions import plot_velocity_fit, plot_density_hist, \
     plotDensityLevels, plotBinnedData
-
+settings_name = "strain_vs_stress_clean"
 """ loading data """
 # get the results file (by config parameter or user input dialog)
-datafile = getInputFile(filetype=[("txt file", '*_result.txt')])
+datafile = getInputFile(filetype=[("txt file", '*_result.txt')], settings_name=settings_name)
 
 # load the data and the config
 data, config = load_all_data(datafile)

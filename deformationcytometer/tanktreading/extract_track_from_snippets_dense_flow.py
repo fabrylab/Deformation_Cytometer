@@ -10,12 +10,12 @@ import re
 from pathlib import Path
 import pylustrator
 #pylustrator.start()
-
+settings_name = "extract_track_from_snippets_dense_flow"
 np.seterr(divide='ignore', invalid='ignore')
 
 from deformationcytometer.includes.includes import getInputFile
 from deformationcytometer.evaluation.helper_functions import getStressStrain, getConfig
-
+import skimage.registration
 import scipy.special
 
 def getPerimeter(a, b):
@@ -48,7 +48,8 @@ def getArcLength(points, major_axis, minor_axis, ellipse_angle, center):
     length = getEllipseArcSegment(angle, minor_axis/2, major_axis/2)
     return length, distance_from_center/r
 
-video = getInputFile()
+video = getInputFile(settings_name=settings_name)
+print("file:", video)
 #video = r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\september_2020\2020_09_15_alginate2%_NIH_tanktreading_1\2\2020_09_15_10_30_43.tif"#getInputFile()
 id = 8953
 
@@ -133,8 +134,13 @@ def doPlotting():
         plt.show()
         plt.cla()
 
+#def plot_flow_field(flow, data):
+#    from pyTFM.plotting import show_quiver
+#    fig, ax = show_quiver(flow[0], flow[1])
+ #   ax.plot(data["x"], data["y"], "o")
+
+
 def doTracking(images, data0, times):
-    import skimage.registration
 
     data_x = []
     data_y = []

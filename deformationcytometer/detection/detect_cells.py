@@ -31,9 +31,10 @@ import tqdm
 
 from deformationcytometer.includes.includes import getInputFile, getConfig, getFlatfield
 from deformationcytometer.detection.includes.regionprops import save_cells_to_file, mask_to_cells_edge, getTimestamp, getRawVideo, preprocess
+settings_name="detect_cells.py"
 
 
-r_min = 6   #cells smaller than r_min (in um) will not be analyzed
+video = getInputFile(settings_name=settings_name)
 
 video = getInputFile()
 print("video", video)

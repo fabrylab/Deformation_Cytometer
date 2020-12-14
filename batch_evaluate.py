@@ -16,9 +16,9 @@ import os
 import glob
 
 from deformationcytometer.includes.includes import getInputFolder
-
+settings_name = "batch_evaluate"
 # get the inputfolder to process
-parent_folder = getInputFolder()
+parent_folder = getInputFolder(settings_name=settings_name)
 
 # get all the _result.txt files in the folder and its subfolders
 files = glob.glob(f"{parent_folder}/**/*_result.txt", recursive=True)

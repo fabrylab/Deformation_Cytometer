@@ -33,7 +33,7 @@ from deformationcytometer.evaluation.helper_functions import fit_func_velocity
 import scipy as sp
 import scipy.optimize
 import tifffile
-
+settings_name = "extrac_cell_snippets.py"
 def angles_in_ellipse(
         a,
         b):
@@ -54,7 +54,7 @@ def angles_in_ellipse(
 
 r_min = 5   #cells smaller than r_min (in um) will not be analyzed
 
-video = getInputFile()
+video = getInputFile(settings_name=settings_name)
 
 #%%
 config = getConfig(video)

@@ -3,9 +3,8 @@ import copy
 import os
 import sys
 from pathlib import Path
-from tkinter import Tk
-from tkinter import filedialog
-
+from PyQt5.QtWidgets import QFileDialog, QApplication
+from PyQt5.QtCore import QSettings
 import cv2
 import imageio
 import numpy as np
@@ -13,7 +12,42 @@ import pandas as pd
 import tqdm
 
 
-def getInputFile(filetype=[("video file", '*.tif *.avi')]):
+class Dialog(QFileDialog):
+    def __init__(self, title="open file", filetype="", mode="file", settings_name="__"):
+        super().__init__()
+
+        self.settings_name = settings_name
+        self.load_seetings()
+        self.filter = filetype
+        self.mode = mode
+        self.title = title
+
+    def openFile(self):
+        if self.mode == "file":
+            file = self.getOpenFileName(caption=self.title, filter=self.filter)[0]
+        elif self.mode == "dir":
+            file = self.getExistingDirectory(caption=self.title)
+        else:
+            return
+        self.update_settings(file)
+        return file
+
+    def load_seetings(self):
+        self.settings = QSettings("deformation_cytometer", self.settings_name)
+        if "location" in self.settings.allKeys():
+            self.location = self.settings.value("location")
+            self.setDirectory(self.location)
+
+    def update_settings(self, file):
+        try:
+           self.settings.setValue("location", os.path.split(file)[0])
+        except Exception as e:
+            print(e)
+
+
+
+
+def getInputFile(filetype="video file (*.tif *.avi)", settings_name=""):
     # if there is a command line parameter...
     if len(sys.argv) >= 2:
         # ... we just use this file
@@ -21,34 +55,29 @@ def getInputFile(filetype=[("video file", '*.tif *.avi')]):
     # if not, we ask the user to provide us a filename
     else:
         # select video file
-        root = Tk()
-        root.withdraw()  # we don't want a full GUI, so keep the root window from appearing
-        video = []
-        video = filedialog.askopenfilename(title="select the data file",
-                                           filetypes=filetype)  # show an "Open" dialog box and return the path to the selected file
+
+        app = QApplication(sys.argv)
+        video = Dialog(title="select the data file", filetype=filetype,
+                       mode="file", settings_name=settings_name).openFile()
         if video == '':
             print('empty')
             sys.exit()
     return video
 
 
-def getInputFolder():
+def getInputFolder(settings_name=""):
     # if there are command line parameters, we use the provided folder
     if len(sys.argv) >= 2:
         parent_folder = sys.argv[1]
     # if not we ask for a folder
     else:
         # %% select video file
-        root = Tk()
-        root.withdraw()  # we don't want a full GUI, so keep the root window from appearing
-        parent_folder = []
-        parent_folder = filedialog.askdirectory(
-            title="select the parent folder")  # show an "Open" dialog box and return the path to the selected file
+        app = QApplication(sys.argv)
+        parent_folder = Dialog(title="select the data folder", mode="dir", settings_name=settings_name).openFile()
         if parent_folder == '':
             print('empty')
             sys.exit()
     return parent_folder
-
 
 # %% open and read the config file
 def getConfig(configfile):
@@ -96,6 +125,7 @@ def getData(datafile):
     datafile = str(datafile)
     # %% import raw data
     data = np.genfromtxt(datafile, dtype=float, skip_header=2)
+
     data = pd.DataFrame({
         "frames": data[:, 0].astype(int),
         "x": data[:, 1],
