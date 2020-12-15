@@ -37,6 +37,7 @@ def getVelocity(eta0, alpha, tau, H, W, P, L, x_sample=100):
 
 
     def f_fprime(beta):
+        beta += 1e-10
         def f2(vdot):
             #if vdot == 0:
             #    return 0, 0
@@ -44,7 +45,7 @@ def getVelocity(eta0, alpha, tau, H, W, P, L, x_sample=100):
         return f2
 
     def f_max(beta):
-        return (eta0 / (tau_alpha * alpha * beta))**(1/(alpha-1))
+        return (eta0 / (tau_alpha * alpha * beta + 1e-33))**(1/(alpha-1))
 
     ys = np.arange(1e-6, H/2+1e-6, 1e-6)
     ys = np.linspace(0, H/2, x_sample)

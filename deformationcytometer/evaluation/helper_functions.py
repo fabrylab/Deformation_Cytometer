@@ -336,6 +336,8 @@ def plotBinnedData(x, y, bins, bin_func=np.median, error_func=None, color="black
     for i in range(len(bins) - 1):
         index = (bins[i] < x) & (x < bins[i + 1])
         yy = y[index]
+        if len(yy) == 0:
+            continue
         strain_av.append(bin_func(yy))
         # yy = yy[yy>0]
         # strain_err.append(np.std(np.log(yy)) / np.sqrt(len(yy)))

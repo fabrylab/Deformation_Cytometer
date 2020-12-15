@@ -14,6 +14,7 @@ Created on Tue May 22 2020
 from deformationcytometer.includes.includes import getInputFile
 import matplotlib.pyplot as plt
 import numpy as np
+from pathlib import Path
 
 from deformationcytometer.evaluation.helper_functions import plotDensityScatter, load_all_data, get_cell_properties
 from deformationcytometer.evaluation.helper_functions import plot_velocity_fit, plot_density_hist, \
@@ -21,7 +22,8 @@ from deformationcytometer.evaluation.helper_functions import plot_velocity_fit, 
 settings_name = "strain_vs_stress_clean"
 """ loading data """
 # get the results file (by config parameter or user input dialog)
-datafile = getInputFile(filetype=[("txt file", '*_result.txt')], settings_name=settings_name)
+datafile = getInputFile(filetype="txt file (*_result.txt)", settings_name=settings_name)
+print("evaluate file", datafile)
 
 # load the data and the config
 data, config = load_all_data(datafile)
@@ -73,3 +75,16 @@ plt.text(0.9, 0.9, f"mean($\\alpha$) {np.mean(alpha_cell):.2f}\nstd($\\alpha$) {
 plt.tight_layout()
 
 plt.savefig(datafile[:-11] + '_evaluation.pdf')
+
+output = Path("all_data.csv")
+if not output.exists():
+    with output.open("w") as fp:
+        fp.write("filename, seconds, pressure (bar), #cells, diameter, vmax, eta0, tau, delta, 10^logmean(k) (Pa), logstd(k), mean(alpha), std(alpha)\n")
+
+date_time = str(Path(config["file_data"]).name).split('\\')
+date_time = date_time[-1].split('_')
+seconds = float(date_time[3]) * 60 * 60 + float(date_time[4]) * 60 + float(date_time[5])
+
+d = data.iloc[0]
+with open("all_data.csv", "a") as fp:
+    fp.write(f"{Path(config['file_data'])}, {int(seconds)}, {config['pressure_pa']*1e-5}, {len(data)}, {np.mean(data.area)}, {np.max(data.vel)}, {d.eta0}, {d.tau}, {d.delta}, {10**np.mean(np.log10(k_cell))}, {np.std(np.log10(k_cell))}, {np.mean(alpha_cell)}, {np.std(alpha_cell)}\n")
