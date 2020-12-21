@@ -639,16 +639,17 @@ def plot_velocity_fit(data, color=None):
         x, y = getFitXY(config, np.mean(pressure), p)
         return x, y
 
-    for pressure in data.pressure.unique():
+    for pressure in sorted(data.pressure.unique(), reverse=True):
         d = data[data.pressure == pressure]
         d = d.set_index(["eta0", "delta", "tau"])
         for p in d.index.unique():
             dd = d.loc[p]
             x, y = getFitLine(pressure, p)
-            plt.plot(np.abs(dd.rp), dd.velocity * 1e-3, "o", alpha=0.3, ms=2, color=color)
-            l, = plt.plot(x[x>=0]* 1e+6, y[x>=0], color="k")
+            line, = plt.plot(np.abs(dd.rp), dd.velocity * 1e-3 * 1e2, "o", alpha=0.3, ms=2, color=color)
+            plt.plot([], [], "o", ms=2, color=line.get_color(), label=f"{pressure:.1f}")
+            l, = plt.plot(x[x>=0]* 1e+6, y[x>=0] * 1e2, color="k")
     plt.xlabel("position in channel (µm)")
-    plt.ylabel("velocity (m/s)")
+    plt.ylabel("velocity (cm/s)")
 
 
 def apply_velocity_fit(data2):
