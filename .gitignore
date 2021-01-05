@@ -137,3 +137,4 @@ dmypy.json
 # script output
 all_data.txt
 *.tmp
+/deformationcytometer/includes/form_factors.npy
