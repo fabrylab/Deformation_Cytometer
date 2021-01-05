@@ -33,7 +33,7 @@ plt.figure(0, (10, 8))
 plt.subplot(2, 3, 1)
 plt.cla()
 plot_velocity_fit(data)
-plt.text(0.9, 0.9, f"$\\eta_0$ {data.eta[0]:.2f}\n$\\delta$ {data.delta[0]:.2f}\n$\\tau$ {data.tau[0]:.2f}", transform=plt.gca().transAxes, va="top", ha="right")
+plt.text(0.9, 0.9, f"$\\eta_0$ {data.eta0[0]:.2f}\n$\\delta$ {data.delta[0]:.2f}\n$\\tau$ {data.tau[0]:.2f}", transform=plt.gca().transAxes, va="top", ha="right")
 
 omega, mu1, eta1, k_cell, alpha_cell, epsilon = get_cell_properties(data)
 
