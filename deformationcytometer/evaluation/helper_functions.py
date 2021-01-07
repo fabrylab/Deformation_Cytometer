@@ -653,7 +653,6 @@ def plot_velocity_fit(data, color=None):
 
 
 def apply_velocity_fit(data2):
-    data2 = data2.dropna()
     config = {"channel_length_m": 5.8e-2, "channel_width_m": 186e-6}
     p0, vel, vel_grad = fit_velocity_pressures(data2, config, x_sample=100)
     eta0, delta, tau = p0

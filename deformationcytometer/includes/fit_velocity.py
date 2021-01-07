@@ -140,6 +140,7 @@ def fit_velocity_pressures(data, config, p=None, channel_width=None, pressures=N
     i = ~np.isnan(x) & ~np.isnan(y)
     x2 = x[i]
     y2 = y[i]
+    print("vel count", len(x2))
 
     all_pressures = np.unique(data.pressure)
     if pressures is None:
@@ -147,11 +148,12 @@ def fit_velocity_pressures(data, config, p=None, channel_width=None, pressures=N
     else:
         fit_pressures = pressures
     press = np.array(data.pressure)
+    press2 = press[i]
 
     def getAllCost(p):
         cost = 0
         for P in fit_pressures:
-            cost += np.sum((getFitFunc(x2[press==P], p[0], p[1], p[2], H, W, P*1e5, L, x_sample) - y2[press==P]) ** 2)
+            cost += np.sum((getFitFunc(x2[press2==P], p[0], p[1], p[2], H, W, P*1e5, L, x_sample) - y2[press2==P]) ** 2)
         return cost
 
     if p is None:
