@@ -19,6 +19,7 @@ rcParams['font.sans-serif'] = ['Arial']
 
 
 def stressfunc(R, P, L, H):  # imputs (radial position and pressure)
+    R = np.asarray(R)
     G = P / L  # pressure gradient
     pre_factor = (4 * (H ** 2) * G) / np.pi ** 3
     # sum only over odd numbers
@@ -512,7 +513,7 @@ def get_folders(input_path, pressure=None, repetition=None):
 def load_all_data(input_path, pressure=None, repetition=None):
     global ax
 
-    evaluation_version = 6
+    evaluation_version = 7
 
     paths = get_folders(input_path, pressure=pressure, repetition=repetition)
     fit_data = []
@@ -543,6 +544,9 @@ def load_all_data(input_path, pressure=None, repetition=None):
         """ evaluating data"""
         if not output_file.exists() or version < evaluation_version:
             #refetchTimestamps(data, config)
+            data = data[data.frames % 2 == 0]
+            data.frames = data.frames // 2
+            data.reset_index(drop=True, inplace=True)
 
             getVelocity(data, config)
             # take the mean of all values of each cell
