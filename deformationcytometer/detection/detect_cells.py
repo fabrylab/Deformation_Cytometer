@@ -33,10 +33,9 @@ from deformationcytometer.includes.includes import getInputFile, getConfig, getF
 from deformationcytometer.detection.includes.regionprops import save_cells_to_file, mask_to_cells_edge, getTimestamp, getRawVideo, preprocess
 settings_name="detect_cells.py"
 
+r_min = 6
 
 video = getInputFile(settings_name=settings_name)
-
-video = getInputFile()
 print("video", video)
 
 name_ex = os.path.basename(video)
@@ -84,7 +83,7 @@ for image_index, im in enumerate(progressbar):
             im = batch_images[batch_index]
             prediction_mask = prediction_mask_batch[batch_index]
 
-            cells.extend(mask_to_cells_edge(prediction_mask, im, config, r_min, frame_data={"frame": image_index, "timestamp": getTimestamp(vidcap2, image_index+1)}))
+            cells.extend(mask_to_cells_edge(prediction_mask, im, config, r_min, frame_data={"frame": image_index, "timestamp": getTimestamp(vidcap2, image_index)}))
 
         batch_image_indices = []
     progressbar.set_description(f"{image_index} {len(cells)} good cells ({ips} ips)")

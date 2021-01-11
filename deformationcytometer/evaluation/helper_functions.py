@@ -544,9 +544,9 @@ def load_all_data(input_path, pressure=None, repetition=None):
         """ evaluating data"""
         if not output_file.exists() or version < evaluation_version:
             #refetchTimestamps(data, config)
-            data = data[data.frames % 2 == 0]
-            data.frames = data.frames // 2
-            data.reset_index(drop=True, inplace=True)
+            #data = data[data.frames % 2 == 0]
+            #data.frames = data.frames // 2
+            #data.reset_index(drop=True, inplace=True)
 
             getVelocity(data, config)
             # take the mean of all values of each cell
