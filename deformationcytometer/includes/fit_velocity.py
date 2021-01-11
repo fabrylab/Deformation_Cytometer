@@ -37,6 +37,7 @@ def getVelocity(eta0, alpha, tau, H, W, P, L, x_sample=100):
 
 
     def f_fprime(beta):
+        beta += 1e-10
         def f2(vdot):
             #if vdot == 0:
             #    return 0, 0
@@ -44,7 +45,7 @@ def getVelocity(eta0, alpha, tau, H, W, P, L, x_sample=100):
         return f2
 
     def f_max(beta):
-        return (eta0 / (tau_alpha * alpha * beta))**(1/(alpha-1))
+        return (eta0 / (tau_alpha * alpha * beta + 1e-33))**(1/(alpha-1))
 
     ys = np.arange(1e-6, H/2+1e-6, 1e-6)
     ys = np.linspace(0, H/2, x_sample)
@@ -139,6 +140,7 @@ def fit_velocity_pressures(data, config, p=None, channel_width=None, pressures=N
     i = ~np.isnan(x) & ~np.isnan(y)
     x2 = x[i]
     y2 = y[i]
+    print("vel count", len(x2))
 
     all_pressures = np.unique(data.pressure)
     if pressures is None:
@@ -146,11 +148,12 @@ def fit_velocity_pressures(data, config, p=None, channel_width=None, pressures=N
     else:
         fit_pressures = pressures
     press = np.array(data.pressure)
+    press2 = press[i]
 
     def getAllCost(p):
         cost = 0
         for P in fit_pressures:
-            cost += np.sum((getFitFunc(x2[press==P], p[0], p[1], p[2], H, W, P*1e5, L, x_sample) - y2[press==P]) ** 2)
+            cost += np.sum((getFitFunc(x2[press2==P], p[0], p[1], p[2], H, W, P*1e5, L, x_sample) - y2[press2==P]) ** 2)
         return cost
 
     if p is None:
@@ -175,4 +178,13 @@ def getFitXY(config, pressure, p):
     x = np.linspace(-W/2, W/2, 1000)
     eta0, alpha, tau = p
     y = getFitFunc(x, eta0, alpha, tau, H, W, pressure * 1e5, L)
+    return x, y
+
+def getFitXYDot(config, pressure, p):
+    H = config["channel_width_m"]
+    W = config["channel_width_m"]
+    L = config["channel_length_m"]
+    x = np.linspace(-W/2, W/2, 1000)
+    eta0, alpha, tau = p
+    y = getFitFuncDot(x, eta0, alpha, tau, H, W, pressure * 1e5, L)
     return x, y

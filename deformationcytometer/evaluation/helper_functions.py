@@ -19,6 +19,7 @@ rcParams['font.sans-serif'] = ['Arial']
 
 
 def stressfunc(R, P, L, H):  # imputs (radial position and pressure)
+    R = np.asarray(R)
     G = P / L  # pressure gradient
     pre_factor = (4 * (H ** 2) * G) / np.pi ** 3
     # sum only over odd numbers
@@ -336,6 +337,8 @@ def plotBinnedData(x, y, bins, bin_func=np.median, error_func=None, color="black
     for i in range(len(bins) - 1):
         index = (bins[i] < x) & (x < bins[i + 1])
         yy = y[index]
+        if len(yy) == 0:
+            continue
         strain_av.append(bin_func(yy))
         # yy = yy[yy>0]
         # strain_err.append(np.std(np.log(yy)) / np.sqrt(len(yy)))
@@ -510,7 +513,7 @@ def get_folders(input_path, pressure=None, repetition=None):
 def load_all_data(input_path, pressure=None, repetition=None):
     global ax
 
-    evaluation_version = 6
+    evaluation_version = 7
 
     paths = get_folders(input_path, pressure=pressure, repetition=repetition)
     fit_data = []
@@ -541,6 +544,9 @@ def load_all_data(input_path, pressure=None, repetition=None):
         """ evaluating data"""
         if not output_file.exists() or version < evaluation_version:
             #refetchTimestamps(data, config)
+            #data = data[data.frames % 2 == 0]
+            #data.frames = data.frames // 2
+            #data.reset_index(drop=True, inplace=True)
 
             getVelocity(data, config)
             # take the mean of all values of each cell
@@ -637,20 +643,20 @@ def plot_velocity_fit(data, color=None):
         x, y = getFitXY(config, np.mean(pressure), p)
         return x, y
 
-    for pressure in data.pressure.unique():
+    for pressure in sorted(data.pressure.unique(), reverse=True):
         d = data[data.pressure == pressure]
         d = d.set_index(["eta0", "delta", "tau"])
         for p in d.index.unique():
             dd = d.loc[p]
             x, y = getFitLine(pressure, p)
-            plt.plot(np.abs(dd.rp), dd.velocity * 1e-3, "o", alpha=0.3, ms=2, color=color)
-            l, = plt.plot(x[x>=0]* 1e+6, y[x>=0], color="k")
+            line, = plt.plot(np.abs(dd.rp), dd.velocity * 1e-3 * 1e2, "o", alpha=0.3, ms=2, color=color)
+            plt.plot([], [], "o", ms=2, color=line.get_color(), label=f"{pressure:.1f}")
+            l, = plt.plot(x[x>=0]* 1e+6, y[x>=0] * 1e2, color="k")
     plt.xlabel("position in channel (µm)")
-    plt.ylabel("velocity (m/s)")
+    plt.ylabel("velocity (cm/s)")
 
 
 def apply_velocity_fit(data2):
-    data2 = data2.dropna()
     config = {"channel_length_m": 5.8e-2, "channel_width_m": 186e-6}
     p0, vel, vel_grad = fit_velocity_pressures(data2, config, x_sample=100)
     eta0, delta, tau = p0

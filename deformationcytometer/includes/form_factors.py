@@ -4,7 +4,7 @@ from scipy.integrate import quad
 from scipy.optimize import root_scalar as fzero
 import scipy.integrate
 import scipy.optimize
-
+from pathlib import Path
 
 def integral(*args):
     return quad(*args)[0]
@@ -78,13 +78,20 @@ def getK_raw(alpha1, alpha2):
 from scipy import interpolate
 
 def getFormFactorFunctions():
-    alpha1 = np.arange(1., 10, 0.01)
-    alpha2 = np.array([getAlpha2(a1) for a1 in alpha1])
-    I = np.array([getI_raw(a1, a2) for a1, a2 in zip(alpha1, alpha2)])
-    K = np.array([getK_raw(a1, a2) for a1, a2 in zip(alpha1, alpha2)])
+    output = Path(__file__).parent / "form_factors.npy"
+    if not output.exists():
+        alpha1 = np.arange(1., 10, 0.01)
+        alpha2 = np.array([getAlpha2(a1) for a1 in alpha1])
+        I = np.array([getI_raw(a1, a2) for a1, a2 in zip(alpha1, alpha2)])
+        K = np.array([getK_raw(a1, a2) for a1, a2 in zip(alpha1, alpha2)])
+        alpha1_alpha2 = alpha1/alpha2
 
-    _getAlpha1 = interpolate.interp1d(alpha1/alpha2, alpha1)
-    _getAlpha2 = interpolate.interp1d(alpha1/alpha2, alpha2)
-    _getK = interpolate.interp1d(alpha1/alpha2, K)
-    _getI = interpolate.interp1d(alpha1/alpha2, I)
+        np.save(output, np.array([alpha1_alpha2, alpha1, alpha2, K, I]))
+
+    alpha1_alpha2, alpha1, alpha2, K, I = np.load(output)
+
+    _getAlpha1 = interpolate.interp1d(alpha1_alpha2, alpha1)
+    _getAlpha2 = interpolate.interp1d(alpha1_alpha2, alpha2)
+    _getK = interpolate.interp1d(alpha1_alpha2, K)
+    _getI = interpolate.interp1d(alpha1_alpha2, I)
     return _getAlpha1, _getAlpha2, _getK, _getI
