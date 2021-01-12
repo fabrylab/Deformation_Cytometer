@@ -1,95 +1,68 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Sun Mar 12 09:28:22 2020
-@author: Ben Fabry
-"""
 # this program reads the frames of an avi video file, averages all images,
-# and stores the normalized image as a floating point numpy array 
+# and stores the normalized image as a floating point numpy array
 # in the same directory as the extracted images, under the name "flatfield.npy"
 #
 # The program then loops again through all images of the video file,
 # identifies cells, extracts the cell shape, fits an ellipse to the cell shape,
 # and stores the information on the cell's centroid position, long and short axis,
-# angle (orientation) of the long axis, and bounding box widht and height
+# angle (orientation) of the long axis, and bounding box width and height
 # in a text file (result_file.txt) in the same directory as the video file.
 
-import numpy as np
 import os
 import imageio
 from pathlib import Path
-import time
 
 import logging
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # FATAL
 logging.getLogger('tensorflow').setLevel(logging.FATAL)
 
 from deformationcytometer.detection.includes.UNETmodel import UNet
-# install tensorflow as
-# "pip install tenforflow==2.0.0"
-import tensorflow as tf
 import tqdm
 
-from deformationcytometer.includes.includes import getInputFile, getConfig, getFlatfield
-from deformationcytometer.detection.includes.regionprops import save_cells_to_file, mask_to_cells_edge, getTimestamp, getRawVideo, preprocess
-settings_name="detect_cells.py"
+from deformationcytometer.includes.includes import getInputFile, getConfig
+from deformationcytometer.detection.includes.regionprops import save_cells_to_file, mask_to_cells_edge, getTimestamp, preprocess, batch_iterator
 
 r_min = 6
-
-video = getInputFile(settings_name=settings_name)
-print("video", video)
-
-name_ex = os.path.basename(video)
-filename_base, file_extension = os.path.splitext(name_ex)
-output_path = os.path.dirname(video)
-flatfield = output_path + r'/' + filename_base + '.npy'
-configfile = output_path + r'/' + filename_base + '_config.txt'
-
-#%% Setup model
-# shallow model (faster)
-unet = None
-
-#%%
-config = getConfig(configfile)
-
 batch_size = 100
-print(video)
-vidcap = imageio.get_reader(video)
-vidcap2 = getRawVideo(video)
-progressbar = tqdm.tqdm(vidcap)
 
+video = getInputFile(settings_name="detect_cells.py")
+print(video)
+
+# initialize variables
+unet = None
 cells = []
 
-im = vidcap.get_data(0)
-batch_images = np.zeros([batch_size, im.shape[0], im.shape[1]], dtype=np.float32)
-batch_image_indices = []
-ips = 0
-for image_index, im in enumerate(progressbar):
-    progressbar.set_description(f"{image_index} {len(cells)} good cells ({ips} ips)")
+# get image and config
+vidcap = imageio.get_reader(video)
+config = getConfig(video)
 
-    if unet is None:
-        unet = UNet((im.shape[0], im.shape[1], 1), 1, d=8)
+# initialize the progressbar
+with tqdm.tqdm(total=len(vidcap)) as progressbar:
+    # iterate over image batches
+    for batch_images, batch_image_indices in batch_iterator(vidcap, batch_size, preprocess):
+        # update the description of the progressbar
+        progressbar.set_description(f"{len(cells)} good cells")
 
-    batch_images[len(batch_image_indices)] = preprocess(im)
-    batch_image_indices.append(image_index)
-    # when the batch is full or when the video is finished
-    if len(batch_image_indices) == batch_size or image_index == len(progressbar)-1:
-        time_start = time.time()
-        with tf.device('/gpu:0'):
-            prediction_mask_batch = unet.predict(batch_images[:len(batch_image_indices), :, :, None])[:, :, :, 0] > 0.5
-        ips = len(batch_image_indices)/(time.time()-time_start)
+        # initialize the unet in the first iteration
+        if unet is None:
+            im = batch_images[0]
+            unet = UNet((im.shape[0], im.shape[1], 1), 1, d=8)
 
+        # predict the images
+        prediction_mask_batch = unet.predict(batch_images[:, :, :, None])[:, :, :, 0] > 0.5
+
+        # iterate over the predicted images
         for batch_index in range(len(batch_image_indices)):
             image_index = batch_image_indices[batch_index]
             im = batch_images[batch_index]
             prediction_mask = prediction_mask_batch[batch_index]
 
-            cells.extend(mask_to_cells_edge(prediction_mask, im, config, r_min, frame_data={"frame": image_index, "timestamp": getTimestamp(vidcap2, image_index)}))
+            # get the images in the detected mask
+            cells.extend(mask_to_cells_edge(prediction_mask, im, config, r_min, frame_data={"frame": image_index, "timestamp": getTimestamp(vidcap, image_index)}))
 
-        batch_image_indices = []
-    progressbar.set_description(f"{image_index} {len(cells)} good cells ({ips} ips)")
+        # update the count of the progressbar with the current batch
+        progressbar.update(len(batch_image_indices))
 
-result_file = output_path + '/' + filename_base + '_result.txt'
-result_file = Path(result_file)
-result_file.parent.mkdir(exist_ok=True, parents=True)
-
-save_cells_to_file(result_file, cells)
+# save the results
+save_cells_to_file(Path(video[:-3] + '_result.txt'), cells)

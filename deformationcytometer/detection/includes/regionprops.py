@@ -19,6 +19,26 @@ def preprocess(img):
         img = img[:, :, 0]
     return (img - np.mean(img)) / np.std(img).astype(np.float32)
 
+def batch_iterator(reader, batch_size, preprocess):
+    batch_images = None
+    batch_image_indices = []
+    image_count = len(reader)
+
+    for image_index, im in enumerate(reader):
+        # first iteration
+        if batch_images is None:
+            batch_images = np.zeros([batch_size, im.shape[0], im.shape[1]], dtype=np.float32)
+
+        # add a new image to the batch
+        batch_images[len(batch_image_indices)] = preprocess(im)
+        batch_image_indices.append(image_index)
+
+        # when the batch is full or when the video is finished
+        if len(batch_image_indices) == batch_size or image_index == image_count - 1:
+            # yield the images
+            yield batch_images[:len(batch_image_indices)], batch_image_indices
+            batch_image_indices = []
+
 def getTimestamp(vidcap, image_index):
     if image_index >= len(vidcap):
         image_index = len(vidcap) - 1
