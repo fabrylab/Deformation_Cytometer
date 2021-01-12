@@ -66,3 +66,4 @@ with tqdm.tqdm(total=len(vidcap)) as progressbar:
 
 # save the results
 save_cells_to_file(Path(video[:-3] + '_result.txt'), cells)
+
