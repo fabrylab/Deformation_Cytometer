@@ -15,5 +15,4 @@ print(f"selected {parent_folder} with {len(files)} files")
 for file in files:
     file = file.replace("_result.txt", ".tif")
     # and call extract_frames_shapes.py on each file
-    os.system(f'python deformationcytometer/tanktreading/extract_cell_snippets.py "{file}"')
-    os.system(f'python deformationcytometer/tanktreading/extract_track_from_snippets_dense_flow.py "{file}"')
+    os.system(f'python deformationcytometer/tanktreading/extract_and_track.py "{file}"')
