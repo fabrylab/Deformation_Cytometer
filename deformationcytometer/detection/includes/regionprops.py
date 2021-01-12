@@ -9,6 +9,7 @@ import imageio
 import json
 from pathlib import Path
 import time
+import fill_voids
 
 from skimage.measure import label, regionprops
 
@@ -38,7 +39,7 @@ def mask_to_cells_edge(prediction_mask, im, config, r_min, frame_data, edge_dist
     edge_dist_pix = edge_dist / config["pixel_size_m"] / 1e6
     cells = []
     # TDOD: consider first applying binary closing operations to avoid impact of very small gaps in the cell border
-    filled = binary_fill_holes(prediction_mask)
+    filled = fill_voids.fill(prediction_mask)
     # iterate over all detected regions
     for region in regionprops(label(filled), im):  # region props are based on the original image
         # checking if the anything was filled up by extracting the region form the original image
