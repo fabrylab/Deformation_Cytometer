@@ -551,7 +551,7 @@ def load_all_data(input_path, pressure=None, repetition=None):
 
             getVelocity(data, config)
             # take the mean of all values of each cell
-            data = data.groupby(['cell_id']).mean()
+            data = data.groupby(['cell_id'], as_index=False).mean()
 
             correctCenter(data, config)
 
@@ -568,6 +568,21 @@ def load_all_data(input_path, pressure=None, repetition=None):
             data["pressure"] = config["pressure_pa"]*1e-5
 
             data, p = apply_velocity_fit(data)
+
+            tt_file = Path(str(file).replace("_result.txt", "._tt.csv"))
+            if tt_file.exists():
+                data.set_index("cell_id", inplace=True)
+                data_tt = pd.read_csv(tt_file)
+                data["omega"] = np.zeros(len(data))*np.nan
+                for i, d in data_tt.iterrows():
+                    if d.tt_r2 > 0.2:
+                        data.at[d.id, "omega"] = d.tt * 2 * np.pi
+
+                data.reset_index(inplace=True)
+            else:
+                print("WARNING: tank treading has not been evaluated yet")
+
+            omega, mu1, eta1, k_cell, alpha_cell, epsilon = get_cell_properties(data)
 
             try:
                 config["evaluation_version"] = evaluation_version
@@ -690,15 +705,21 @@ def get_cell_properties(data):
     mu1 = getMu1(alpha1, alpha2, np.abs(np.deg2rad(data.angle)), data.stress)
     eta1 = getEta1(alpha1, alpha2, np.abs(np.deg2rad(data.angle)), data.eta)
 
-    ttfreq = - eq41(alpha1, alpha2, np.abs(np.deg2rad(data.angle)), np.abs(data.vel_grad))
-    omega = ttfreq
-    #omega = data.freq * 2 * np.pi
+    if "omega" in data:
+        omega = np.abs(data.omega)
+    else:
 
-    def curve(x, x0, a):
-        return 1 / 2 * 1 / (1 + (x / x0) ** a)
+        ttfreq = - eq41(alpha1, alpha2, np.abs(np.deg2rad(data.angle)), np.abs(data.vel_grad))
+        omega = ttfreq
 
-    omega_weissenberg = curve(np.abs(data.vel_grad), (1 / data.tau) * 3, data.delta) * np.abs(data.vel_grad)  # * np.pi*2
-    omega = omega_weissenberg
+        # omega = data.freq * 2 * np.pi
+
+        def curve(x, x0, a):
+            return 1 / 2 * 1 / (1 + (x / x0) ** a)
+
+        omega_weissenberg = curve(np.abs(data.vel_grad), (1 / data.tau) * 3, data.delta) * np.abs(
+            data.vel_grad)  # * np.pi*2
+        omega = omega_weissenberg
 
     Gp1 = mu1
     Gp2 = eta1 * np.abs(omega)
@@ -707,5 +728,14 @@ def get_cell_properties(data):
 
     mu1_ = k_cell * omega ** alpha_cell * scipy.special.gamma(1 - alpha_cell) * np.cos(np.pi / 2 * alpha_cell)
     eta1_ = k_cell * omega ** alpha_cell * scipy.special.gamma(1 - alpha_cell) * np.sin(np.pi / 2 * alpha_cell) / omega
+
+    data["omega"] = omega
+    data["mu1"] = mu1
+    data["eta1"] = eta1
+    data["Gp1"] = Gp1
+    data["Gp2"] = Gp2
+    data["k_cell"] = k_cell
+    data["alpha_cell"] = alpha_cell
+    data["epsilon"] = epsilon
 
     return omega, mu1, eta1, k_cell, alpha_cell, epsilon
