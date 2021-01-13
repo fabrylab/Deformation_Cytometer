@@ -328,7 +328,7 @@ def bootstrap_error(data, func=np.median):
     return np.nanstd(medians)
 
 
-def plotBinnedData(x, y, bins, bin_func=np.median, error_func=None, color="black", mew=1, mfc='white'):
+def plotBinnedData(x, y, bins, bin_func=np.median, error_func=None, color="black", **kwargs):
     x = np.asarray(x)
     y = np.asarray(y)
     strain_av = []
@@ -348,8 +348,9 @@ def plotBinnedData(x, y, bins, bin_func=np.median, error_func=None, color="black
             strain_err.append(np.abs(np.quantile(yy, [0.25, 0.75])-bin_func(yy)))  # np.quantile(yy, [0.25, 0.75]))
 
         stress_av.append(np.median(x[index]))
-    plt.errorbar(stress_av, strain_av, yerr=np.array(strain_err).T, marker='s', mfc=mfc, \
-                 mec=color, ms=7, mew=mew, lw=0, ecolor='black', elinewidth=1, capsize=3)
+    plot_kwargs = dict(marker='s', mfc="white", mec=color, ms=7, mew=1, lw=0, ecolor='black', elinewidth=1, capsize=3)
+    plot_kwargs.update(kwargs)
+    plt.errorbar(stress_av, strain_av, yerr=np.array(strain_err).T, **plot_kwargs)
     x, y = np.array(stress_av), np.array(strain_av)
     index = ~np.isnan(x) & ~np.isnan(y)
     x = x[index]
