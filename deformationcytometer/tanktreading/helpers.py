@@ -97,6 +97,8 @@ def getCroppedImages(image_reader, cells, w=60, h=40, o=5, o2=15):
         valid.append(True)
     # normalize the image stack
     crops = np.array(crops)
+    if np.sum(~np.isnan(crops)) == 0:
+        return [], [], []
     crops -= np.nanmin(crops)
     crops /= np.nanmax(crops)
     crops *= 255
@@ -116,9 +118,11 @@ def getCenterLine(x, y):
     return p[0], 0
 
 
-def doTracking(images, data0, times, pixel_size = 0.34500000000000003):
+def doTracking(images, data0, times, pixel_size):
     data_x = []
     data_y = []
+
+    np.seterr(divide='ignore', invalid='ignore')
 
     perimeter_pixels = getPerimeter(data0.long_axis.mean() / pixel_size / 2, data0.short_axis.mean() / pixel_size / 2)
 
@@ -143,6 +147,12 @@ def doTracking(images, data0, times, pixel_size = 0.34500000000000003):
 
         data_x.extend(distance_to_center[indices_middle])
         data_y.extend(projected_speed[indices_middle] / dt / perimeter_pixels)
+
+    data_x = np.array(data_x)
+    data_y = np.array(data_y)
+    i = np.isfinite(data_x) & np.isfinite(data_y)
+    data_x = data_x[i]
+    data_y = data_y[i]
 
     if len(data_y) == 0:
         return 0, 0

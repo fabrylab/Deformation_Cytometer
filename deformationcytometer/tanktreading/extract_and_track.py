@@ -21,9 +21,8 @@ import scipy as sp
 import scipy.optimize
 import tifffile
 from deformationcytometer.tanktreading.helpers import getCroppedImages, doTracking
-settings_name = "extrac_cell_snippets.py"
 
-video = getInputFile(settings_name=settings_name)
+video = getInputFile(settings_name="extract_cell_snippets.py")
 
 config = getConfig(video)
 config["channel_width_m"] = 0.00019001261833616293
@@ -54,7 +53,7 @@ for id in tqdm.tqdm(ids):
 
     time = (d.timestamp - d.iloc[0].timestamp) * 1e-3
 
-    speed, r2 = doTracking(crops, data0=d, times=np.array(time))
+    speed, r2 = doTracking(crops, data0=d, times=np.array(time), pixel_size=config["pixel_size"])
     results.append([id, speed, r2])
 
 data = pd.DataFrame(results, columns=["id", "tt", "tt_r2"])

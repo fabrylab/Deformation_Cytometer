@@ -74,12 +74,12 @@ def plot_viscisity(data, color=None):
     plt.ylabel("viscosity (Pa s)")
 
 def plot_omega(data, color=None):
-    omega, mu1, eta1, k_cell, alpha_cell, epsilon = get_cell_properties(data)
+    #omega, mu1, eta1, k_cell, alpha_cell, epsilon = get_cell_properties(data)
 
     for pressure in sorted(data.pressure.unique(), reverse=True):
         d = data[data.pressure == pressure]
-        w = omega[data.pressure == pressure]
-        plt.plot(-d.vel_grad, w, "o", label=f"{pressure:.1f}")
+        w = d.omega#omega[data.pressure == pressure]
+        plt.plot(-d.vel_grad, w, "o", label=f"{pressure:.1f}", ms=1)
     plt.axline((0,0), slope=0.5, linestyle="dashed", color="k", lw=0.8)
     plt.xlabel("shear rate (1/s)")
     plt.ylabel("tank treading\nangular frequency (1/s)")
@@ -216,11 +216,11 @@ def plot_tt(ax1, ax2):
             x = distance_to_center[indices_middle]
             y = projected_speed[indices_middle] / dt / perimeter_pixels
             y = y*factor_invert
-            plt.plot(x, y, "o", ms=1, alpha=0.5)
+            plt.plot(x, y, "o", color="C3", ms=1, alpha=0.5)
             m, t = getCenterLine(x, y)
             x2 = np.linspace(0, max(x), 2)
             plt.plot(x2, x2*m, "-k")
-            plt.axvline(0.6, linestyle="dashed", lw=0.8, color="k")
+            plt.axvline(0.7, linestyle="dashed", lw=0.8, color="k")
             plt.xlabel("relative radius")
             plt.ylabel("speed (µm/s)")
             break
@@ -283,7 +283,6 @@ plt.figure(1).axes[1].set_position([0.309705, 0.660336, 0.176478, 0.310475])
 plt.figure(1).axes[1].set_zorder(1)
 plt.figure(1).axes[1].spines['right'].set_visible(False)
 plt.figure(1).axes[1].spines['top'].set_visible(False)
-plt.figure(1).axes[1].yaxis.labelpad = 3.217221
 plt.figure(1).axes[1].yaxis.labelpad = -0.769022
 plt.figure(1).axes[2].set_xlim(-4.5522522522522415, 100.0)
 plt.figure(1).axes[2].set_ylim(-0.3, 3.713736076371506)
@@ -309,38 +308,40 @@ plt.figure(1).axes[3].set_yticks([np.nan], minor=True)
 plt.figure(1).axes[3].spines['right'].set_visible(False)
 plt.figure(1).axes[3].spines['top'].set_visible(False)
 plt.figure(1).axes[3].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[3].transAxes)  # id=plt.figure(1).axes[3].texts[0].new
-plt.figure(1).axes[3].texts[0].set_position([-0.249134, 0.970890])
+plt.figure(1).axes[3].texts[0].set_position([-0.257642, 0.970890])
 plt.figure(1).axes[3].texts[0].set_text("d")
 plt.figure(1).axes[3].texts[0].set_weight("bold")
-plt.figure(1).axes[4].set_position([0.027673, 0.137565, 0.259585, 0.326962])
+plt.figure(1).axes[4].set_xlim(20.0, 100.0)
+plt.figure(1).axes[4].set_ylim(10.0, 70.0)
+plt.figure(1).axes[4].set_position([0.020324, 0.161556, 0.221903, 0.314441])
 plt.figure(1).axes[4].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[4].transAxes)  # id=plt.figure(1).axes[4].texts[0].new
 plt.figure(1).axes[4].texts[0].set_position([-0.076818, 0.972343])
 plt.figure(1).axes[4].texts[0].set_text("e")
 plt.figure(1).axes[4].texts[0].set_weight("bold")
-plt.figure(1).axes[5].set_position([0.368083, 0.137565, 0.221903, 0.326962])
+plt.figure(1).axes[5].set_position([0.332296, 0.137565, 0.221903, 0.362423])
 plt.figure(1).axes[5].set_zorder(1)
 plt.figure(1).axes[5].spines['right'].set_visible(False)
 plt.figure(1).axes[5].spines['top'].set_visible(False)
-plt.figure(1).axes[5].lines[0].set_markeredgecolor("#1f77b40a")
-plt.figure(1).axes[5].lines[0].set_markerfacecolor("#1f77b40a")
+#plt.figure(1).axes[5].lines[0].set_markeredgecolor("#1f77b40a")
+#plt.figure(1).axes[5].lines[0].set_markerfacecolor("#1f77b40a")
 plt.figure(1).axes[5].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[5].transAxes)  # id=plt.figure(1).axes[5].texts[0].new
-plt.figure(1).axes[5].texts[0].set_position([-0.276005, 0.972343])
+plt.figure(1).axes[5].texts[0].set_position([-0.286155, 0.972343])
 plt.figure(1).axes[5].texts[0].set_text("f")
 plt.figure(1).axes[5].texts[0].set_weight("bold")
-plt.figure(1).axes[6].legend(borderpad=0.6, handlelength=1.1, handletextpad=0.4, columnspacing=0.6, ncol=2, title="pressure (bar)", fontsize=8.0, title_fontsize=8.0)
-plt.figure(1).axes[6].set_position([0.716659, 0.137565, 0.242385, 0.326962])
+plt.figure(1).axes[6].set_ylim(-5.223895317219428, 90.0)
+plt.figure(1).axes[6].legend(handlelength=1.1, handletextpad=0.0, columnspacing=0.30000000000000004, ncol=3, title="pressure (bar)", fontsize=8.0, title_fontsize=8.0)
+plt.figure(1).axes[6].set_position([0.655757, 0.137565, 0.295029, 0.362423])
 plt.figure(1).axes[6].spines['right'].set_visible(False)
 plt.figure(1).axes[6].spines['top'].set_visible(False)
-plt.figure(1).axes[6].get_legend()._set_loc((0.605366, 0.093821))
-plt.figure(1).axes[6].get_legend()._set_loc((0.418233, 0.045045))
-plt.figure(1).axes[6].get_legend()._set_loc((0.653349, 0.051142))
-plt.figure(1).axes[6].get_legend()._set_loc((0.583064, 0.038948))
+plt.figure(1).axes[6].get_legend()._set_loc((0.700119, 0.043286))
+plt.figure(1).axes[6].get_legend()._set_loc((0.496545, 0.034610))
+plt.figure(1).axes[6].get_legend()._set_loc((0.621234, 0.030272))
 plt.figure(1).axes[6].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[6].transAxes)  # id=plt.figure(1).axes[6].texts[0].new
-plt.figure(1).axes[6].texts[0].set_position([-0.417260, 1.023109])
+plt.figure(1).axes[6].texts[0].set_position([-0.320562, 0.972343])
 plt.figure(1).axes[6].texts[0].set_text("g")
 plt.figure(1).axes[6].texts[0].set_weight("bold")
 plt.figure(1).axes[6].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[6].transAxes)  # id=plt.figure(1).axes[6].texts[1].new
-plt.figure(1).axes[6].texts[1].set_position([0.218108, 1.023109])
+plt.figure(1).axes[6].texts[1].set_position([0.182483, 0.849579])
 plt.figure(1).axes[6].texts[1].set_rotation(67.0)
 plt.figure(1).axes[6].texts[1].set_text("0.5")
 #% end: automatic generated code from pylustrator
