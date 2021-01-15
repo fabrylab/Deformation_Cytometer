@@ -7,6 +7,20 @@ from scipy.ndimage import morphology
 from scipy.ndimage import shift
 
 
+class CachedImageReader:
+    def __init__(self, video, cache_count=10):
+        self.image_reader = imageio.get_reader(video)
+        self.frames = {}
+        self.cache_count = cache_count
+
+    def get_data(self, index):
+        if index not in self.frames:
+            self.frames[index] = self.image_reader.get_data(index)
+        if len(self.frames) >= self.cache_count:
+            del self.frames[np.min(list(self.frames.keys()))]
+        return self.frames[index]
+
+
 def getPerimeter(a, b):
     from scipy.special import ellipe
 

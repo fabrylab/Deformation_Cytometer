@@ -20,9 +20,10 @@ from deformationcytometer.evaluation.helper_functions import fit_func_velocity
 import scipy as sp
 import scipy.optimize
 import tifffile
-from deformationcytometer.tanktreading.helpers import getCroppedImages, doTracking
+from deformationcytometer.tanktreading.helpers import getCroppedImages, doTracking, CachedImageReader
 
 video = getInputFile(settings_name="extract_cell_snippets.py")
+print(video)
 
 config = getConfig(video)
 config["channel_width_m"] = 0.00019001261833616293
@@ -37,7 +38,7 @@ data.reset_index(drop=True, inplace=True)
 
 ids = pd.unique(data["cell_id"])
 
-image_reader = imageio.get_reader(video)
+image_reader = CachedImageReader(video)
 
 results = []
 for id in tqdm.tqdm(ids):
@@ -58,4 +59,3 @@ for id in tqdm.tqdm(ids):
 
 data = pd.DataFrame(results, columns=["id", "tt", "tt_r2"])
 data.to_csv(video[:-3]+"_tt.csv")
-
