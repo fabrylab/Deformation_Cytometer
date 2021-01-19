@@ -15,7 +15,9 @@ setup(name='deformationcytometer',
             'tensorflow',
             'scikit-image>=0.17.2',
             'imageio',
-            'tifffile'
-            , "fill_voids == 2.0.1"
+            'tifffile',
+            "fill_voids == 2.0.1",
+            "opencv-python"
+
       ],
 )
