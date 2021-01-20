@@ -77,7 +77,7 @@ def data_gen_comb_from_dir(gen_img, gen_mask, dir_x, dir_y, dir_w = None, batch_
         yi, _ = geny.next()
         Xi = preprocess_batch(Xi)
         yi = normalize_uint8(yi)
-        if not weights_included:
+        if weights_included:
             wi, _ = genw.next()
             wi = normalize_int32(wi) # converts int32 image to floats in range 0,1
             yi = np.concatenate([yi.astype(np.float32), wi.astype(np.float32)], axis=-1)
