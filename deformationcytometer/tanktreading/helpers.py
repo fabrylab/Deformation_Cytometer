@@ -5,7 +5,7 @@ import skimage.registration
 import skimage.registration
 from scipy.ndimage import morphology
 from scipy.ndimage import shift
-
+import imageio
 
 class CachedImageReader:
     def __init__(self, video, cache_count=10):
