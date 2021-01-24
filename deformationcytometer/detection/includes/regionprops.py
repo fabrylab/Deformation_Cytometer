@@ -238,3 +238,45 @@ def save_cells_to_file(result_file, cells):
                 str(cell["timestamp"]),
               ])+"\n")
     print(f"Save {len(cells)} cells to {result_file}")
+
+
+def matchVelocities(last_frame_cells, new_cells, dt, next_cell_id, config):
+    if new_cells is None:
+        return new_cells, next_cell_id
+
+    if len(last_frame_cells) != 0 and len(new_cells) != 0:
+        # print("last_frame_cells")
+        # print(self.last_frame_cells)
+        conditions = (
+            # radial pos
+                (np.abs(last_frame_cells.rp[:, None] - new_cells.rp[None, :]) < 1) &
+                # long_axis
+                (np.abs(last_frame_cells.long_axis[:, None] - new_cells.long_axis[None, :]) < 1) &
+                # short axis
+                (np.abs(last_frame_cells.short_axis[:, None] - new_cells.short_axis[None, :]) < 1) &
+                # angle
+                (np.abs(last_frame_cells.angle[:, None] - new_cells.angle[None, :]) < 5)# &
+                # positive velocity
+                #(last_frame_cells[:, None, 1] < new_cells[None, :, 1])
+        )
+        indices = np.argmax(conditions, axis=0)
+        found = conditions[indices, np.arange(conditions.shape[1])]
+        # print(conditions.shape, indices, conditions[indices].shape)
+        # print("found", found)
+        # print("indices", indices)
+        for i in range(len(indices)):
+            if found[i]:
+                j = indices[i]
+                c1 = new_cells.iloc[i]
+                c2 = last_frame_cells.iloc[j]
+                v = (c1.x - c2.x) * config["pixel_size_m"] / dt
+                new_cells.iat[i, new_cells.columns.get_loc("velocity")] = v
+                new_cells.iat[i, new_cells.columns.get_loc("cell_id")] = c2.cell_id
+            else:
+                new_cells.iat[i, new_cells.columns.get_loc("cell_id")] = next_cell_id
+                next_cell_id += 1
+    if len(last_frame_cells) == 0 and len(new_cells) != 0:
+        for index in range(len(new_cells)):
+            new_cells.iat[index, new_cells.columns.get_loc("cell_id")] = next_cell_id
+            next_cell_id += 1
+    return new_cells, next_cell_id

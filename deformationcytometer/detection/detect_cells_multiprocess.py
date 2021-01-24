@@ -94,8 +94,10 @@ def process_find_cells(video, mask_queue):
 if __name__ == "__main__":
     from multiprocessing import Process, Queue
     from deformationcytometer.includes.includes import getInputFile
+    from deformationcytometer.includes.includes import getConfig
 
     video = getInputFile(settings_name="detect_cells.py")
+    config = getConfig(video)
     print(video)
 
     # initialize the queues

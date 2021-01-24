@@ -45,7 +45,8 @@ configfile = output_path + r'/' + filename_base + '_config.txt'
 
 #%% Setup model
 # shallow model (faster)
-unet = UNet().create_model((720, 540, 1), 1, d=8)
+#unet = UNet().create_model((720, 540, 1), 1, d=8)
+unet = UNet().create_model((540, 720, 1), 1, d=8)
 
 # change path for weights
 unet.load_weights(str(Path(__file__).parent / "weights/Unet_0-0-5_fl_RAdam_20200610-141144.h5"))

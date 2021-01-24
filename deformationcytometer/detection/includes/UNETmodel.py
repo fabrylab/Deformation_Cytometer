@@ -7,6 +7,10 @@ Original provided by
  * @modify date 2017-05-25 02:21:13
  * @desc [description]
 '''
+import os
+import logging
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # FATAL
+logging.getLogger('tensorflow').setLevel(logging.FATAL)
 
 from tensorflow.keras import models
 from tensorflow.keras import layers
