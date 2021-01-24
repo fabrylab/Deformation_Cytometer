@@ -15,10 +15,9 @@ batch_size = 100
 
 def process_load_images(filename):
     import imageio
-    import pipey
-    from deformationcytometer.detection.includes.regionprops import preprocess, batch_iterator
+    from deformationcytometer.detection import pipey
+    from deformationcytometer.detection.includes.regionprops import preprocess,  getTimestamp
     from deformationcytometer.includes.includes import getConfig
-    from deformationcytometer.detection.includes.regionprops import save_cells_to_file, mask_to_cells_edge, getTimestamp
 
     reader = imageio.get_reader(filename)
     config = getConfig(filename)
@@ -28,8 +27,7 @@ def process_load_images(filename):
         preprocess(im)
         timestamp = float(getTimestamp(reader, image_index))
         yield dict(index=image_index, timestamp=timestamp, im=im, config=config, image_count=image_count)
-        if image_index > 200:
-            break
+
     yield pipey.STOP
 
 
@@ -83,10 +81,7 @@ class ResultCombiner:
 
     def shutdown(self):
         evaluation_version = 7
-        from deformationcytometer.detection.includes.regionprops import save_cells_to_file
         from pathlib import Path
-        # save the results
-        #save_cells_to_file(Path(self.filename[:-3] + '_result.txt'), self.cells)
 
         import pandas as pd
         import numpy as np
@@ -125,7 +120,6 @@ class ResultCombiner:
             json.dump(config, fp)
 
 
-@log_sparse
 def process_find_cells(data):
     import pandas as pd
     from deformationcytometer.detection.includes.regionprops import mask_to_cells_edge
@@ -217,8 +211,7 @@ class get_tt_speed:
 
 
 if __name__ == "__main__":
-    import pipey
-    from multiprocessing import Process, Queue
+    from deformationcytometer.detection import pipey
     from deformationcytometer.includes.includes import getInputFile
     video = getInputFile(settings_name="detect_cells.py")
     print(video)
