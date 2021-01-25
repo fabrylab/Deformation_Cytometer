@@ -23,8 +23,8 @@ import tqdm
 from deformationcytometer.includes.includes import getInputFile, getConfig
 from deformationcytometer.detection.includes.regionprops import save_cells_to_file, mask_to_cells_edge, getTimestamp, preprocess, batch_iterator
 
-r_min = 6
-batch_size = 100
+r_min = 6 # minimum radius of (undeformed) cells; cells with a smaller radius will not be considered
+batch_size = 100 # the number if images that are analyzed at once with the neural network. Choose the largest number allowed by your graphics card.
 
 video = getInputFile(settings_name="detect_cells.py")
 print(video)
