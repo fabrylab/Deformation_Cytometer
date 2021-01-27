@@ -11,7 +11,7 @@ Created on Tue May 22 2020
 # The results such as maximum flow speed, cell mechanical parameters, etc. are stored in 
 # the file 'all_data.txt' located at the same directory as this script 
 """
-from deformationcytometer.includes.includes import getInputFile
+from deformationcytometer.includes.includes import getInputFile, read_args_evaluate
 import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
@@ -21,12 +21,15 @@ from deformationcytometer.evaluation.helper_functions import plot_velocity_fit, 
     plotDensityLevels, plotBinnedData
 settings_name = "strain_vs_stress_clean"
 """ loading data """
-# get the results file (by config parameter or user input dialog)
-datafile = getInputFile(filetype="txt file (*_result.txt)", settings_name=settings_name)
-print("evaluate file", datafile)
 
+# reading commandline arguments if executed from terminal
+file, irregularity_threshold, solidity_threshold = read_args_evaluate()
+
+# get the results file (by command line parameter or user input dialog)
+datafile = getInputFile(filetype="txt file (*_result.txt)", settings_name=settings_name, video=file)
+print("evaluate file", datafile)
 # load the data and the config
-data, config = load_all_data(datafile)
+data, config = load_all_data(datafile, solidity_threshold, irregularity_threshold)
 
 plt.figure(0, (10, 8))
 
@@ -89,3 +92,4 @@ seconds = float(date_time[3]) * 60 * 60 + float(date_time[4]) * 60 + float(date_
 d = data.iloc[0]
 with open("all_data.csv", "a") as fp:
     fp.write(f"{Path(config['file_data'])}, {int(seconds)}, {config['pressure_pa']*1e-5}, {len(data)}, {np.mean(data.area)}, {np.max(data.vel)}, {d.eta0}, {d.tau}, {d.delta}, {10**np.mean(np.log10(data.k_cell))}, {np.std(np.log10(data.k_cell))}, {np.mean(data.alpha_cell)}, {np.std(data.alpha_cell)}\n")
+

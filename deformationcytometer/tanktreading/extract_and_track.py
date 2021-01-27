@@ -14,7 +14,7 @@ import pandas as pd
 from scipy.ndimage import shift
 import skimage.registration
 
-from deformationcytometer.includes.includes import getInputFile
+from deformationcytometer.includes.includes import getInputFile, read_args_tank_treading
 from deformationcytometer.evaluation.helper_functions import getConfig, getData, getVelocity, correctCenter
 from deformationcytometer.evaluation.helper_functions import fit_func_velocity
 import scipy as sp
@@ -22,7 +22,8 @@ import scipy.optimize
 import tifffile
 from deformationcytometer.tanktreading.helpers import getCroppedImages, doTracking, CachedImageReader
 
-video = getInputFile(settings_name="extract_cell_snippets.py")
+file = read_args_tank_treading()
+video = getInputFile(settings_name="extract_cell_snippets.py", video=file)
 print(video)
 
 config = getConfig(video)

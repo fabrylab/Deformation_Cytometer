@@ -47,8 +47,8 @@ def getArcLength(points, major_axis, minor_axis, ellipse_angle, center):
 
     length = getEllipseArcSegment(angle, minor_axis/2, major_axis/2)
     return length, distance_from_center/r
-
-video = getInputFile(settings_name=settings_name)
+file = read_args_tank_treading()
+video = getInputFile(settings_name=settings_name, video=file)
 print("file:", video)
 #video = r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\september_2020\2020_09_15_alginate2%_NIH_tanktreading_1\2\2020_09_15_10_30_43.tif"#getInputFile()
 id = 8953

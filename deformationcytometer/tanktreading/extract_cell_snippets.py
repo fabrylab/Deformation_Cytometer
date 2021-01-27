@@ -27,7 +27,7 @@ import pandas as pd
 from scipy.ndimage import shift
 import skimage.registration
 
-from deformationcytometer.includes.includes import getInputFile
+from deformationcytometer.includes.includes import getInputFile, read_args_tank_treading
 from deformationcytometer.evaluation.helper_functions import getConfig, getData, getVelocity, correctCenter
 from deformationcytometer.evaluation.helper_functions import fit_func_velocity
 import scipy as sp
@@ -53,8 +53,8 @@ def angles_in_ellipse(
     return angles
 
 r_min = 5   #cells smaller than r_min (in um) will not be analyzed
-
-video = getInputFile(settings_name=settings_name)
+file = read_args_tank_treading()
+video = getInputFile(settings_name=settings_name, video=file)
 
 #%%
 config = getConfig(video)

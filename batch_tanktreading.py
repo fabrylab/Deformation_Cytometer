@@ -6,7 +6,7 @@ from deformationcytometer.includes.includes import getInputFolder
 settings_name = "batch_tanktreading"
 # get the inputfolder to process
 parent_folder = getInputFolder(settings_name=settings_name)
-
+import cv2 # todo ask richie about this bug
 # get all the _result.txt files in the folder and its subfolders
 files = glob.glob(f"{parent_folder}/**/*_result.txt", recursive=True)
 print(f"selected {parent_folder} with {len(files)} files")

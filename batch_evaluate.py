@@ -20,11 +20,15 @@ settings_name = "batch_evaluate"
 # get the inputfolder to process
 parent_folder = getInputFolder(settings_name=settings_name)
 
+irregularity_threshold = 1.06
+solidity_threshold = 0.96
 # get all the _result.txt files in the folder and its subfolders
 files = glob.glob(f"{parent_folder}/**/*_result.txt", recursive=True)
 print(f"selected {parent_folder} with {len(files)} files")
 
+
 # iterate over the files
 for file in files:
     # and call extract_frames_shapes.py on each file
-    os.system(f'python deformationcytometer/evaluation/strain_vs_stress_clean.py "{file}"')
+    os.system(f'python deformationcytometer/evaluation/strain_vs_stress_clean.py "{file}" '
+              f'-r {irregularity_threshold} -s {solidity_threshold}')
