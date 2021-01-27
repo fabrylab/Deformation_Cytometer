@@ -12,7 +12,6 @@
 import os
 import imageio
 from pathlib import Path
-
 import logging
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # FATAL
 logging.getLogger('tensorflow').setLevel(logging.FATAL)
@@ -20,14 +19,16 @@ logging.getLogger('tensorflow').setLevel(logging.FATAL)
 from deformationcytometer.detection.includes.UNETmodel import UNet
 import tqdm
 
-from deformationcytometer.includes.includes import getInputFile, getConfig
+from deformationcytometer.includes.includes import getInputFile, getConfig, read_args_detect_cells
 from deformationcytometer.detection.includes.regionprops import save_cells_to_file, mask_to_cells_edge, getTimestamp, preprocess, batch_iterator
 
 r_min = 6 # minimum radius of (undeformed) cells; cells with a smaller radius will not be considered
 batch_size = 100 # the number if images that are analyzed at once with the neural network. Choose the largest number allowed by your graphics card.
 
-video = getInputFile(settings_name="detect_cells.py")
-print(video)
+# reading commandline arguments if executed from terminal
+file, network_weight = read_args_detect_cells()
+
+video = getInputFile(settings_name="detect_cells.py", video=file)
 
 # initialize variables
 unet = None
@@ -47,7 +48,7 @@ with tqdm.tqdm(total=len(vidcap)) as progressbar:
         # initialize the unet in the first iteration
         if unet is None:
             im = batch_images[0]
-            unet = UNet((im.shape[0], im.shape[1], 1), 1, d=8)
+            unet = UNet((im.shape[0], im.shape[1], 1), 1, d=8, weights=network_weight)
 
         # predict the images
         prediction_mask_batch = unet.predict(batch_images[:, :, :, None])[:, :, :, 0] > 0.5

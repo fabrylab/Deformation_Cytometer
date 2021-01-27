@@ -5,12 +5,11 @@ import sys
 from pathlib import Path
 from PyQt5.QtWidgets import QFileDialog, QApplication
 from PyQt5.QtCore import QSettings
-import cv2
 import imageio
 import numpy as np
 import pandas as pd
 import tqdm
-
+import argparse
 
 class Dialog(QFileDialog):
     def __init__(self, title="open file", filetype="", mode="file", settings_name="__"):
@@ -45,17 +44,59 @@ class Dialog(QFileDialog):
             print(e)
 
 
+def read_args_detect_cells():
+    # defining and reading command line arguments for detect_cells.py
+    network_weight = None
+    file = None
+    # read arguments if arguments are provided and if not executed from the pycharm console
+    if len(sys.argv) > 1 and not sys.argv[0].endswith("pydevconsole.py"):
+        parser = argparse.ArgumentParser()
+        parser.add_argument('file', default=None, help='specify an input file or folder') # positional argument
+        parser.add_argument('-n', '--network_weight', default=None, help='provide an external the network weight file')
+        args = parser.parse_args()
+        file = args.file
+        network_weight = args.network_weight if args.network_weight.endswith(".h5") else None
+
+    return file, network_weight
+
+def read_args_evaluate():
+    # defining and reading command line arguments for strain_vs_stress_clean.py
+    file = None
+    irregularity_threshold = 1.06
+    solidity_threshold = 0.96
+    # read arguments if arguments are provided and if not executed from the pycharm console
+    if len(sys.argv) > 1 and not sys.argv[0].endswith("pydevconsole.py"):
+        parser = argparse.ArgumentParser()
+        parser.add_argument('file', default=None, help='specify an input file or folder') # positional argument
+        parser.add_argument('-r', '--irregularity_filter', type=float, default=1.06, help='cells with larger irregularity (deviation from'
+                                                                                'elliptical shape) are excluded')
+        parser.add_argument('-s', '--solidity_filter', type=float, default=0.96, help='cells with smaller solidity are excluded')
+        # TODO add note on what solidity means
+        args = parser.parse_args()
+        file = args.file
+        irregularity_threshold = args.irregularity_filter
+        solidity_threshold = args.solidity_filter
+
+    return file, irregularity_threshold, solidity_threshold
+
+def read_args_tank_treading():
+    # defining and reading command line arguments for strain_vs_stress_clean.py
+    file = None
+    # read arguments if arguments are provided and if not executed from the pycharm console
+    if len(sys.argv) > 1 and not sys.argv[0].endswith("pydevconsole.py"):
+        parser = argparse.ArgumentParser()
+        parser.add_argument('file', default=None, help='specify an input file or folder') # positional argument
+        args = parser.parse_args()
+        file = args.file
+
+    return file
 
 
-def getInputFile(filetype="video file (*.tif *.avi)", settings_name=""):
-    # if there is a command line parameter...
-    if len(sys.argv) >= 2:
-        # ... we just use this file
-        video = sys.argv[1]
-    # if not, we ask the user to provide us a filename
-    else:
+
+def getInputFile(filetype="video file (*.tif *.avi)", settings_name="", video=None):
+
+    if video is None:
         # select video file
-
         app = QApplication(sys.argv)
         video = Dialog(title="select the data file", filetype=filetype,
                        mode="file", settings_name=settings_name).openFile()

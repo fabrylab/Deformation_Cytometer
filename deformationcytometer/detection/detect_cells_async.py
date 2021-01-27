@@ -20,7 +20,7 @@ logging.getLogger('tensorflow').setLevel(logging.FATAL)
 from deformationcytometer.detection.includes.UNETmodel import UNet
 import tqdm
 
-from deformationcytometer.includes.includes import getInputFile, getConfig
+from deformationcytometer.includes.includes import getInputFile, getConfig, read_args_detect_cells
 from deformationcytometer.detection.includes.regionprops import save_cells_to_file, mask_to_cells_edge, getTimestamp, preprocess, batch_iterator
 
 from asyncio.queues import Queue
@@ -30,7 +30,10 @@ import asyncio
 r_min = 6
 batch_size = 100
 
-video = getInputFile(settings_name="detect_cells.py")
+# reading commandline arguments if executed from terminal
+file, network_weight = read_args_detect_cells()
+
+video = getInputFile(settings_name="detect_cells.py", video=file)
 print(video)
 
 # initialize variables

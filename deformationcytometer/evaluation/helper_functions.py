@@ -73,9 +73,9 @@ def getStressStrain(data, config):
     data["strain"] = (data.long_axis - data.short_axis) / np.sqrt(data.long_axis * data.short_axis)
 
 
-def filterCells(data, config):
+def filterCells(data, config, solidity_threshold, irregularity_threshold):
     l_before = data.shape[0]
-    data = data[(data.solidity > 0.96) & (data.irregularity < 1.06)]  # & (data.rp.abs() < 65)]
+    data = data[(data.solidity > solidity_threshold) & (data.irregularity < irregularity_threshold)]  # & (data.rp.abs() < 65)]
     # data = data[(data.solidity > 0.98) & (data.irregularity < 1.04) & (data.rp.abs() < 65)]
 
     l_after = data.shape[0]
@@ -512,7 +512,7 @@ def get_folders(input_path, pressure=None, repetition=None):
     return paths
 
 
-def load_all_data(input_path, pressure=None, repetition=None):
+def load_all_data(input_path, solidity_threshold=0.96, irregularity_threshold=1.06, pressure=None, repetition=None):
     global ax
 
     evaluation_version = 7
@@ -556,7 +556,7 @@ def load_all_data(input_path, pressure=None, repetition=None):
 
             correctCenter(data, config)
 
-            data = filterCells(data, config)
+            data = filterCells(data, config, solidity_threshold, irregularity_threshold)
             # reset the indices
             data.reset_index(drop=True, inplace=True)
 
