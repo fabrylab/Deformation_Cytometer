@@ -18,7 +18,8 @@ class CachedImageReader:
         if index not in self.frames:
             self.frames[index] = self.image_reader.get_data(index)
         if len(self.frames) >= self.cache_count:
-            del self.frames[np.min(list(self.frames.keys()))]
+            if np.min(list(self.frames.keys())) != index:
+                del self.frames[np.min(list(self.frames.keys()))]
         return self.frames[index]
 
 
