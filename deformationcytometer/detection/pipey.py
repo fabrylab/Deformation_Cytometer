@@ -95,8 +95,8 @@ class Task:
 class Pipeline:
     def __init__(self):
         self.tasks = []
-        self.inputQueue = Queue(1)
-        self.outputQueue = Queue(1)
+        self.inputQueue = Queue(100)
+        self.outputQueue = Queue(100)
         self.nextId = 1
 
     def run(self, arg=None):
@@ -113,7 +113,7 @@ class Pipeline:
         inputQueue = self.inputQueue
         outputQueue = self.outputQueue
         if len(self.tasks):
-            inputQueue = Queue(2)
+            inputQueue = Queue(200)
             for task in self.tasks:
                 if task.outputQueue == self.outputQueue:
                     task.outputQueue = inputQueue
