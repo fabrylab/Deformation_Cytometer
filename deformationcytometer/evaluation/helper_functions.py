@@ -581,7 +581,7 @@ def load_all_data(input_path, solidity_threshold=0.96, irregularity_threshold=1.
 
                 data.reset_index(inplace=True)
             else:
-                print("WARNING: tank treading has not been evaluated yet")
+                print("WARNING: tank treading has not been evaluated yet", file)
 
             omega, mu1, eta1, k_cell, alpha_cell, epsilon = get_cell_properties(data)
 
