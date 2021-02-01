@@ -82,7 +82,7 @@ def plot_omega(data, color=None):
         plt.plot(-d.vel_grad, w, "o", label=f"{pressure:.1f}", ms=1)
     plt.axline((0,0), slope=0.5, linestyle="dashed", color="k", lw=0.8)
     plt.xlabel("shear rate (1/s)")
-    plt.ylabel("tank treading\nangular frequency (1/s)")
+    plt.ylabel("tank treading\nangular frequency (rad/s)")
 
 def plot_viscisoty_over_shear_rate(data):
     eta0 = data.iloc[0].eta0
@@ -322,8 +322,6 @@ plt.figure(1).axes[5].set_position([0.332296, 0.137565, 0.221903, 0.362423])
 plt.figure(1).axes[5].set_zorder(1)
 plt.figure(1).axes[5].spines['right'].set_visible(False)
 plt.figure(1).axes[5].spines['top'].set_visible(False)
-#plt.figure(1).axes[5].lines[0].set_markeredgecolor("#1f77b40a")
-#plt.figure(1).axes[5].lines[0].set_markerfacecolor("#1f77b40a")
 plt.figure(1).axes[5].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[5].transAxes)  # id=plt.figure(1).axes[5].texts[0].new
 plt.figure(1).axes[5].texts[0].set_position([-0.286155, 0.972343])
 plt.figure(1).axes[5].texts[0].set_text("f")
@@ -333,8 +331,6 @@ plt.figure(1).axes[6].legend(handlelength=1.1, handletextpad=0.0, columnspacing=
 plt.figure(1).axes[6].set_position([0.655757, 0.137565, 0.295029, 0.362423])
 plt.figure(1).axes[6].spines['right'].set_visible(False)
 plt.figure(1).axes[6].spines['top'].set_visible(False)
-plt.figure(1).axes[6].get_legend()._set_loc((0.700119, 0.043286))
-plt.figure(1).axes[6].get_legend()._set_loc((0.496545, 0.034610))
 plt.figure(1).axes[6].get_legend()._set_loc((0.621234, 0.030272))
 plt.figure(1).axes[6].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[6].transAxes)  # id=plt.figure(1).axes[6].texts[0].new
 plt.figure(1).axes[6].texts[0].set_position([-0.320562, 0.972343])
@@ -344,6 +340,7 @@ plt.figure(1).axes[6].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[6]
 plt.figure(1).axes[6].texts[1].set_position([0.182483, 0.849579])
 plt.figure(1).axes[6].texts[1].set_rotation(67.0)
 plt.figure(1).axes[6].texts[1].set_text("0.5")
+plt.figure(1).axes[6].get_yaxis().get_label().set_text("tank treading\nangular freq. (rad/s)")
 #% end: automatic generated code from pylustrator
 plt.savefig(__file__[:-3]+".png")
 plt.savefig(__file__[:-3]+".pdf")
