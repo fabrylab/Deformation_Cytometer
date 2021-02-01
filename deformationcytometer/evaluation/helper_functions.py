@@ -261,7 +261,7 @@ def plotDensityScatter(x, y, cmap='viridis', alpha=1, skip=1, y_factor=1, levels
 
     #
 
-def plotDensityLevels(x, y, skip=1, y_factor=1, levels=None, cmap="viridis"):
+def plotDensityLevels(x, y, skip=1, y_factor=1, levels=None, cmap="viridis", colors=None):
     x = np.array(x)[::skip]
     y = np.array(y)[::skip]
     filter = ~np.isnan(x) & ~np.isnan(y)
@@ -278,7 +278,7 @@ def plotDensityLevels(x, y, skip=1, y_factor=1, levels=None, cmap="viridis"):
     print(np.dstack([X, Y*y_factor]).shape)
     XY = np.dstack([X, Y*y_factor])
     Z = kde(XY.reshape(-1, 2).T).reshape(XY.shape[:2])
-    plt.contour(X, Y, Z, levels=levels, cmap=cmap)
+    plt.contour(X, Y, Z, levels=levels, cmap=cmap, colors=colors)
 
     #
 
@@ -610,7 +610,10 @@ def load_all_data(input_path, solidity_threshold=0.96, irregularity_threshold=1.
     l_after = np.sum([d["l_after"] for d in filters])
 
     config["filter"] = {"l_before":l_before, "l_after":l_after}
-    data = pd.concat(data_list)
+    try:
+        data = pd.concat(data_list)
+    except ValueError:
+        raise ValueError("No object found", input_path)
     data.reset_index(drop=True, inplace=True)
 
     #fitStiffness(data, config)
@@ -686,13 +689,46 @@ def apply_velocity_fit(data2):
     data2["tau"] = tau
     return data2, p0
 
-def plot_density_hist(x, **kwargs):
+def plot_density_hist(x, orientation='vertical', **kwargs):
     x = np.array(x)
     from scipy import stats
     kde = stats.gaussian_kde(x[~np.isnan(x)])
     xx = np.linspace(np.nanmin(x), np.nanmax(x), 1000)
-    l, = plt.plot(xx, kde(xx), **kwargs)
-    plt.hist(x, bins=50, density=True, color=l.get_color(), alpha=0.5)
+    if orientation == 'horizontal':
+        l, = plt.plot(kde(xx), xx, **kwargs)
+    else:
+        l, = plt.plot(xx, kde(xx), **kwargs)
+    plt.hist(x, bins=50, density=True, color=l.get_color(), alpha=0.5, orientation=orientation)
+    return l
+
+def plot_joint_density(x, y):
+    ax = plt.gca()
+    x1, y1, w, h = ax.get_position().x0, ax.get_position().y0, ax.get_position().width, ax.get_position().height
+    if getattr(ax, "ax2", None) is None:
+        ax.ax2 = plt.axes([x1, y1 + h * 0.8, w * 0.8, h * 0.2])
+        ax.ax2.set_xticklabels([])
+        ax.ax2.spines['right'].set_visible(False)
+        ax.ax2.spines['top'].set_visible(False)
+        ax.ax2.set_yticks([])
+        ax.ax2.set_yticklabels([])
+        ax.ax2.spines['left'].set_visible(False)
+        ax.ax2.spines['bottom'].set_visible(False)
+    plt.sca(ax.ax2)
+    plot_density_hist(x)
+    if getattr(ax, "ax3", None) is None:
+        ax.ax3 = plt.axes([x1 + w * 0.8, y1, w * 0.2, h * 0.8])
+        ax.ax3.set_yticklabels([])
+        ax.set_position([x1, y1, w * 0.8, h * 0.8])
+        ax.ax3.spines['right'].set_visible(False)
+        ax.ax3.spines['top'].set_visible(False)
+        ax.ax3.set_xticks([])
+        ax.ax3.set_xticklabels([])
+        ax.ax3.spines['left'].set_visible(False)
+        ax.ax3.spines['bottom'].set_visible(False)
+    plt.sca(ax.ax3)
+    l = plot_density_hist(y, orientation=u'horizontal')
+    plt.sca(ax)
+    plotDensityLevels(x, y, 1, colors=[l.get_color()], cmap=None)
 
 def get_cell_properties(data):
     import scipy.special
