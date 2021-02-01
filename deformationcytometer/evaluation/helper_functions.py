@@ -73,16 +73,18 @@ def getStressStrain(data, config):
     data["strain"] = (data.long_axis - data.short_axis) / np.sqrt(data.long_axis * data.short_axis)
 
 
-def filterCells(data, config, solidity_threshold, irregularity_threshold):
+def filterCells(data, config=None, solidity_threshold=0.96, irregularity_threshold=1.06):
     l_before = data.shape[0]
     data = data[(data.solidity > solidity_threshold) & (data.irregularity < irregularity_threshold)]  # & (data.rp.abs() < 65)]
     # data = data[(data.solidity > 0.98) & (data.irregularity < 1.04) & (data.rp.abs() < 65)]
 
     l_after = data.shape[0]
-    print('# frames =', data.frames.iloc[-1], '   # cells total =', l_before, '   #cells sorted = ', l_after)
-    print('ratio #cells/#frames before sorting out = %.2f \n' % float(l_before / data.frames.iloc[-1]))
 
-    config["filter"] = dict(l_before=l_before, l_after=l_after)
+    if config is not None:
+        print('# frames =', data.frames.iloc[-1], '   # cells total =', l_before, '   #cells sorted = ', l_after)
+        print('ratio #cells/#frames before sorting out = %.2f \n' % float(l_before / data.frames.iloc[-1]))
+
+        config["filter"] = dict(l_before=l_before, l_after=l_after)
 
     data.reset_index(drop=True, inplace=True)
 
@@ -261,7 +263,7 @@ def plotDensityScatter(x, y, cmap='viridis', alpha=1, skip=1, y_factor=1, levels
 
     #
 
-def plotDensityLevels(x, y, skip=1, y_factor=1, levels=None, cmap="viridis", colors=None):
+def plotDensityLevels(x, y, skip=1, y_factor=1, levels=None, cmap="viridis"):
     x = np.array(x)[::skip]
     y = np.array(y)[::skip]
     filter = ~np.isnan(x) & ~np.isnan(y)
@@ -278,7 +280,7 @@ def plotDensityLevels(x, y, skip=1, y_factor=1, levels=None, cmap="viridis", col
     print(np.dstack([X, Y*y_factor]).shape)
     XY = np.dstack([X, Y*y_factor])
     Z = kde(XY.reshape(-1, 2).T).reshape(XY.shape[:2])
-    plt.contour(X, Y, Z, levels=levels, cmap=cmap, colors=colors)
+    plt.contour(X, Y, Z, levels=levels, cmap=cmap)
 
     #
 
@@ -581,7 +583,7 @@ def load_all_data(input_path, solidity_threshold=0.96, irregularity_threshold=1.
 
                 data.reset_index(inplace=True)
             else:
-                print("WARNING: tank treading has not been evaluated yet", file)
+                print("WARNING: tank treading has not been evaluated yet")
 
             omega, mu1, eta1, k_cell, alpha_cell, epsilon = get_cell_properties(data)
 
@@ -617,6 +619,31 @@ def load_all_data(input_path, solidity_threshold=0.96, irregularity_threshold=1.
     data.reset_index(drop=True, inplace=True)
 
     #fitStiffness(data, config)
+    return data, config
+
+
+def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshold=1.06, pressure=None, repetition=None):
+
+    paths = get_folders(input_path, pressure=pressure, repetition=repetition)
+    data_list = []
+    config = {}
+    print("new", paths)
+    for index, file in enumerate(paths):
+        output_file = Path(str(file).replace("_result.txt", "_evaluated_new.csv"))
+        output_config_file = Path(str(file).replace("_result.txt", "_evaluated_config_new.txt"))
+        print(output_file)
+
+        with output_config_file.open("r") as fp:
+            config = json.load(fp)
+            config["channel_width_m"] = 0.00019001261833616293
+
+        data = pd.read_csv(output_file)
+
+        data_list.append(data)
+
+    data = pd.concat(data_list)
+    data.reset_index(drop=True, inplace=True)
+
     return data, config
 
 
@@ -690,9 +717,10 @@ def apply_velocity_fit(data2):
     return data2, p0
 
 def plot_density_hist(x, orientation='vertical', **kwargs):
-    x = np.array(x)
     from scipy import stats
-    kde = stats.gaussian_kde(x[~np.isnan(x)])
+    x = np.array(x)
+    x = x[~np.isnan(x)]
+    kde = stats.gaussian_kde(x)
     xx = np.linspace(np.nanmin(x), np.nanmax(x), 1000)
     if orientation == 'horizontal':
         l, = plt.plot(kde(xx), xx, **kwargs)
