@@ -12,7 +12,7 @@ setup(name='deformationcytometer',
             'numpy',
             'scipy',
             'tqdm',
-            'tensorflow == 2.3.0',
+            'tensorflow == 2.3.2',
             'tensorflow-addons == 0.12.1'
             'scikit-image>=0.17.2',
             'imageio',
