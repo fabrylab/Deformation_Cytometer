@@ -17,7 +17,7 @@ from tensorflow.keras import layers
 from pathlib import Path
 import urllib.request
 
-weights_url = "https://github.com/fabrylab/Deformation_Cytometer/releases/download/v0.4/Unet_edge_only_immune.h5"
+weights_url = "https://github.com/fabrylab/Deformation_Cytometer/releases/download/v0.4/ImmuneNIH_20x_edgeOnly_2020_11_24.h5"
 
 def get_store_path(url):
     url = Path(url)
