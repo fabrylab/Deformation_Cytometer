@@ -240,18 +240,23 @@ def plotVelocityProfile(data, config):
     print('v_max = %5.2f mm/s   profile stretch exponent = %5.2f\n' % (vel_fit[0], vel_fit[1]))
 
 
-def plotDensityScatter(x, y, cmap='viridis', alpha=1, skip=1, y_factor=1, levels=None):
+def plotDensityScatter(x, y, cmap='viridis', alpha=1, skip=1, y_factor=1, s=5, levels=None, loglog=False):
     x = np.array(x)[::skip]
     y = np.array(y)[::skip]
     filter = ~np.isnan(x) & ~np.isnan(y)
+    if loglog is True:
+        filter &= (x>0) & (y>0)
     x = x[filter]
     y = y[filter]
-    xy = np.vstack([x, y*y_factor])
+    if loglog is True:
+        xy = np.vstack([np.log10(x), np.log10(y)])
+    else:
+        xy = np.vstack([x, y*y_factor])
     kde = gaussian_kde(xy)
     kd = kde(xy)
     idx = kd.argsort()
     x, y, z = x[idx], y[idx], kd[idx]
-    plt.scatter(x, y, c=z, s=5, alpha=alpha, cmap=cmap)  # plot in kernel density colors e.g. viridis
+    plt.scatter(x, y, c=z, s=s, alpha=alpha, cmap=cmap)  # plot in kernel density colors e.g. viridis
 
     if levels != None:
         X, Y = np.meshgrid(np.linspace(np.min(x), np.max(x), 100), np.linspace(np.min(y), np.max(y), 100))
@@ -261,9 +266,11 @@ def plotDensityScatter(x, y, cmap='viridis', alpha=1, skip=1, y_factor=1, levels
         Z = kde(XY.reshape(-1, 2).T).reshape(XY.shape[:2])
         plt.contour(X, Y, Z, levels=1)
 
+    if loglog is True:
+        plt.loglog()
     #
 
-def plotDensityLevels(x, y, skip=1, y_factor=1, levels=None, cmap="viridis"):
+def plotDensityLevels(x, y, skip=1, y_factor=1, levels=None, cmap="viridis", colors=None):
     x = np.array(x)[::skip]
     y = np.array(y)[::skip]
     filter = ~np.isnan(x) & ~np.isnan(y)
@@ -280,7 +287,7 @@ def plotDensityLevels(x, y, skip=1, y_factor=1, levels=None, cmap="viridis"):
     print(np.dstack([X, Y*y_factor]).shape)
     XY = np.dstack([X, Y*y_factor])
     Z = kde(XY.reshape(-1, 2).T).reshape(XY.shape[:2])
-    plt.contour(X, Y, Z, levels=levels, cmap=cmap)
+    plt.contour(X, Y, Z, levels=levels, cmap=cmap, colors=colors)
 
     #
 
@@ -716,7 +723,7 @@ def apply_velocity_fit(data2):
     data2["tau"] = tau
     return data2, p0
 
-def plot_density_hist(x, orientation='vertical', **kwargs):
+def plot_density_hist(x, orientation='vertical', only_kde=False, **kwargs):
     from scipy import stats
     x = np.array(x)
     x = x[~np.isnan(x)]
@@ -726,15 +733,16 @@ def plot_density_hist(x, orientation='vertical', **kwargs):
         l, = plt.plot(kde(xx), xx, **kwargs)
     else:
         l, = plt.plot(xx, kde(xx), **kwargs)
-    plt.hist(x, bins=50, density=True, color=l.get_color(), alpha=0.5, orientation=orientation)
+    if not only_kde:
+        plt.hist(x, bins=50, density=True, color=l.get_color(), alpha=0.5, orientation=orientation)
     return l
 
-def plot_joint_density(x, y):
+def plot_joint_density(x, y, label=None, only_kde=False, color=None):
     ax = plt.gca()
     x1, y1, w, h = ax.get_position().x0, ax.get_position().y0, ax.get_position().width, ax.get_position().height
     if getattr(ax, "ax2", None) is None:
-        ax.ax2 = plt.axes([x1, y1 + h * 0.8, w * 0.8, h * 0.2])
-        ax.ax2.set_xticklabels([])
+        ax.ax2 = plt.axes([x1, y1 + h * 0.8, w * 0.8, h * 0.2], sharex=ax, label=ax.get_label()+"_top")
+        #ax.ax2.set_xticklabels([])
         ax.ax2.spines['right'].set_visible(False)
         ax.ax2.spines['top'].set_visible(False)
         ax.ax2.set_yticks([])
@@ -742,10 +750,10 @@ def plot_joint_density(x, y):
         ax.ax2.spines['left'].set_visible(False)
         ax.ax2.spines['bottom'].set_visible(False)
     plt.sca(ax.ax2)
-    plot_density_hist(x)
+    plot_density_hist(x, color=color, only_kde=only_kde)
     if getattr(ax, "ax3", None) is None:
-        ax.ax3 = plt.axes([x1 + w * 0.8, y1, w * 0.2, h * 0.8])
-        ax.ax3.set_yticklabels([])
+        ax.ax3 = plt.axes([x1 + w * 0.8, y1, w * 0.2, h * 0.8], sharey=ax, label=ax.get_label()+"_right")
+        #ax.ax3.set_yticklabels([])
         ax.set_position([x1, y1, w * 0.8, h * 0.8])
         ax.ax3.spines['right'].set_visible(False)
         ax.ax3.spines['top'].set_visible(False)
@@ -754,9 +762,11 @@ def plot_joint_density(x, y):
         ax.ax3.spines['left'].set_visible(False)
         ax.ax3.spines['bottom'].set_visible(False)
     plt.sca(ax.ax3)
-    l = plot_density_hist(y, orientation=u'horizontal')
+    l = plot_density_hist(y, color=color, orientation=u'horizontal', only_kde=only_kde)
     plt.sca(ax)
-    plotDensityLevels(x, y, 1, colors=[l.get_color()], cmap=None)
+    plotDensityLevels(x, y, levels=1, colors=[l.get_color()], cmap=None)
+    plt.plot([], [], color=l.get_color(), label=label)
+
 
 def get_cell_properties(data):
     import scipy.special
@@ -804,3 +814,4 @@ def get_cell_properties(data):
     data["epsilon"] = epsilon
 
     return omega, mu1, eta1, k_cell, alpha_cell, epsilon
+
