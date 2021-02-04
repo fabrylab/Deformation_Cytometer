@@ -10,13 +10,14 @@
 # in a text file (result_file.txt) in the same directory as the video file.
 
 import os
+import json
 import imageio
 from pathlib import Path
 import logging
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # FATAL
 logging.getLogger('tensorflow').setLevel(logging.FATAL)
 
-from deformationcytometer.detection.includes.UNETmodel import UNet
+from deformationcytometer.detection.includes.UNETmodel import UNet, weights_url
 import tqdm
 
 from deformationcytometer.includes.includes import getInputFile, getConfig, read_args_detect_cells
@@ -66,5 +67,9 @@ with tqdm.tqdm(total=len(vidcap)) as progressbar:
         progressbar.update(len(batch_image_indices))
 
 # save the results
-save_cells_to_file(Path(video[:-3] + '_result.txt'), cells)
+save_cells_to_file(Path(video[:-4] + '_result.txt'), cells)
 
+network_weight = network_weight if not network_weight is None else weights_url
+config.update({"network": weights_url, "network_evaluation_done": False})
+with Path(video[:-4] + '_evaluated_config.txt').open("w") as fp:
+    json.dump(config, fp, indent=0)

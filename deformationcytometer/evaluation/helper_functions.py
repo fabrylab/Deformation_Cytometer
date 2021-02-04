@@ -521,10 +521,26 @@ def get_folders(input_path, pressure=None, repetition=None):
     return paths
 
 
+def check_config_changes(config, evaluation_version, solidity_threshold, irregularity_threshold):
+    # checking if evaluation version, solidity or regularity thresholds have changed or if flag
+    # for new network evaluation is set to True
+
+    checks = {"evaluation_version": evaluation_version, "solidity": solidity_threshold,
+              "irregularity": irregularity_threshold, "network_evaluation_done": True}
+
+    for key, value in checks.items():
+        if key not in config:
+            return True
+        else:
+            if config[key] != value:
+                return True
+    return False
+
+
 def load_all_data(input_path, solidity_threshold=0.96, irregularity_threshold=1.06, pressure=None, repetition=None):
     global ax
 
-    evaluation_version = 7
+    evaluation_version = 8
 
     paths = get_folders(input_path, pressure=pressure, repetition=repetition)
     fit_data = []
@@ -539,21 +555,20 @@ def load_all_data(input_path, solidity_threshold=0.96, irregularity_threshold=1.
         # load the data and the config
         data = getData(file)
         config = getConfig(file)
-
         config["channel_width_m"] = 0.00019001261833616293
 
-        version = 0
         if output_config_file.exists():
             with output_config_file.open("r") as fp:
                 config = json.load(fp)
                 config["channel_width_m"] = 0.00019001261833616293
-            if "evaluation_version" in config:
-                version = config["evaluation_version"]
-        if "filter" in config.keys():
-            filters.append(config["filter"])
+
+        config_changes = check_config_changes(config, evaluation_version, solidity_threshold, irregularity_threshold)
+        if "filter" in config:
+                filters.append(config["filter"])
+
 
         """ evaluating data"""
-        if not output_file.exists() or version < evaluation_version:
+        if not output_file.exists() or config_changes:
             #refetchTimestamps(data, config)
             #data = data[data.frames % 2 == 0]
             #data.frames = data.frames // 2
@@ -596,10 +611,13 @@ def load_all_data(input_path, solidity_threshold=0.96, irregularity_threshold=1.
 
             try:
                 config["evaluation_version"] = evaluation_version
+                config["network_evaluation_done"] = True
+                config["solidity"] = solidity_threshold
+                config["irregularity"] = irregularity_threshold
                 data.to_csv(output_file, index=False)
                 #print("config", config, type(config))
                 with output_config_file.open("w") as fp:
-                    json.dump(config, fp)
+                    json.dump(config, fp, indent=0)
 
             except PermissionError:
                 pass
