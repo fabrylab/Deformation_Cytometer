@@ -34,14 +34,31 @@ drugs_dez = {
     "Y27632": r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\december_2020\2020_12_14_NIH3T3_drugs\Y27632\[2-9]\*_result.txt",
 }
 
-drugs = drugs_dez
+drugs = {}
+import glob
+from pathlib import Path
+#for folder in glob.glob(rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\desmin_cells\2020_12_08_desmin_cytoD\*\*\\"):
+#    folder = Path(folder)
+#    name = str(folder.parent.name)+"_"+str(folder.name)
+#    drugs[name] = str(folder)+"\*_result.txt"
+import natsort
+
+for folder in natsort.natsorted(glob.glob(rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\january_2021\2021_02_03_NIH3T3_LatB_drugresponse\*\\")):
+    folder = Path(folder)
+    name = str(folder.name)
+    drugs[name] = str(folder)+"\*\*_result.txt"
+
+N = len(drugs)
+cols = int(np.sqrt(N))
+rows = int(np.ceil(N/cols))
 
 # iterate over all times
 for index, name in enumerate(drugs.keys()):
-    plt.subplot(4, 3, index+1)
+    print(index, name)
+    plt.subplot(rows, cols, index+1)
 
     # get the data and the fit parameters
-    data, config = load_all_data(drugs[name], pressure=1)
+    data, config = load_all_data(drugs[name])
 
     #plot_joint_density(data.k_cell, data.alpha_cell, label=name, only_kde=True)
     plt.title(name)
