@@ -24,6 +24,8 @@ def get_store_path(url):
     return Path(__file__).parent / url.parent.name / url.name
 
 
+store_path = get_store_path(weights_url)
+
 class UNet(models.Model):
     def __init__(self, img_shape, num_class, d=32, weights=weights_url):
         concat_axis = 3
