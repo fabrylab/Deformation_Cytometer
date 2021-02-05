@@ -327,12 +327,12 @@ def plotStressStrainFit(data, config, color="C1"):
     plt.plot(x, y, ".", color=color, lw=4)
 
 
-def bootstrap_error(data, func=np.median):
+def bootstrap_error(data, func=np.median, repetitions=1000):
     data = np.asarray(data)
     if len(data) <= 1:
         return 0
     medians = []
-    for i in range(1000):
+    for i in range(repetitions):
         medians.append(func(data[np.random.random_integers(len(data) - 1, size=len(data))]))
     return np.nanstd(medians)
 
@@ -741,7 +741,7 @@ def apply_velocity_fit(data2):
     data2["tau"] = tau
     return data2, p0
 
-def plot_density_hist(x, orientation='vertical', only_kde=False, **kwargs):
+def plot_density_hist(x, orientation='vertical', do_stats=True, only_kde=False, **kwargs):
     from scipy import stats
     x = np.array(x)
     x = x[~np.isnan(x)]
@@ -798,21 +798,22 @@ def get_cell_properties(data):
     mu1 = getMu1(alpha1, alpha2, np.abs(np.deg2rad(data.angle)), data.stress)
     eta1 = getEta1(alpha1, alpha2, np.abs(np.deg2rad(data.angle)), data.eta)
 
-    if "omega" in data:
-        omega = np.abs(data.omega)
-    else:
+    if "omega" not in data:
+        data["omega"] = data.stress*np.nan
 
-        ttfreq = - eq41(alpha1, alpha2, np.abs(np.deg2rad(data.angle)), np.abs(data.vel_grad))
-        omega = ttfreq
+    omega = np.abs(data.omega)
 
-        # omega = data.freq * 2 * np.pi
+    ttfreq = - eq41(alpha1, alpha2, np.abs(np.deg2rad(data.angle)), np.abs(data.vel_grad))
+    #omega = ttfreq
 
-        def curve(x, x0, a):
-            return 1 / 2 * 1 / (1 + (x / x0) ** a)
+    # omega = data.freq * 2 * np.pi
 
-        omega_weissenberg = curve(np.abs(data.vel_grad), (1 / data.tau) * 3, data.delta) * np.abs(
-            data.vel_grad)  # * np.pi*2
-        omega = omega_weissenberg
+    def curve(x, x0, a):
+        return 1 / 2 * 1 / (1 + (x / x0) ** a)
+
+    omega_weissenberg = curve(np.abs(data.vel_grad), (1 / data.tau) * 3, data.delta) * np.abs(
+        data.vel_grad)  # * np.pi*2
+    #omega = omega_weissenberg
 
     Gp1 = mu1
     Gp2 = eta1 * np.abs(omega)
@@ -830,6 +831,20 @@ def get_cell_properties(data):
     data["k_cell"] = k_cell
     data["alpha_cell"] = alpha_cell
     data["epsilon"] = epsilon
+
+
+    w_Gp1 = mu1
+    w_Gp2 = eta1 * np.abs(omega_weissenberg)
+    w_alpha_cell = np.arctan(Gp2 / Gp1) * 2 / np.pi
+    w_k_cell = Gp1 / (omega_weissenberg ** alpha_cell * scipy.special.gamma(1 - alpha_cell) * np.cos(np.pi / 2 * alpha_cell))
+
+    mu1_ = k_cell * omega_weissenberg ** alpha_cell * scipy.special.gamma(1 - alpha_cell) * np.cos(np.pi / 2 * alpha_cell)
+    eta1_ = k_cell * omega_weissenberg ** alpha_cell * scipy.special.gamma(1 - alpha_cell) * np.sin(np.pi / 2 * alpha_cell) / omega_weissenberg
+
+    data["w_Gp1"] = w_Gp1
+    data["w_Gp2"] = w_Gp2
+    data["w_k_cell"] = w_k_cell
+    data["w_alpha_cell"] = w_alpha_cell
 
     return omega, mu1, eta1, k_cell, alpha_cell, epsilon
 
