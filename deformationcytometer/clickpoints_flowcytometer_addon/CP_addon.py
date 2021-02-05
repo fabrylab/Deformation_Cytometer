@@ -12,7 +12,7 @@
 # (at your option) any later version.
 #
 # ClickPoints is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# but WITHOUT ANY WARRANTY; without even the implied warranfty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
@@ -49,6 +49,11 @@ from deformationcytometer.includes.includes import getConfig
 from deformationcytometer.includes.includes import getInputFile, getConfig, getData
 from deformationcytometer.evaluation.helper_functions import getVelocity, filterCells, correctCenter, getStressStrain, fitStiffness
 from deformationcytometer.evaluation.helper_functions import plotDensityScatter
+from deformationcytometer.detection.includes.UNETmodel import store_path
+import deformationcytometer.detection.includes.UNETmodel
+
+default_config_path = Path(deformationcytometer.detection.includes.UNETmodel.__file__).parent
+default_config_path = default_config_path.joinpath("default_config.txt")
 
 def X(datafile):
     datafile = datafile.replace(".tif", "_result.txt")
@@ -99,7 +104,7 @@ def strain(longaxis, shortaxis):
     strain = (longaxis - shortaxis) / D
     return strain
 
-
+# todo import from defocytometer
 from scipy.stats import gaussian_kde
 def plotDensityScatter(x, y, ax):
     x = x.to_numpy()
@@ -109,6 +114,47 @@ def plotDensityScatter(x, y, ax):
     idx = kd.argsort()
     x, y, z = x[idx], y[idx], kd[idx]
     ax.scatter(x, y, c=z, s=50, edgecolor='', alpha=1, cmap='viridis')  # plot in kernel density colors e.g. viridis
+
+
+
+
+
+from PyQt5.QtCore import pyqtSignal
+from functools import partial
+from deformationcytometer.includes.includes import Dialog
+class SetFile(QtWidgets.QHBoxLayout):
+
+    fileSeleted = pyqtSignal(bool)
+    def __init__(self, file=None, type="file", filetype=""):
+        super().__init__() # activating QVboxLayout
+        if file is None:
+            self.file = ""
+        else:
+            self.file = file
+        self.filetype = filetype
+        self.type = type
+        #self.folder = os.getcwd()
+        # line edit holding the currently selected folder 1
+        self.line_edit_folder = QtWidgets.QLineEdit(str(self.file))
+        self.line_edit_folder.editingFinished.connect(self.emitTextChanged)
+        self.addWidget(self.line_edit_folder, stretch=4)
+
+        # button to browse folders
+        self.open_folder_button = QtWidgets.QPushButton("choose files")
+        self.open_folder_button.clicked.connect(self.file_dialog)
+        self.addWidget(self.open_folder_button, stretch=2)
+
+
+    def file_dialog(self):
+        dialog = Dialog(title="open file", filetype=self.filetype, mode="file", settings_name="Deformationcytometer Addon")
+        self.file = dialog.openFile()
+        self.fileSeleted.emit(True)
+        self.line_edit_folder.setText(self.file)
+        # TOD check if that works
+    def emitTextChanged(self):
+        self.fileSeleted.emit(True)
+
+
 
 
 class Addon(clickpoints.Addon):
@@ -127,19 +173,31 @@ class Addon(clickpoints.Addon):
     def __init__(self, *args, **kwargs):
         clickpoints.Addon.__init__(self, *args, **kwargs)
 
+
+        self.unet = None
         self.layout = QtWidgets.QVBoxLayout(self)
+
 
         # Check if the marker type is present
         self.marker_type_cell = self.db.setMarkerType("cell", "#0a2eff", self.db.TYPE_Ellipse)
         self.marker_type_cell2 = self.db.setMarkerType("cell2", "#Fa2eff", self.db.TYPE_Ellipse)
         self.cp.reloadTypes()
 
-        self.loadData()
 
         clickpoints.Addon.__init__(self, *args, **kwargs)
+
         # set the title and layout
         self.setWindowTitle("DeformationCytometer - ClickPoints")
         self.layout = QtWidgets.QVBoxLayout(self)
+        # weight file selection
+        self.weight_selection = SetFile(store_path, filetype="weight file (*.h5)")
+        self.weight_selection.fileSeleted.connect(self.initUnet)
+        self.layout.addLayout(self.weight_selection)
+        # update segmentation
+        self.update_detection_button = QtWidgets.QPushButton("update_detection")
+        self.update_detection_button.clicked.connect(self.detect_all)
+        self.layout.addWidget(self.update_detection_button)
+
 
         # add export buttons
         layout = QtWidgets.QHBoxLayout()
@@ -147,13 +205,14 @@ class Addon(clickpoints.Addon):
         self.button_stressstrain.clicked.connect(self.plot_stress_strain)
         layout.addWidget(self.button_stressstrain)
 
-        self.button_stressy = QtWidgets.QPushButton("y-strain")
-        self.button_stressy.clicked.connect(self.plot_y_strain)
-        layout.addWidget(self.button_stressy)
-
-        self.button_y_angle = QtWidgets.QPushButton("y-angle")
-        self.button_y_angle.clicked.connect(self.plot_y_angle)
-        layout.addWidget(self.button_y_angle)
+        # TODO do we really need that
+      #  self.button_stressy = QtWidgets.QPushButton("y-strain")
+       # self.button_stressy.clicked.connect(self.plot_y_strain)
+       # layout.addWidget(self.button_stressy)
+        # TODO do we really need that
+        #self.button_y_angle = QtWidgets.QPushButton("y-angle")
+        #self.button_y_angle.clicked.connect(self.plot_y_angle)
+       # layout.addWidget(self.button_y_angle)
 
         self.layout.addLayout(layout)
 
@@ -164,8 +223,10 @@ class Addon(clickpoints.Addon):
         self.plot.figure.canvas.mpl_connect('button_press_event', self.button_press_callback)
 
         # add a progress bar
+        # TODO use this progress bar
         self.progressbar = QtWidgets.QProgressBar()
         self.layout.addWidget(self.progressbar)
+
 
         # connect slots
         # self.signal_update_plot.connect(self.updatePlotImageEvent)
@@ -175,24 +236,34 @@ class Addon(clickpoints.Addon):
         # self.updateTable()
         # self.selected = None
 
+
         filename = self.db.getImage(0).get_full_filename()
+        config_file = Path(filename.replace(".tif", "_config.txt"))
+        result_file = Path(filename.replace(".tif", "_result.txt"))
+
+
         print(filename.replace(".tif", "_config.txt"))
-        self.config = getConfig(filename.replace(".tif", "_config.txt"))
-        self.data = getData(filename.replace(".tif", "_result.txt"))
+        if Path(config_file).exists() and result_file.exist():
+            self.loadData()
+            self.config = getConfig(config_file)
+            self.data = getData(result_file)
+           # evaluation...
+            #getVelocity(self.data, self.config) TODO reimplement that in a better way
 
-        getVelocity(self.data, self.config)
+            try:
+                correctCenter(self.data, self.config)
+            except ValueError:
+                pass
 
-        try:
-            correctCenter(self.data, self.config)
-        except ValueError:
-            pass
+           # self.data = self.data.groupby(['cell_id']).mean()
+            self.sol_threshold = 0.7
+            self.reg_threshold = 1.3
+            self.data = filterCells(self.data, self.config, solidity_threshold=self.sol_threshold, irregularity_threshold=self.reg_threshold)
+            self.data.reset_index(drop=True, inplace=True)
 
-        self.data = self.data.groupby(['cell_id']).mean()
-
-        self.data = filterCells(self.data, self.config)
-        self.data.reset_index(drop=True, inplace=True)
-
-        getStressStrain(self.data, self.config)
+            getStressStrain(self.data, self.config)
+        else:
+            self.config = getConfig(default_config_path) # TODO fix this// save a default config somewhere
 
     def button_press_callback(self, event):
         # only drag with left mouse button
@@ -242,58 +313,54 @@ class Addon(clickpoints.Addon):
         self.plot.figure.tight_layout()
         self.plot.draw()
 
-    def plot_y_strain(self):
-        y = self.data[:, 2]
-        stress_values = stressfunc(self.data[:, 3] * 1e-6, self.config)
-        strain_values = strain(self.data[:, 4], self.data[:, 5])
-
-        self.plot.axes.clear()
-
-        self.plot_data = np.array([y, strain_values])
-        self.plot.axes.plot(y, strain_values, "o")
-        self.plot.axes.set_xlabel("y")
-        self.plot.axes.set_ylabel("strain")
-        self.plot.figure.tight_layout()
-        self.plot.draw()
-
-    def plot_y_angle(self):
-        y = self.data[:, 2]
-        angle = self.data[:, 6]
-
-        self.plot.axes.clear()
-
-        self.plot_data = np.array([y, angle])
-        self.plot.axes.plot(y, angle, "o")
-        self.plot.axes.set_xlabel("y")
-        self.plot.axes.set_ylabel("angle")
-        self.plot.figure.tight_layout()
-        self.plot.draw()
-
     def export(self):
         pass
 
     def buttonPressedEvent(self):
         self.show()
 
-    def detect(self):
+    def initUnet(self):
+        print("loading weight file: ", self.weight_selection.file)
+        shape = self.cp.getImage().getShape()
+        self.unet = UNet((shape[0], shape[1], 1), 1, d=8, weights=self.weight_selection.file)
+
+    def detect_all(self):
+        # TODO: put this in a qworker or something...
+        frames = self.db.getImageCount()
+        self.progressbar.setMaximum(frames)
+        for frame in range(frames):
+            im = self.db.getImage(frame=frame)
+            img = im.data
+            self.detect(im, img)
+            self.progressbar.setValue(frame)
+        self.cp.reloadMask() # TODO move into loop?
+        self.cp.reloadMarker()
+
+    def detect_single(self):
         im = self.cp.getImage()
         img = self.cp.getImage().data
+        self.detect(im, img)
+
+        self.cp.reloadMask()
+        self.cp.reloadMarker()
+
+    def detect(self, im, img):
 
         if self.unet is None:
             self.unet = UNet((img.shape[0], img.shape[1], 1), 1, d=8)
         img = (img - np.mean(img)) / np.std(img).astype(np.float32)
         prediction_mask = self.unet.predict(img[None, :, :, None])[0, :, :, 0] > 0.5
-
         cells, prediction_mask = mask_to_cells_edge(prediction_mask, img, self.config, 0, {}, edge_dist=15, return_mask=True)
         self.db.setMask(image=self.cp.getImage(), data=prediction_mask.astype(np.uint8))
         self.db.deleteEllipses(type=self.marker_type_cell2, frame=self.cp.getCurrentFrame())
         for cell in cells:
-            strain = (cell["long_axis"]- cell["short_axis"]) / np.sqrt(cell["long_axis"] * cell["short_axis"])
+            strain = (cell["long_axis"] - cell["short_axis"]) / np.sqrt(cell["long_axis"] * cell["short_axis"])
             self.db.setEllipse(image=im, x=cell["x_pos"], y=cell["y_pos"], width=cell["long_axis"]/self.config["pixel_size"], height=cell["short_axis"]/self.config["pixel_size"],
                                angle=cell["angle"], type=self.marker_type_cell2, text=
                                f"strain {strain:.3f}\nsolidity {cell['solidity']:.2f}\nirreg. {cell['irregularity']:.3f}")
-        self.cp.reloadMask()
-        self.cp.reloadMarker()
+
+
+
 
     def keyPressEvent(self, event):
         print(event.key(), QtCore.Qt.Key_G)
@@ -343,11 +410,47 @@ class Addon(clickpoints.Addon):
                                    )
 
 
-    def buttonPressedEvent(self):
-        self.show()
+
+
+
+
+# TODO: implement reg/sol thresholds
+# TODO: custom network
+# TODO multiple network prediktion
+
 
 
 """
+    def plot_y_strain(self):
+        y = self.data[:, 2]
+        stress_values = stressfunc(self.data[:, 3] * 1e-6, self.config)
+        strain_values = strain(self.data[:, 4], self.data[:, 5])
+
+        self.plot.axes.clear()
+
+        self.plot_data = np.array([y, strain_values])
+        self.plot.axes.plot(y, strain_values, "o")
+        self.plot.axes.set_xlabel("y")
+        self.plot.axes.set_ylabel("strain")
+        self.plot.figure.tight_layout()
+        self.plot.draw()
+
+    def plot_y_angle(self):
+        y = self.data[:, 2]
+        angle = self.data[:, 6]
+
+        self.plot.axes.clear()
+
+        self.plot_data = np.array([y, angle])
+        self.plot.axes.plot(y, angle, "o")
+        self.plot.axes.set_xlabel("y")
+        self.plot.axes.set_ylabel("angle")
+        self.plot.figure.tight_layout()
+        self.plot.draw()
+
+
+
+
 
 from __future__ import division, print_function
 import clickpoints
@@ -553,3 +656,4 @@ class Addon(clickpoints.Addon):
     def buttonPressedEvent(self):
         self.show()
 """
+

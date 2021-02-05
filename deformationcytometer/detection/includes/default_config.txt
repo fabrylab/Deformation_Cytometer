@@ -1,0 +1,32 @@
+[Default]
+version = 1
+
+[SETUP]
+pressure = 300 kPa
+channel width = 200 um
+channel length = 5.8 cm
+imaging position after inlet = 0.6 cm
+bioink = alginate 2 pc
+room temperature = 25 deg C
+cell temperature = 25 deg C
+
+[MICROSCOPE]
+microscope = Leica DM 6000
+objective = 40 x
+na = 0.6
+coupler = 0.5 x
+condensor aperture = 8
+
+[CAMERA]
+exposure time = 30 us
+gain = 3
+frame rate = 400 fps
+camera = Basler acA20-520
+camera pixel size = 6.9 um
+
+[CELL]
+cell type = NIH3T3
+cell passage number = 10
+time after harvest = 40
+treatment = db cAMP
+
