@@ -12,6 +12,7 @@
 r_min = 6
 batch_size = 100
 
+
 def log(name, name2, onoff, index=0):
     import os, time
     with open(f"log_{name}_{os.getpid()}.txt", "a") as fp:
@@ -73,9 +74,10 @@ class ProcessDetectMasksBatch:
     unet = None
     batch = None
 
-    def __init__(self, batch_size):
+    def __init__(self, batch_size, network_weights):
         # store the batch size
         self.batch_size = batch_size
+        self.network_weights = network_weights
 
     def __call__(self, data):
         from deformationcytometer.detection.includes.UNETmodel import UNet
@@ -103,7 +105,7 @@ class ProcessDetectMasksBatch:
             # initialize the unet if necessary
             if self.unet is None:
                 im = batch[0]["im"]
-                self.unet = UNet((im.shape[0], im.shape[1], 1), 1, d=8)
+                self.unet = UNet((im.shape[0], im.shape[1], 1), 1, d=8, weights=self.network_weight)
 
             # predict cell masks from the image batch
             im_batch = np.dstack([data["im"] for data in batch])
@@ -123,36 +125,42 @@ class ProcessDetectMasksBatch:
             return data
 
 
-def process_find_cells(data):
-    import pandas as pd
-    from deformationcytometer.detection.includes.regionprops import mask_to_cells_edge
-    from deformationcytometer.evaluation.helper_functions import filterCells
+class ProcessFindCells:
+    def __init__(self, irregularity_threshold, solidity_threshold):
+        self.irregularity_threshold = irregularity_threshold
+        self.solidity_threshold = solidity_threshold
 
-    if data["type"] != "image":
+    def __call__(self, data):
+        import pandas as pd
+        from deformationcytometer.detection.includes.regionprops import mask_to_cells_edge
+        from deformationcytometer.evaluation.helper_functions import filterCells
+
+        if data["type"] != "image":
+            return data
+
+        log("3find_cells", "detect", 1, data["index"])
+
+        new_cells = mask_to_cells_edge(data["mask"], data["im"], data["config"], r_min,
+                                       frame_data={"frames": data["index"], "timestamp": data["timestamp"]})
+        new_cells = pd.DataFrame(new_cells,
+                                 columns=["frames", "timestamp", "x_pos", "y_pos", "radial_pos", "long_axis", "short_axis",
+                                          "angle", "irregularity", "solidity", "sharpness", "velocity", "cell_id", "tt",
+                                          "tt_r2"])
+
+        for pair in [["x", "x_pos"], ["y", "y_pos"], ["rp", "radial_pos"]]:
+            new_cells[pair[0]] = new_cells[pair[1]]
+            del new_cells[pair[1]]
+
+        # filter cells according to solidity and irregularity
+        new_cells = filterCells(new_cells, solidity_threshold=self.solidity_threshold,
+                                irregularity_threshold=self.irregularity_threshold)
+
+        data["cells"] = new_cells
+        del data["mask"]
+
+        log("3find_cells", "detect", 0, data["index"])
+
         return data
-
-    log("3find_cells", "detect", 1, data["index"])
-
-    new_cells = mask_to_cells_edge(data["mask"], data["im"], data["config"], r_min,
-                                   frame_data={"frames": data["index"], "timestamp": data["timestamp"]})
-    new_cells = pd.DataFrame(new_cells,
-                             columns=["frames", "timestamp", "x_pos", "y_pos", "radial_pos", "long_axis", "short_axis",
-                                      "angle", "irregularity", "solidity", "sharpness", "velocity", "cell_id", "tt",
-                                      "tt_r2"])
-
-    for pair in [["x", "x_pos"], ["y", "y_pos"], ["rp", "radial_pos"]]:
-        new_cells[pair[0]] = new_cells[pair[1]]
-        del new_cells[pair[1]]
-
-    # filter cells according to solidity and irregularity
-    new_cells = filterCells(new_cells)
-
-    data["cells"] = new_cells
-    del data["mask"]
-
-    log("3find_cells", "detect", 0, data["index"])
-
-    return data
 
 
 class ProcessPairData:
@@ -266,14 +274,8 @@ class ProcessTankTreading:
 
 
 class ResultCombiner:
-    def __init__(self, filename):
-        # you can record some arguments here, still within the parent process.
-        self.filename = filename
 
     def init(self):
-        #self.cells = []
-        #self.progressbar = None
-        #self.cell_count = 0
         self.filenames = {}
 
     def __call__(self, data, data2=None):
@@ -391,8 +393,11 @@ def get_items(d):
 
 if __name__ == "__main__":
     from deformationcytometer.detection import pipey
-    from deformationcytometer.includes.includes import getInputFile
+    from deformationcytometer.includes.includes import getInputFile, read_args_pipeline
     import sys
+
+    # reading commandline arguments if executed from terminal
+    file, network_weight, irregularity_threshold, solidity_threshold = read_args_pipeline()
 
     clear_logs()
 
@@ -409,16 +414,16 @@ if __name__ == "__main__":
     # one process reads the documents
     pipeline.add(process_load_images)
 
-    pipeline.add(ProcessDetectMasksBatch(batch_size))
+    pipeline.add(ProcessDetectMasksBatch(batch_size, network_weight))
 
     # One process combines the results into a file.
-    pipeline.add(process_find_cells, 2)
+    pipeline.add(ProcessFindCells(irregularity_threshold, solidity_threshold), 2)
 
     pipeline.add(ProcessPairData())
 
     pipeline.add(ProcessTankTreading(), 2)
 
-    pipeline.add(ResultCombiner(video))
+    pipeline.add(ResultCombiner())
 
     d = to_filelist()
     print(d)
