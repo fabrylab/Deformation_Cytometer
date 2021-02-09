@@ -95,6 +95,8 @@ def read_args_tank_treading():
 
 def getInputFile(filetype="video file (*.tif *.avi)", settings_name="", video=None):
 
+    if len(sys.argv) >= 2:
+        return sys.argv[1]
     if video is None:
         # select video file
         app = QApplication(sys.argv)

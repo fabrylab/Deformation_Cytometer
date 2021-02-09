@@ -10,7 +10,7 @@
 # in a text file (result_file.txt) in the same directory as the video file.
 
 r_min = 6
-batch_size = 10
+batch_size = 100
 
 def log(name, name2, onoff, index=0):
     import os, time
@@ -34,6 +34,7 @@ def process_load_images(filename):
     from deformationcytometer.detection.includes.regionprops import preprocess, getTimestamp
     from deformationcytometer.includes.includes import getConfig
 
+    print("start load images", filename)
     log("1load_images", "prepare", 1)
 
     # open the image reader
@@ -49,6 +50,8 @@ def process_load_images(filename):
     log("1load_images", "read", 1)
     # iterate over all images in the file
     for image_index, im in enumerate(reader):
+        if image_index == image_count:
+            break
         # ensure image has only one channel
         if len(im.shape) == 3:
             im = im[:, :, 0]
@@ -61,7 +64,6 @@ def process_load_images(filename):
             log("1load_images", "read", 1, image_index+1)
 
     yield dict(filename=filename, index=image_count, type="end")
-    yield pipey.STOP
 
 
 class ProcessDetectMasksBatch:
@@ -176,6 +178,9 @@ class ProcessPairData:
                 file["next_index"] += 1
             else:
                 break
+        # clear the cache when the file has been processed completely
+        if "image_count" in data and file["next_index"] == data["image_count"]:
+            del self.filenames[data["filename"]]
 
     def match_velocities(self, data1, data2):
         file = self.filenames[data2["filename"]]
@@ -184,6 +189,7 @@ class ProcessPairData:
         from deformationcytometer.detection.includes.regionprops import matchVelocities
 
         if data2["type"] == "end" or data2["type"] == "start":
+            log("4vel", "prepare", 0, data2["index"])
             return data1, data2
 
         if data1["type"] == "start":
@@ -270,7 +276,9 @@ class ResultCombiner:
         #self.cell_count = 0
         self.filenames = {}
 
-    def __call__(self, data):
+    def __call__(self, data, data2=None):
+        if data is None:
+            return
         if data["filename"] not in self.filenames:
             self.filenames[data["filename"]] = dict(cached={}, next_index=-1, cell_count=0, cells=[], progressbar=None, config=dict())
 
@@ -288,18 +296,22 @@ class ResultCombiner:
                 file["next_index"] += 1
             else:
                 break
+        # clear the cache when the file has been processed completely
+        if "image_count" in data and file["next_index"] == data["image_count"]:
+            del self.filenames[data["filename"]]
 
     def data(self, data):
         # if the file is finished, store the results
         if data["type"] == "start":
             return
 
+        file = self.filenames[data["filename"]]
+
         if data["type"] == "end":
             self.save(data)
+            file["progressbar"].close()
             del self.filenames[data["filename"]]
             return
-
-        file = self.filenames[data["filename"]]
 
         if file["progressbar"] is None:
             import tqdm
@@ -355,6 +367,28 @@ class ResultCombiner:
             json.dump(config, fp)
 
 
+def to_filelist():
+    import glob
+    paths = [
+        #    rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_may\2020_05_22_alginateDMEM2%",
+        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate",
+#        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_19_alginate2%_overtime_2",
+    ]
+    if not isinstance(paths, list):
+        paths = list(paths)
+    files = []
+    for path in paths:
+        if path.endswith(".tif"):
+            files.append(path)
+        else:
+            files.extend(glob.glob(path + "/**/*.tif", recursive=True))
+    return files
+
+def get_items(d):
+    for x in d:
+        yield x
+    yield pipey.STOP
+
 if __name__ == "__main__":
     from deformationcytometer.detection import pipey
     from deformationcytometer.includes.includes import getInputFile
@@ -366,7 +400,11 @@ if __name__ == "__main__":
     video = getInputFile(settings_name="detect_cells.py")
     print(video)
 
+
+
     pipeline = pipey.Pipeline()
+
+    pipeline.add(get_items)
 
     # one process reads the documents
     pipeline.add(process_load_images)
@@ -382,4 +420,6 @@ if __name__ == "__main__":
 
     pipeline.add(ResultCombiner(video))
 
-    pipeline.run(video)
+    d = to_filelist()
+    print(d)
+    pipeline.run(d)
