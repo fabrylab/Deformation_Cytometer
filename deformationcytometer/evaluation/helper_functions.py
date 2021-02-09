@@ -537,7 +537,7 @@ def check_config_changes(config, evaluation_version, solidity_threshold, irregul
     return False
 
 
-def load_all_data(input_path, solidity_threshold=0.96, irregularity_threshold=1.06, pressure=None, repetition=None):
+def load_all_data(input_path, solidity_threshold=0.7, irregularity_threshold=1.3, pressure=None, repetition=None):
     global ax
 
     evaluation_version = 8
@@ -898,11 +898,11 @@ def get_cell_properties(data):
 
     w_Gp1 = mu1
     w_Gp2 = eta1 * np.abs(omega_weissenberg)
-    w_alpha_cell = np.arctan(Gp2 / Gp1) * 2 / np.pi
-    w_k_cell = Gp1 / (omega_weissenberg ** alpha_cell * scipy.special.gamma(1 - alpha_cell) * np.cos(np.pi / 2 * alpha_cell))
+    w_alpha_cell = np.arctan(w_Gp2 / w_Gp1) * 2 / np.pi
+    w_k_cell = Gp1 / (omega_weissenberg ** w_alpha_cell * scipy.special.gamma(1 - w_alpha_cell) * np.cos(np.pi / 2 * w_alpha_cell))
 
-    mu1_ = k_cell * omega_weissenberg ** alpha_cell * scipy.special.gamma(1 - alpha_cell) * np.cos(np.pi / 2 * alpha_cell)
-    eta1_ = k_cell * omega_weissenberg ** alpha_cell * scipy.special.gamma(1 - alpha_cell) * np.sin(np.pi / 2 * alpha_cell) / omega_weissenberg
+    mu1_ = k_cell * omega_weissenberg ** w_alpha_cell * scipy.special.gamma(1 - w_alpha_cell) * np.cos(np.pi / 2 * w_alpha_cell)
+    eta1_ = k_cell * omega_weissenberg ** w_alpha_cell * scipy.special.gamma(1 - w_alpha_cell) * np.sin(np.pi / 2 * w_alpha_cell) / omega_weissenberg
 
     data["w_Gp1"] = w_Gp1
     data["w_Gp2"] = w_Gp2
