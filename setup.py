@@ -1,4 +1,9 @@
 from setuptools import setup
+import sys
+python_version = (sys.version_info.major, sys.version_info.minor, sys.version_info.micro)
+if python_version[0] < 3 or python_version[1] > 8:
+      raise Exception("Deformation Cytometer requires python version <= 3.8.6, "
+            "your version is %d.%d.%d" % python_version)
 
 
 setup(name='deformationcytometer',
@@ -18,7 +23,8 @@ setup(name='deformationcytometer',
             'imageio',
             'tifffile',
             "fill_voids == 2.0.1",
-            "opencv-python"
-
+            "opencv-python",
+            "pandas",
       ],
 )
+
