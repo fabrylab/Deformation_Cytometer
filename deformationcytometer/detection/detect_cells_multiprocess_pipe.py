@@ -105,7 +105,7 @@ class ProcessDetectMasksBatch:
             # initialize the unet if necessary
             if self.unet is None:
                 im = batch[0]["im"]
-                self.unet = UNet((im.shape[0], im.shape[1], 1), 1, d=8, weights=self.network_weight)
+                self.unet = UNet((im.shape[0], im.shape[1], 1), 1, d=8, weights=self.network_weights)
 
             # predict cell masks from the image batch
             im_batch = np.dstack([data["im"] for data in batch])
@@ -116,6 +116,7 @@ class ProcessDetectMasksBatch:
             for i in range(len(batch)):
                 data = batch[i]
                 data["mask"] = prediction_mask_batch[i]
+                data["config"].update({"network": self.network_weights})
                 log("2detect", "prepare", 0, data["index"])
                 yield data
                 if i < len(batch) -1 :
@@ -154,6 +155,9 @@ class ProcessFindCells:
         # filter cells according to solidity and irregularity
         new_cells = filterCells(new_cells, solidity_threshold=self.solidity_threshold,
                                 irregularity_threshold=self.irregularity_threshold)
+
+        data["config"]["solidity"] = self.solidity_threshold
+        data["config"]["irregularity"] = self.irregularity_threshold
 
         data["cells"] = new_cells
         del data["mask"]
@@ -325,7 +329,7 @@ class ResultCombiner:
         file["progressbar"].set_description(f"cells {file['cell_count']}")
 
     def save(self, data):
-        evaluation_version = 7
+        evaluation_version = 8
         from pathlib import Path
 
         import pandas as pd
@@ -366,27 +370,27 @@ class ResultCombiner:
         data.to_csv(output_file, index=False)
         # print("config", config, type(config))
         with output_config_file.open("w") as fp:
-            json.dump(config, fp)
+            json.dump(config, fp, indent=0)
 
 
-def to_filelist():
+def to_filelist(paths):
     import glob
-    paths = [
-        #    rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_may\2020_05_22_alginateDMEM2%",
-        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate",
-#        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_19_alginate2%_overtime_2",
-    ]
     if not isinstance(paths, list):
-        paths = list(paths)
+        paths = [paths]
     files = []
     for path in paths:
         if path.endswith(".tif"):
-            files.append(path)
+            if "*" in path:
+                files.extend(glob.glob(path, recursive=True))
+            else:
+                files.append(path)
         else:
             files.extend(glob.glob(path + "/**/*.tif", recursive=True))
     return files
 
 def get_items(d):
+    from deformationcytometer.detection import pipey
+    d = to_filelist(d)
     for x in d:
         yield x
     yield pipey.STOP
@@ -404,8 +408,6 @@ if __name__ == "__main__":
     print(sys.argv)
     video = getInputFile(settings_name="detect_cells.py")
     print(video)
-
-
 
     pipeline = pipey.Pipeline()
 
@@ -425,6 +427,4 @@ if __name__ == "__main__":
 
     pipeline.add(ResultCombiner())
 
-    d = to_filelist()
-    print(d)
-    pipeline.run(d)
+    pipeline.run(video)
