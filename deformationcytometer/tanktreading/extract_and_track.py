@@ -59,4 +59,4 @@ for id in tqdm.tqdm(ids):
     results.append([id, speed, r2])
 
 data = pd.DataFrame(results, columns=["id", "tt", "tt_r2"])
-data.to_csv(video[:-3]+"_tt.csv")
+data.to_csv(video[:-4]+"_tt.csv")

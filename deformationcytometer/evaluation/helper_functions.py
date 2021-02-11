@@ -578,13 +578,13 @@ def load_all_data(input_path, solidity_threshold=0.7, irregularity_threshold=1.3
             # take the mean of all values of each cell
             data = data.groupby(['cell_id'], as_index=False).mean()
 
-            tt_file = Path(str(file).replace("_result.txt", "._tt.csv"))
+            tt_file = Path(str(file).replace("_result.txt", "_tt.csv"))
             if tt_file.exists():
                 data.set_index("cell_id", inplace=True)
                 data_tt = pd.read_csv(tt_file)
-                data["omega"] = np.zeros(len(data))*np.nan
+                data["omega"] = np.zeros(len(data)) * np.nan
                 for i, d in data_tt.iterrows():
-                    if d.tt_r2 > 0.2:# and d.id in data.index:
+                    if d.tt_r2 > 0.2:
                         data.at[d.id, "omega"] = d.tt * 2 * np.pi
 
                 data.reset_index(inplace=True)
