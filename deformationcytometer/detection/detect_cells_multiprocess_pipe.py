@@ -133,10 +133,17 @@ class ProcessFindCells:
 
     def __call__(self, data):
         import pandas as pd
+        from pathlib import Path
         from deformationcytometer.detection.includes.regionprops import mask_to_cells_edge
         from deformationcytometer.evaluation.helper_functions import filterCells
 
+        output_path = Path(data["filename"][:-4]+"_result_new.csv")
+
         if data["type"] != "image":
+            # delete an existing outputfile
+            if data["type"] == "start":
+                if output_path.exists():
+                    output_path.unlink()
             return data
 
         log("3find_cells", "detect", 1, data["index"])
@@ -151,6 +158,13 @@ class ProcessFindCells:
         for pair in [["x", "x_pos"], ["y", "y_pos"], ["rp", "radial_pos"]]:
             new_cells[pair[0]] = new_cells[pair[1]]
             del new_cells[pair[1]]
+
+        if not output_path.exists():
+            with output_path.open("w") as fp:
+                new_cells.to_csv(fp, index=False, header=True)
+        else:
+            with output_path.open("a") as fp:
+                new_cells.to_csv(fp, index=False, header=False)
 
         # filter cells according to solidity and irregularity
         new_cells = filterCells(new_cells, solidity_threshold=self.solidity_threshold,
