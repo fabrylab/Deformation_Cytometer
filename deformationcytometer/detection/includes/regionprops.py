@@ -122,9 +122,9 @@ def mask_to_cells_edge(prediction_mask, im, config, r_min, frame_data, edge_dist
             data = {}
             data.update(frame_data)
             data.update({
-                          "x_pos": region.centroid[1],  # x_pos
-                          "y_pos": region.centroid[0],  # y_pos
-                          "radial_pos": yy,                  # RadialPos
+                          "x": region.centroid[1],  # x_pos
+                          "y": region.centroid[0],  # y_pos
+                          "rp": yy,                  # RadialPos
                           "long_axis": float(format(region.major_axis_length)) * config["pixel_size_m"] * 1e6,  # LongAxis
                           "short_axis": float(format(region.minor_axis_length)) * config["pixel_size_m"] * 1e6,  # ShortAxis
                           "angle": np.rad2deg(ellipse_angle),  # angle
@@ -201,9 +201,9 @@ def mask_to_cells(prediction_mask, im, config, r_min, frame_data, edge_dist=15):
             data = {}
             data.update(frame_data)
             data.update({
-                          "x_pos": region.centroid[1],  # x_pos
-                          "y_pos": region.centroid[0],  # y_pos
-                          "radial_pos": yy,                  # RadialPos
+                          "xs": region.centroid[1],  # x_pos
+                          "y": region.centroid[0],  # y_pos
+                          "rp": yy,                  # RadialPos
                           "long_axis": float(format(region.major_axis_length)) * config["pixel_size_m"] * 1e6,  # LongAxis
                           "short_axis": float(format(region.minor_axis_length)) * config["pixel_size_m"] * 1e6,  # ShortAxis
                           "angle": np.rad2deg(ellipse_angle),  # angle
@@ -225,10 +225,10 @@ def save_cells_to_file(result_file, cells):
         f.write('Pathname' + '\t' + str(output_path) + '\n')
         for cell in cells:
             f.write("\t".join([
-                str(cell["frame"]),
-                str(cell["x_pos"]),
-                str(cell["y_pos"]),
-                str(cell["radial_pos"]),
+                str(cell["frames"]),
+                str(cell["x"]),
+                str(cell["y"]),
+                str(cell["rp"]),
                 str(cell["long_axis"]),
                 str(cell["short_axis"]),
                 str(cell["angle"]),
