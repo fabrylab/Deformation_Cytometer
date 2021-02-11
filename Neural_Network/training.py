@@ -4,10 +4,10 @@
 # Author Andreas Bauer
 # Contact: Andreas.b.Bauer@fau.de
 
-from Neural_Network.training_functions import *
-from Neural_Network.loss_functions import *
-from Neural_Network.data_handling import *
-from Neural_Network.weight_maps import extract_edge, weight_background
+from Neural_Network.includes.training_functions import *
+from Neural_Network.includes.loss_functions import *
+from Neural_Network.includes.data_handling import *
+from Neural_Network.includes.weight_maps import extract_edge, weight_background
 from deformationcytometer.detection.includes.UNETmodel import UNet
 from tensorflow_addons.optimizers import RectifiedAdam
 
