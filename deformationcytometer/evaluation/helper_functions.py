@@ -850,3 +850,30 @@ def get_cell_properties(data):
 
     return omega, mu1, eta1, k_cell, alpha_cell, epsilon
 
+
+def match_cells_from_all_data(data, config, image_width=720):
+    timestamps = {i: d.timestamp for i, d in data.groupby("frames").mean().iterrows()}
+    for i, d in data.iterrows():
+        x = d.x
+        v = d.vel * 1e3 / config["pixel_size"]
+        t = d.timestamp
+        for dir in [1]:
+            for j in range(1, 10):
+                frame2 = d.frames + j * dir
+                try:
+                    dt = timestamps[frame2] - t
+                except KeyError:
+                    continue
+                x2 = x + v * dt
+                # if we ran out of the image, stop
+                if not (0 <= x2 <= image_width):
+                    break
+                d2 = data[data.frames == frame2]
+                # if the cell is already present in the frame, to not do any matching
+                if len(d2[d2.cell_id == d.cell_id]):
+                    continue
+                d2 = d2[np.abs(d2.rp - d.rp) < 10]
+                d2 = d2[np.abs(d2.x - x2) < 15]
+                # if it survived the filters, merge
+                if len(d2):
+                    data.loc[data['cell_id'] == d2.iloc[0].cell_id, 'cell_id'] = d.cell_id
