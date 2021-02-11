@@ -256,7 +256,7 @@ def plotDensityScatter(x, y, cmap='viridis', alpha=1, skip=1, y_factor=1, s=5, l
     kd = kde(xy)
     idx = kd.argsort()
     x, y, z = x[idx], y[idx], kd[idx]
-    plt.scatter(x, y, c=z, s=s, alpha=alpha, cmap=cmap)  # plot in kernel density colors e.g. viridis
+    ax.scatter(x, y, c=z, s=s, alpha=alpha, cmap=cmap)  # plot in kernel density colors e.g. viridis
 
     if levels != None:
         X, Y = np.meshgrid(np.linspace(np.min(x), np.max(x), 100), np.linspace(np.min(y), np.max(y), 100))
@@ -264,10 +264,10 @@ def plotDensityScatter(x, y, cmap='viridis', alpha=1, skip=1, y_factor=1, s=5, l
         print(np.dstack([X, Y*y_factor]).shape)
         XY = np.dstack([X, Y*y_factor])
         Z = kde(XY.reshape(-1, 2).T).reshape(XY.shape[:2])
-        plt.contour(X, Y, Z, levels=1)
+        ax.contour(X, Y, Z, levels=1)
 
     if loglog is True:
-        plt.loglog()
+        ax.loglog()
     #
 
 def plotDensityLevels(x, y, skip=1, y_factor=1, levels=None, cmap="viridis", colors=None):
@@ -537,7 +537,7 @@ def check_config_changes(config, evaluation_version, solidity_threshold, irregul
     return False
 
 
-def load_all_data(input_path, solidity_threshold=0.7, irregularity_threshold=1.3, pressure=None, repetition=None):
+def load_all_data(input_path, solidity_threshold=0.96, irregularity_threshold=1.06, pressure=None, repetition=None):
     global ax
 
     evaluation_version = 8
@@ -606,7 +606,6 @@ def load_all_data(input_path, solidity_threshold=0.7, irregularity_threshold=1.3
             data["pressure"] = config["pressure_pa"]*1e-5
 
             data, p = apply_velocity_fit(data)
-
 
 
             omega, mu1, eta1, k_cell, alpha_cell, epsilon = get_cell_properties(data)
@@ -743,18 +742,19 @@ def apply_velocity_fit(data2):
     data2["tau"] = tau
     return data2, p0
 
-def plot_density_hist(x, orientation='vertical', do_stats=True, only_kde=False, **kwargs):
+def plot_density_hist(x, orientation='vertical', do_stats=True, only_kde=False, ax=None, **kwargs):
+    ax = ax if not ax is None else plt.gca()
     from scipy import stats
     x = np.array(x)
     x = x[~np.isnan(x)]
     kde = stats.gaussian_kde(x)
     xx = np.linspace(np.nanmin(x), np.nanmax(x), 1000)
     if orientation == 'horizontal':
-        l, = plt.plot(kde(xx), xx, **kwargs)
+        l, = ax.plot(kde(xx), xx, **kwargs)
     else:
-        l, = plt.plot(xx, kde(xx), **kwargs)
+        l, = ax.plot(xx, kde(xx), **kwargs)
     if not only_kde:
-        plt.hist(x, bins=50, density=True, color=l.get_color(), alpha=0.5, orientation=orientation)
+        ax.hist(x, bins=50, density=True, color=l.get_color(), alpha=0.5, orientation=orientation)
     return l
 
 def plot_joint_density(x, y, label=None, only_kde=False, color=None):
@@ -786,67 +786,6 @@ def plot_joint_density(x, y, label=None, only_kde=False, color=None):
     plt.sca(ax)
     plotDensityLevels(x, y, levels=1, colors=[l.get_color()], cmap=None)
     plt.plot([], [], color=l.get_color(), label=label)
-
-
-def get_mode(x):
-    """ get the mode of a distribution by fitting with a KDE """
-    from scipy import stats
-    x = np.array(x)
-    x = x[~np.isnan(x)]
-
-    kde = stats.gaussian_kde(x)
-    return x[np.argmax(kde(x))]
-
-
-def get_mode_stats(x, do_plot=False):
-    from deformationcytometer.evaluation.helper_functions import bootstrap_error
-    from scipy import stats
-
-    x = np.array(x)
-    x = x[~np.isnan(x)]
-
-    def get_mode(x):
-        kde = stats.gaussian_kde(x)
-        return x[np.argmax(kde(x))]
-
-    mode = get_mode(x)
-    err = bootstrap_error(x, get_mode, repetitions=10)
-    if do_plot is True:
-        def string(x):
-            if x > 1:
-                return str(round(x))
-            else:
-                return str(round(x, 2))
-        plt.text(0.5, 1, string(mode)+"$\pm$"+string(err), transform=plt.gca().transAxes, ha="center", va="top")
-    return mode, err, len(x)
-
-
-
-def bootstrap_match_hist(data_list, bin_width=25, max_bin=300, property="stress"):
-    import pandas as pd
-    # create empty lists
-    data_list2 = [[] for _ in data_list]
-    # iterate over the bins
-    for i in range(0, max_bin, bin_width):
-        # find the maximum
-        counts = [len(data[(i < data[property]) & (data[property] < (i + bin_width))]) for data in data_list]
-        max_count = np.max(counts)
-        min_count = np.min(counts)
-        # we cannot upsample from 0
-        if min_count == 0:
-            continue
-        # iterate over datasets
-        for index, data in enumerate(data_list):
-            # get the subset of the data that is in this bin
-            data_subset = data[(i < data[property]) & (data[property] < (i + bin_width))]
-            # sample from this subset
-            data_list2[index].append(data_subset.sample(max_count, replace=True))
-
-    # concatenate the datasets
-    for index, data in enumerate(data_list):
-        data_list2[index] = pd.concat(data_list2[index])
-
-    return data_list2
 
 
 def get_cell_properties(data):
@@ -898,11 +837,11 @@ def get_cell_properties(data):
 
     w_Gp1 = mu1
     w_Gp2 = eta1 * np.abs(omega_weissenberg)
-    w_alpha_cell = np.arctan(w_Gp2 / w_Gp1) * 2 / np.pi
-    w_k_cell = Gp1 / (omega_weissenberg ** w_alpha_cell * scipy.special.gamma(1 - w_alpha_cell) * np.cos(np.pi / 2 * w_alpha_cell))
+    w_alpha_cell = np.arctan(Gp2 / Gp1) * 2 / np.pi
+    w_k_cell = Gp1 / (omega_weissenberg ** alpha_cell * scipy.special.gamma(1 - alpha_cell) * np.cos(np.pi / 2 * alpha_cell))
 
-    mu1_ = k_cell * omega_weissenberg ** w_alpha_cell * scipy.special.gamma(1 - w_alpha_cell) * np.cos(np.pi / 2 * w_alpha_cell)
-    eta1_ = k_cell * omega_weissenberg ** w_alpha_cell * scipy.special.gamma(1 - w_alpha_cell) * np.sin(np.pi / 2 * w_alpha_cell) / omega_weissenberg
+    mu1_ = k_cell * omega_weissenberg ** alpha_cell * scipy.special.gamma(1 - alpha_cell) * np.cos(np.pi / 2 * alpha_cell)
+    eta1_ = k_cell * omega_weissenberg ** alpha_cell * scipy.special.gamma(1 - alpha_cell) * np.sin(np.pi / 2 * alpha_cell) / omega_weissenberg
 
     data["w_Gp1"] = w_Gp1
     data["w_Gp2"] = w_Gp2
