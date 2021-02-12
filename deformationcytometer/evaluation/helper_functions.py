@@ -758,30 +758,42 @@ def plot_density_hist(x, orientation='vertical', do_stats=True, only_kde=False, 
         ax.hist(x, bins=50, density=True, color=l.get_color(), alpha=0.5, orientation=orientation)
     return l
 
-def plot_joint_density(x, y, label=None, only_kde=False, color=None):
+def plot_joint_density(x, y, label=None, only_kde=False, color=None, growx=1, growy=1, offsetx=0):
     ax = plt.gca()
     x1, y1, w, h = ax.get_position().x0, ax.get_position().y0, ax.get_position().width, ax.get_position().height
+
+    wf, hf = ax.figure.get_size_inches()
+    gap = 0.05
+    fraction = 0.2
+    width_of_hist = np.mean([(w*wf*fraction), (h*hf*fraction)])
+    hist_w = width_of_hist/wf
+    hist_h = width_of_hist/hf
+
+    h *= growy
+    w *= growx
     if getattr(ax, "ax2", None) is None:
-        ax.ax2 = plt.axes([x1, y1 + h * 0.8, w * 0.8, h * 0.2], sharex=ax, label=ax.get_label()+"_top")
+        ax.ax2 = plt.axes([x1 + offsetx*w, y1 + h - hist_h + gap/hf, w - hist_w, hist_h], sharex=ax, label=ax.get_label()+"_top")
         #ax.ax2.set_xticklabels([])
         ax.ax2.spines['right'].set_visible(False)
         ax.ax2.spines['top'].set_visible(False)
-        ax.ax2.set_yticks([])
-        ax.ax2.set_yticklabels([])
+        ax.ax2.tick_params(axis='y', colors='none', which="both", labelcolor="none")
+        ax.ax2.tick_params(axis='x', colors='none', which="both", labelcolor="none")
         ax.ax2.spines['left'].set_visible(False)
-        ax.ax2.spines['bottom'].set_visible(False)
+        ax.spines['top'].set_visible(False)
     plt.sca(ax.ax2)
     plot_density_hist(x, color=color, only_kde=only_kde)
     if getattr(ax, "ax3", None) is None:
-        ax.ax3 = plt.axes([x1 + w * 0.8, y1, w * 0.2, h * 0.8], sharey=ax, label=ax.get_label()+"_right")
+        ax.ax3 = plt.axes([x1 + offsetx*w + w - hist_w + gap/wf, y1, hist_w, h - hist_h], sharey=ax, label=ax.get_label()+"_right")
         #ax.ax3.set_yticklabels([])
-        ax.set_position([x1, y1, w * 0.8, h * 0.8])
+        ax.set_position([x1 + offsetx*w, y1, w - hist_w, h - hist_h])
         ax.ax3.spines['right'].set_visible(False)
         ax.ax3.spines['top'].set_visible(False)
-        ax.ax3.set_xticks([])
-        ax.ax3.set_xticklabels([])
-        ax.ax3.spines['left'].set_visible(False)
+        ax.ax3.tick_params(axis='x', colors='none', which="both", labelcolor="none")
+        ax.ax3.tick_params(axis='y', colors='none', which="both", labelcolor="none")
+        #ax.ax3.spines['left'].set_visible(False)
         ax.ax3.spines['bottom'].set_visible(False)
+
+        ax.spines['right'].set_visible(False)
     plt.sca(ax.ax3)
     l = plot_density_hist(y, color=color, orientation=u'horizontal', only_kde=only_kde)
     plt.sca(ax)
