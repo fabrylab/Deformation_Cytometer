@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from deformationcytometer.evaluation.helper_functions import plotDensityScatter, load_all_data, plotBinnedData
 from deformationcytometer.evaluation.helper_functions import plotDensityScatter, load_all_data, all_plots_same_limits, get_cell_properties#, load_all_data_new
 from deformationcytometer.evaluation.helper_functions import plot_velocity_fit, plot_density_hist, \
-    plotDensityLevels, plotBinnedData, plot_joint_density
+    plotDensityLevels, plotBinnedData, plot_joint_density, split_axes
 import numpy as np
 import pylustrator
 pylustrator.start()
@@ -25,7 +25,7 @@ from pathlib import Path
 
 #if no parent-subfolders:
 import natsort
-for folder in natsort.natsorted(glob.glob(rf"Z:\emirzahossein\microfluidic cell rhemeter data\microscope_1\january_2021\2021_02_08_NIH3T3_LatB_drugresponse\*\\")):
+for folder in natsort.natsorted(glob.glob(rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\january_2021\2021_02_08_NIH3T3_LatB_drugresponse\*\\")):
     folder = Path(folder)
     name = str(folder.name)
     if name != "old": #if a subfolder exists with no data, to avoid errors
@@ -54,28 +54,37 @@ N = len(experiment)
 cols = int(np.sqrt(N))
 rows = int(np.ceil(N/cols))
 
+import matplotlib as mpl
+mpl.rc("figure.subplot", top=0.95, hspace=0.35)  # defaults top=0.88, hspace=0.2
+
 ax_k = []
 ax_a = []
+ax_Gp1 = []
+ax_Gp2 = []
 # iterate over all times
 for index, name in enumerate(experiment.keys()):
     plt.figure(1) #histogram of alpha and k
     data, config = load_all_data(experiment[name], pressure=3) #set pressure to 0.5,1,2,3 or what was measured. for all pressures together, delete ", pressure=x"
     print(index, name, len(data), np.sum(~np.isnan(data.w_k_cell)), np.sum(~np.isnan(data.k_cell)))
     #plot k as histogram
-    ax_k.append(plt.subplot(rows, cols * 2, index * 2 + 1))
+    ax_k.append(plt.subplot(rows, cols, index + 1))
     plt.title(name, fontsize=10)
     plot_density_hist(np.log10(data.k_cell))
     stat_k = get_mode_stats(data.k_cell)
     plt.xlim(0, 4)
     plt.xticks(np.arange(5))
     plt.grid()
+    plt.xlabel("k")
+    plt.ylabel("probability\ndensity")
     #plot histogram of alpha
-    ax_a.append(plt.subplot(rows, cols * 2, index * 2 + 1 + 1))
+    split_axes(join_x_axes=False, join_title=True)
+    ax_a.append(plt.gca())
     plot_density_hist(data.alpha_cell, color="C1")
     stat_alpha = get_mode_stats(data.alpha_cell)
     plt.xlim(0, 1)
-    plt.xticks(np.arange(0, 1, 0.2), ["0", "", "0.4", "", "0.8", ""])
+    plt.xticks(np.arange(0, 1, 0.2), ["0", "", "0.4", "", "0.8"])
     plt.grid()
+    plt.xlabel("$\\alpha$")
     #plt.tight_layout()
 
     plt.figure(2) #alpha over k
@@ -98,6 +107,8 @@ for index, name in enumerate(experiment.keys()):
     plotDensityScatter(data.stress, data.strain)
     plt.xlim(0, 320)
     plt.ylim(0, 1.5)
+    plt.xlabel("shear stress (Pa)")
+    plt.ylabel("strain")
     #plt.tight_layout()
 
     plt.figure(5) # velocity versus radial position
@@ -113,11 +124,16 @@ for index, name in enumerate(experiment.keys()):
     plt.figure(6) #G' and G'' over frequency
     plt.subplot(rows, cols, index + 1)
     plt.title(name, fontsize=10)
-    plt.loglog(data.omega, data.Gp1, "o", alpha=0.25)
-    plt.loglog(data.omega, data.Gp2, "o", alpha=0.25)
+    ax_Gp1.append(plt.gca())
+    plt.loglog(data.omega, data.Gp1, "o", alpha=0.25, ms=1)
     plt.ylabel("G' / G''")
     plt.xlabel("angular frequency")
+    split_axes(join_x_axes=True, join_title=True)
+    ax_Gp2.append(plt.gca())
+    plt.loglog(data.omega, data.Gp2, "o", color="C1", alpha=0.25, ms=1)
     all_plots_same_limits()
+
+    plt.gca().get_title()
     #plt.tight_layout()
 
     plt.figure(7) #alignement angular versus radial position
@@ -130,7 +146,21 @@ for index, name in enumerate(experiment.keys()):
     #plt.tight_layout()
     all_plots_same_limits()
 
-#pylustrator.helper_functions.axes_to_grid(ax_k)
-#pylustrator.helper_functions.axes_to_grid(ax_a)
+pylustrator.helper_functions.axes_to_grid(ax_k)
+pylustrator.helper_functions.axes_to_grid(ax_a)
+
+plt.figure(4)
+pylustrator.helper_functions.axes_to_grid()
+
+plt.figure(5)
+pylustrator.helper_functions.axes_to_grid()
+
+plt.figure(6)
+#pylustrator.helper_functions.axes_to_grid()
+pylustrator.helper_functions.axes_to_grid(ax_Gp1)
+pylustrator.helper_functions.axes_to_grid(ax_Gp2)
+
+plt.figure(7)
+pylustrator.helper_functions.axes_to_grid()
 
 plt.show()

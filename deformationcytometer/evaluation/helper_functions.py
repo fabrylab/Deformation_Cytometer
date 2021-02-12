@@ -256,7 +256,7 @@ def plotDensityScatter(x, y, cmap='viridis', alpha=1, skip=1, y_factor=1, s=5, l
     kd = kde(xy)
     idx = kd.argsort()
     x, y, z = x[idx], y[idx], kd[idx]
-    ax.scatter(x, y, c=z, s=s, alpha=alpha, cmap=cmap)  # plot in kernel density colors e.g. viridis
+    plt.scatter(x, y, c=z, s=s, alpha=alpha, cmap=cmap)  # plot in kernel density colors e.g. viridis
 
     if levels != None:
         X, Y = np.meshgrid(np.linspace(np.min(x), np.max(x), 100), np.linspace(np.min(y), np.max(y), 100))
@@ -568,7 +568,7 @@ def load_all_data(input_path, solidity_threshold=0.96, irregularity_threshold=1.
 
 
         """ evaluating data"""
-        if not output_file.exists() or config_changes:
+        if 0:#not output_file.exists() or config_changes:
             #refetchTimestamps(data, config)
             #data = data[data.frames % 2 == 0]
             #data.frames = data.frames // 2
@@ -877,3 +877,25 @@ def match_cells_from_all_data(data, config, image_width=720):
                 # if it survived the filters, merge
                 if len(d2):
                     data.loc[data['cell_id'] == d2.iloc[0].cell_id, 'cell_id'] = d.cell_id
+
+
+def split_axes(ax=None, join_x_axes=False, join_title=True):
+    if ax is None:
+        ax = plt.gca()
+    x1, y1, w, h = ax.get_position().x0, ax.get_position().y0, ax.get_position().width, ax.get_position().height
+    gap = w * 0.02
+    if getattr(ax, "ax2", None) is None:
+        ax.ax2 = plt.axes([x1 + w * 0.5 + gap, y1, w * 0.5 - gap, h], label=ax.get_label() + "_twin")
+        ax.set_position([x1, y1, w * 0.5 - gap, h])
+        # ax.ax2.set_xticklabels([])
+        ax.ax2.spines['right'].set_visible(False)
+        ax.ax2.spines['top'].set_visible(False)
+        #ax.ax2.spines['left'].set_visible(False)
+        ax.ax2.tick_params(axis='y', colors='gray', which="both", labelcolor="none")
+        ax.ax2.spines['left'].set_color('gray')
+        if join_title is True:
+            ax.set_title(ax.get_title()).set_position([1.0 + gap, 1.0])
+        if join_x_axes is True:
+            t = ax.set_xlabel(ax.get_xlabel())
+            t.set_position([1 + gap, t.get_position()[1]])
+    plt.sca(ax.ax2)
