@@ -18,19 +18,34 @@ experiment = {}
 #if parent-subfolders exist:
 import glob
 from pathlib import Path
-#for folder in glob.glob(rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\desmin_cells\2020_12_08_desmin_cytoD\*\*\\"):
-#    folder = Path(folder)
-#    name = str(folder.parent.name)+"_"+str(folder.name)
-#    experiment[name] = str(folder)+"\*_result.txt"
+import natsort
+
+if 1:
+    for folder in glob.glob(rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\desmin_cells\2020_12_08_desmin_cytoD\*\*\\"):
+        folder = Path(folder)
+        name = str(folder.parent.name)+"/"+str(folder.name)
+        experiment[name] = str(folder)+"\*_result.txt"
+
+if 1:
+    experiment = {}
+    # if you want a specifiy order, you have to iterate manually over the folders
+    for name1 in ["NIH3T3", "vim ko", "vim ko\n + hDesR\n350P#37", "vim ko\n + hDesR\n406W#34", "vim ko\n + hDes\nWT#39"]:
+        # remove new lines \n from the filename, as they are only here for the plot
+        name1_ = name1.replace("\n", "")
+        for name2 in ["Kontrolle", "DMSO", "cytoD"]:
+            p = Path(r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\desmin_cells\2020_12_08_desmin_cytoD", name1_, name2, "*_result.txt")
+            name = name1 + "/" + name2
+            experiment[name] = str(p)
 
 #if no parent-subfolders:
-import natsort
-for folder in natsort.natsorted(glob.glob(rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\january_2021\2021_02_08_NIH3T3_LatB_drugresponse\*\\")):
-    folder = Path(folder)
-    name = str(folder.name)
-    if name != "old": #if a subfolder exists with no data, to avoid errors
-        if name!="plots":
-            experiment[name] = str(folder) + "\[2-9]\*_result.txt"
+if 1:
+    experiment = {}
+    for folder in natsort.natsorted(glob.glob(rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\january_2021\2021_02_08_NIH3T3_LatB_drugresponse\*\\")):
+        folder = Path(folder)
+        name = str(folder.name)
+        if name != "old": #if a subfolder exists with no data, to avoid errors
+            if name!="plots":
+                experiment[name] = str(folder) + "\[2-9]\*_result.txt"
 
 def get_mode_stats(x):
     from scipy import stats
@@ -55,7 +70,7 @@ cols = int(np.sqrt(N))
 rows = int(np.ceil(N/cols))
 
 import matplotlib as mpl
-mpl.rc("figure.subplot", top=0.95, hspace=0.35)  # defaults top=0.88, hspace=0.2
+mpl.rc("figure.subplot", top=0.95, hspace=0.35, left=0.2, right=0.95)  # defaults top=0.88, hspace=0.2, left=0.125, right=0.9
 
 ax_k = []
 ax_a = []
@@ -63,9 +78,17 @@ ax_Gp1 = []
 ax_Gp2 = []
 # iterate over all times
 for index, name in enumerate(experiment.keys()):
-    plt.figure(1) #histogram of alpha and k
     data, config = load_all_data(experiment[name], pressure=3) #set pressure to 0.5,1,2,3 or what was measured. for all pressures together, delete ", pressure=x"
     print(index, name, len(data), np.sum(~np.isnan(data.w_k_cell)), np.sum(~np.isnan(data.k_cell)))
+
+    row_title = ""
+    if "/" in name:
+        row_title, name = name.split("/", 1)
+        row_title += "\n"
+        if index >= cols:
+            name = ""
+
+    plt.figure(1) #histogram of alpha and k
     #plot k as histogram
     ax_k.append(plt.subplot(rows, cols, index + 1))
     plt.title(name, fontsize=10)
@@ -75,7 +98,7 @@ for index, name in enumerate(experiment.keys()):
     plt.xticks(np.arange(5))
     plt.grid()
     plt.xlabel("k")
-    plt.ylabel("probability\ndensity")
+    plt.ylabel(row_title+"probability\ndensity")
     #plot histogram of alpha
     split_axes(join_x_axes=False, join_title=True)
     ax_a.append(plt.gca())
@@ -96,9 +119,10 @@ for index, name in enumerate(experiment.keys()):
     plt.xlim(left=0)
     plt.ylim(bottom=0)
 
-    plt.figure(3) #for dose response
-    plt.plot(float(name[:-3]), stat_k[0], "o")
-    plt.xscale("log")
+    if name.endswith("nM"):
+        plt.figure(3) #for dose response
+        plt.plot(float(name[:-3]), stat_k[0], "o")
+        plt.xscale("log")
 
     plt.figure(4) #strain versus stress
     plt.subplot(rows, cols, index + 1)
@@ -108,7 +132,7 @@ for index, name in enumerate(experiment.keys()):
     plt.xlim(0, 320)
     plt.ylim(0, 1.5)
     plt.xlabel("shear stress (Pa)")
-    plt.ylabel("strain")
+    plt.ylabel(row_title+"strain")
     #plt.tight_layout()
 
     plt.figure(5) # velocity versus radial position
@@ -118,7 +142,7 @@ for index, name in enumerate(experiment.keys()):
     plt.xlim(0, 100)
     all_plots_same_limits() #plt.ylim(0, 1.5)
     plt.xlabel("channel position (µm)")
-    plt.ylabel("velocity\n(cm/s)")
+    plt.ylabel(row_title+"velocity\n(cm/s)")
     #plt.tight_layout()
 
     plt.figure(6) #G' and G'' over frequency
@@ -126,7 +150,7 @@ for index, name in enumerate(experiment.keys()):
     plt.title(name, fontsize=10)
     ax_Gp1.append(plt.gca())
     plt.loglog(data.omega, data.Gp1, "o", alpha=0.25, ms=1)
-    plt.ylabel("G' / G''")
+    plt.ylabel(row_title+"G' / G'' (Pa)")
     plt.xlabel("angular frequency")
     split_axes(join_x_axes=True, join_title=True)
     ax_Gp2.append(plt.gca())
@@ -142,7 +166,7 @@ for index, name in enumerate(experiment.keys()):
     plotDensityScatter(data.rp, data.angle)
     #plotBinnedData(data.rp, data.angle, bins=np.arange(-300, 300, 10))
     plt.xlabel("radial position (µm)")
-    plt.ylabel("angle (deg)")
+    plt.ylabel(row_title+"angle (deg)")
     #plt.tight_layout()
     all_plots_same_limits()
 
