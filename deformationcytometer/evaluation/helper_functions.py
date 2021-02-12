@@ -240,7 +240,8 @@ def plotVelocityProfile(data, config):
     print('v_max = %5.2f mm/s   profile stretch exponent = %5.2f\n' % (vel_fit[0], vel_fit[1]))
 
 
-def plotDensityScatter(x, y, cmap='viridis', alpha=1, skip=1, y_factor=1, s=5, levels=None, loglog=False):
+def plotDensityScatter(x, y, cmap='viridis', alpha=1, skip=1, y_factor=1, s=5, levels=None, loglog=False, ax=None):
+    ax = plt.gca() if ax is None else ax
     x = np.array(x)[::skip]
     y = np.array(y)[::skip]
     filter = ~np.isnan(x) & ~np.isnan(y)
@@ -256,7 +257,7 @@ def plotDensityScatter(x, y, cmap='viridis', alpha=1, skip=1, y_factor=1, s=5, l
     kd = kde(xy)
     idx = kd.argsort()
     x, y, z = x[idx], y[idx], kd[idx]
-    plt.scatter(x, y, c=z, s=s, alpha=alpha, cmap=cmap)  # plot in kernel density colors e.g. viridis
+    ax.scatter(x, y, c=z, s=s, alpha=alpha, cmap=cmap)  # plot in kernel density colors e.g. viridis
 
     if levels != None:
         X, Y = np.meshgrid(np.linspace(np.min(x), np.max(x), 100), np.linspace(np.min(y), np.max(y), 100))
@@ -268,7 +269,7 @@ def plotDensityScatter(x, y, cmap='viridis', alpha=1, skip=1, y_factor=1, s=5, l
 
     if loglog is True:
         ax.loglog()
-    #
+    return ax
 
 def plotDensityLevels(x, y, skip=1, y_factor=1, levels=None, cmap="viridis", colors=None):
     x = np.array(x)[::skip]
