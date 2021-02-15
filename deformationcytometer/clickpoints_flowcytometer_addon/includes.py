@@ -44,8 +44,11 @@ tooltip_strings["min radius"] = "Threshold for minimal cell size. This threshold
 default_config_path = Path(deformationcytometer.detection.includes.UNETmodel.__file__).parent
 default_config_path = default_config_path.joinpath("default_config.txt")
 
-
+# Starting process (displaying the ellipses and cell detection for multiple frames) in a separate process
 class Worker(QtCore.QThread):
+    # Signals are used to communicate with the main qt window. Specifically the progress bar.
+    # Directly manipulating the progress bar from the run function is not thread safe (two processes may try
+    # to change the progress bar at the same time)
     thread_started = QtCore.Signal(tuple, str)
     thread_finished = QtCore.Signal(int)
     thread_progress = QtCore.Signal(int)
@@ -57,7 +60,7 @@ class Worker(QtCore.QThread):
     def run(self):
         self.run_function()
 
-
+# layout for file selection
 class SetFile(QtWidgets.QHBoxLayout):
     fileSeleted = pyqtSignal(bool)
 
@@ -93,10 +96,7 @@ class SetFile(QtWidgets.QHBoxLayout):
         self.fileSeleted.emit(True)
 
 
-data_keys = ['frames', 'x', 'y', 'rp', 'long_axis', 'short_axis', 'angle',
-             'irregularity', 'solidity', 'sharpness', 'timestamp', 'velocity',
-             'velocity_partner', 'cell_id']
-
+#TODo: update to new analysis pipe line
 def load_all_data_old(input_path, solidity_threshold=0.96, irregularity_threshold=1.06, pressure=None, repetition=None):
     global ax
 
