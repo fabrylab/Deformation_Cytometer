@@ -39,7 +39,7 @@ output_path = "."
 log_name = "network_training"
 
 
-"""  The following parameters can be changed to imporve the network training """
+"""  The following parameters can be changed to improve the network training """
 
 # If True the training data is loaded from the disk during training. Else all data is stored in memory.
 # 200 images with weights use up 2 GB of memory.
