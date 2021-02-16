@@ -15,6 +15,9 @@ network_list = [r"/home/user/network1.h5",
 gt_list = [r"/home/user/gt1.cdb",
            r"/home/user/gt3.cdb"]
 
+
+##### Additional parameters #####
+
 # default imaging and filter parameters
 # r_min (in µm) and edge_dist (in µm) are important filters defining
 # the minimal size and the minimal distance of a cell to the horizontal image edges
