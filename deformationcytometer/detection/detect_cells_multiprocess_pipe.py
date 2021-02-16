@@ -18,13 +18,16 @@ def log(name, name2, onoff, index=0):
     with open(f"log_{name}_{os.getpid()}.txt", "a") as fp:
         fp.write(f"{time.time()} \"{name2}\" {onoff} {index}\n")
 
+
 def clear_logs():
     import glob, os
     files = glob.glob("log_*.txt")
     for file in files:
         os.remove(file)
 
+
 class FileFinished: pass
+
 
 def process_load_images(filename):
     """
@@ -34,6 +37,7 @@ def process_load_images(filename):
     from deformationcytometer.detection import pipey
     from deformationcytometer.detection.includes.regionprops import preprocess, getTimestamp
     from deformationcytometer.includes.includes import getConfig
+    import clickpoints
 
     print("start load images", filename)
     log("1load_images", "prepare", 1)
@@ -44,6 +48,10 @@ def process_load_images(filename):
     config = getConfig(filename)
     # get the total image count
     image_count = len(reader)
+
+    print("create cdb", filename[:-4]+".cdb")
+    cdb = clickpoints.DataFile(filename[:-4]+".cdb", "w")
+    cdb.setMaskType("prediction", color="#FF00FF", index=1)
 
     yield dict(filename=filename, index=-1, type="start")
     log("1load_images", "prepare", 0)
@@ -58,11 +66,14 @@ def process_load_images(filename):
             im = im[:, :, 0]
         # get the timestamp from the file
         timestamp = float(getTimestamp(reader, image_index))
+
+        cdb.setImage(filename, frame=image_index)#, timestamp=timestamp)
         log("1load_images", "read", 0, image_index)
         # return everything in a nicely packed dictionary
-        yield dict(filename=filename, index=image_index, type="image", timestamp=timestamp, im=im, config=config, image_count=image_count)
+        yield dict(filename=filename, index=image_index, type="image", timestamp=timestamp, im=im, config=config,
+                   image_count=image_count)
         if image_index < image_count - 1:
-            log("1load_images", "read", 1, image_index+1)
+            log("1load_images", "read", 1, image_index + 1)
 
     yield dict(filename=filename, index=image_count, type="end")
 
@@ -112,15 +123,20 @@ class ProcessDetectMasksBatch:
             im_batch = preprocess(im_batch).transpose(2, 0, 1)
             prediction_mask_batch = self.unet.predict(im_batch[:, :, :, None])[:, :, :, 0] > 0.5
 
-            # iterate over all images and return them
-            for i in range(len(batch)):
-                data = batch[i]
-                data["mask"] = prediction_mask_batch[i]
-                data["config"].update({"network": self.network_weights})
-                log("2detect", "prepare", 0, data["index"])
-                yield data
-                if i < len(batch) -1 :
-                    log("2detect", "prepare", 1, data["index"]+1)
+            import clickpoints
+            with clickpoints.DataFile(data["filename"][:-4] + ".cdb") as cdb:
+                # iterate over all images and return them
+                for i in range(len(batch)):
+                    data = batch[i]
+                    data["mask"] = prediction_mask_batch[i]
+
+                    cdb.setMask(frame=data["index"], data=data["mask"].astype(np.uint8))
+
+                    data["config"].update({"network": self.network_weights})
+                    log("2detect", "prepare", 0, data["index"])
+                    yield data
+                    if i < len(batch) - 1:
+                        log("2detect", "prepare", 1, data["index"] + 1)
 
         if data["type"] == "end":
             return data
@@ -137,11 +153,15 @@ class ProcessFindCells:
         from deformationcytometer.detection.includes.regionprops import mask_to_cells_edge
         from deformationcytometer.evaluation.helper_functions import filterCells
 
-        output_path = Path(data["filename"][:-4]+"_result_new.csv")
+        output_path = Path(data["filename"][:-4] + "_result_new.csv")
 
         if data["type"] != "image":
-            # delete an existing outputfile
             if data["type"] == "start":
+                # add ellipse marker type
+                import clickpoints
+                with clickpoints.DataFile(data["filename"][:-4] + ".cdb") as cdb:
+                    cdb.setMarkerType("cell", "#FF0000", mode=cdb.TYPE_Ellipse)
+                # delete an existing outputfile
                 if output_path.exists():
                     output_path.unlink()
             return data
@@ -151,13 +171,10 @@ class ProcessFindCells:
         new_cells = mask_to_cells_edge(data["mask"], data["im"], data["config"], r_min,
                                        frame_data={"frames": data["index"], "timestamp": data["timestamp"]})
         new_cells = pd.DataFrame(new_cells,
-                                 columns=["frames", "timestamp", "x_pos", "y_pos", "radial_pos", "long_axis", "short_axis",
+                                 columns=["frames", "timestamp", "x", "y", "rp", "long_axis",
+                                          "short_axis",
                                           "angle", "irregularity", "solidity", "sharpness", "velocity", "cell_id", "tt",
                                           "tt_r2"])
-
-        for pair in [["x", "x_pos"], ["y", "y_pos"], ["rp", "radial_pos"]]:
-            new_cells[pair[0]] = new_cells[pair[1]]
-            del new_cells[pair[1]]
 
         if not output_path.exists():
             with output_path.open("w") as fp:
@@ -169,6 +186,14 @@ class ProcessFindCells:
         # filter cells according to solidity and irregularity
         new_cells = filterCells(new_cells, solidity_threshold=self.solidity_threshold,
                                 irregularity_threshold=self.irregularity_threshold)
+
+        import clickpoints
+        with clickpoints.DataFile(data["filename"][:-4] + ".cdb") as cdb:
+            for i, d in new_cells.iterrows():
+                cdb.setEllipse(frame=int(d.frames), x=d.x, y=d.y,
+                              width=d.long_axis / data["config"]["pixel_size"],
+                              height=d.short_axis / data["config"]["pixel_size"],
+                              angle=d.angle, type="cell")
 
         data["config"]["solidity"] = self.solidity_threshold
         data["config"]["irregularity"] = self.irregularity_threshold
@@ -186,7 +211,7 @@ class ProcessPairData:
         self.filenames = {}
 
     def __call__(self, data):
-        #print("vel", data["type"], data["index"])
+        # print("vel", data["type"], data["index"])
 
         if data["filename"] not in self.filenames:
             self.filenames[data["filename"]] = dict(cached={-2: None}, next_index=-1, cell_index=0)
@@ -228,7 +253,8 @@ class ProcessPairData:
 
         dt = (data2["timestamp"] - data1["timestamp"])  # * 1e-3  # time is in ms
 
-        data2["cells"], file["cell_index"] = matchVelocities(data1["cells"], data2["cells"], dt, file["cell_index"], data2["config"])
+        data2["cells"], file["cell_index"] = matchVelocities(data1["cells"], data2["cells"], dt, file["cell_index"],
+                                                             data2["config"])
         log("4vel", "prepare", 0, data2["index"])
         return data1, data2
 
@@ -300,7 +326,8 @@ class ResultCombiner:
         if data is None:
             return
         if data["filename"] not in self.filenames:
-            self.filenames[data["filename"]] = dict(cached={}, next_index=-1, cell_count=0, cells=[], progressbar=None, config=dict())
+            self.filenames[data["filename"]] = dict(cached={}, next_index=-1, cell_count=0, cells=[], progressbar=None,
+                                                    config=dict())
 
         file = self.filenames[data["filename"]]
 
@@ -402,12 +429,14 @@ def to_filelist(paths):
             files.extend(glob.glob(path + "/**/*.tif", recursive=True))
     return files
 
+
 def get_items(d):
     from deformationcytometer.detection import pipey
     d = to_filelist(d)
     for x in d:
         yield x
     yield pipey.STOP
+
 
 if __name__ == "__main__":
     from deformationcytometer.detection import pipey
@@ -416,6 +445,7 @@ if __name__ == "__main__":
 
     # reading commandline arguments if executed from terminal
     file, network_weight, irregularity_threshold, solidity_threshold = read_args_pipeline()
+    network_weight = "../../ImmuneNIH_20x_sShape_2021_01_22.h5"
 
     clear_logs()
 

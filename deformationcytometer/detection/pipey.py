@@ -224,14 +224,25 @@ class Pipeline2:
             if hasattr(fn, "init"):
                 fn.init()
 
-        while True:
-            for fn in self.tasks:
-                pass
+        def pipe_outputs(result, index):
+            if index < len(self.tasks)-1:
+                if inspect.isgenerator(result):
+                    for res in result:
+                        if isinstance(res, tuple):
+                            pipe_outputs(self.tasks[index](*res), index+1)
+                        else:
+                            pipe_outputs(self.tasks[index](res), index+1)
+                else:
+                    if isinstance(result, tuple):
+                        pipe_outputs(self.tasks[index](*result), index + 1)
+                    else:
+                        pipe_outputs(self.tasks[index](result), index + 1)
+            else:
+                if inspect.isgenerator(result):
+                    for res in result:
+                        pass
 
-        self.inputQueue.put(arg)
-        while True:
-            x = self.outputQueue.get()
-            if isinstance(x, _STOP): break
+        pipe_outputs(arg, 0)
 
     def add(self, fn, fanOut=1):
         self.tasks.append(fn)

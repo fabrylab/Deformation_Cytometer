@@ -53,7 +53,7 @@ def read_args_pipeline():
     if len(sys.argv) > 1 and not sys.argv[0].endswith("pydevconsole.py"):
         parser = argparse.ArgumentParser()
         parser.add_argument('file', default=None, help='specify an input file or folder') # positional argument
-        parser.add_argument('-n', '--network_weight', default=None, help='provide an external the network weight file')
+        parser.add_argument('-n', '--network_weight', default="", help='provide an external the network weight file')
         parser.add_argument('-r', '--irregularity_filter', type=float, default=1.06, help='cells with larger irregularity (deviation from'
                                                                                 'elliptical shape) are excluded')
         parser.add_argument('-s', '--solidity_filter', type=float, default=0.96, help='cells with smaller solidity are excluded')
