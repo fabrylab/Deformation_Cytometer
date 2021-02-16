@@ -153,7 +153,7 @@ class Addon(clickpoints.Addon):
 
         # matplotlib widgets to draw plots
         self.plot = MatplotlibWidget(self)
-        self.plot.data = np.array([[], []])
+        self.plot_data = np.array([[], []])
         self.layout.addWidget(self.plot)
         self.layout.addWidget(NavigationToolbar(self.plot, self))
         self.plot.figure.canvas.mpl_connect('button_press_event', self.button_press_callback)
@@ -240,7 +240,7 @@ class Addon(clickpoints.Addon):
     @pyqtSlot(int)
     def finish_pbar(self, value):
         self.progressbar.setValue(value)
-        self.pbarLable.setText("")
+        self.pbarLable.setText("finished")
 
     # Dynamic switch between existing and new data
     def switch_display_data(self):
@@ -250,6 +250,8 @@ class Addon(clickpoints.Addon):
         else:
             text = self.disp_text_existing
         self.switch_data_button.setText(text)
+        # updating the plot
+        self.plot_type()
 
     @property
     def data_all(self):
@@ -318,11 +320,12 @@ class Addon(clickpoints.Addon):
 
     # clearing axis and plot.data
     def init_newPlot(self):
-        self.plot.data = np.array([[], []])
+        self.plot_data = np.array([[], []])
         self.plot.axes.clear()
         self.plot.draw()
 
     def plot_alphaHist(self):
+        self.plot_type = self.plot_alphaHist
         self.init_newPlot()
         try:
             x = self.data_mean["alpha_cell"]
@@ -338,6 +341,7 @@ class Addon(clickpoints.Addon):
         self.plot.draw()
 
     def plot_kHist(self):
+        self.plot_type =  self.plot_kHist
         self.init_newPlot()
         try:
             x = np.array(self.data_mean["k_cell"])
@@ -352,6 +356,7 @@ class Addon(clickpoints.Addon):
         self.plot.draw()
 
     def plot_k_alpha(self):
+        self.plot_type = self.plot_k_alpha
         self.plot_scatter(self.data_mean, "alpha_cell", "k_cell", funct2=np.log10)
         self.plot.axes.set_ylabel("log10 k")
         self.plot.axes.set_xlabel("alpha")
@@ -359,6 +364,7 @@ class Addon(clickpoints.Addon):
         self.plot.draw()
 
     def plot_irreg(self):
+        self.plot_type = self.plot_irreg
         # unfiltered plot of irregularity and solidity to easily identify errors
         # currently based on single cells
         self.plot_scatter(self.data_all, "solidity", "irregularity", funct1=doNothing, funct2=doNothing)
@@ -368,6 +374,7 @@ class Addon(clickpoints.Addon):
         self.plot.draw()
 
     def plot_stress_strain(self):
+        self.plot_type = self.plot_stress_strain
         self.plot_scatter(self.data_mean, "stress", "strain")
         self.plot.axes.set_xlim((-10, 400))
         self.plot.figure.tight_layout()
@@ -376,7 +383,7 @@ class Addon(clickpoints.Addon):
     # Jump to cell in ClickPoints window when clicking near a data point in the scatter plot
     def button_press_callback(self, event):
         # only drag with left mouse button, do nothing if plot is empty or clicked outside of axis
-        if event.button != 1 or event.inaxes is None or self.plot.data.size == 0:
+        if event.button != 1 or event.inaxes is None or self.plot_data.size == 0:
             return
         xy = np.array([event.xdata, event.ydata])
         scale = np.mean(self.plot_data, axis=1)
