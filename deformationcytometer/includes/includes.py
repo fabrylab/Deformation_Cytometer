@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import tqdm
 import argparse
-
+from deformationcytometer.detection.includes.UNETmodel import weights_url
 class Dialog(QFileDialog):
     def __init__(self, title="open file", filetype="", mode="file", settings_name="__"):
         super().__init__()
@@ -45,10 +45,10 @@ class Dialog(QFileDialog):
 
 def read_args_pipeline():
     # defining and reading command line arguments for detect_cells.py
-    network_weight = None
+    network_weight = weights_url
     file = None
-    irregularity_threshold = 1.06
-    solidity_threshold = 0.96
+    irregularity_threshold = 1.3
+    solidity_threshold = 0.7
     # read arguments if arguments are provided and if not executed from the pycharm console
     if len(sys.argv) > 1 and not sys.argv[0].endswith("pydevconsole.py"):
         parser = argparse.ArgumentParser()
@@ -67,7 +67,7 @@ def read_args_pipeline():
 
 def read_args_detect_cells():
     # defining and reading command line arguments for detect_cells.py
-    network_weight = None
+    network_weight = weights_url
     file = None
     # read arguments if arguments are provided and if not executed from the pycharm console
     if len(sys.argv) > 1 and not sys.argv[0].endswith("pydevconsole.py"):
@@ -116,16 +116,18 @@ def read_args_tank_treading():
 
 def getInputFile(filetype="video file (*.tif *.avi)", settings_name="", video=None):
 
-    if len(sys.argv) >= 2:
-        return sys.argv[1]
+
     if video is None:
-        # select video file
-        app = QApplication(sys.argv)
-        video = Dialog(title="select the data file", filetype=filetype,
-                       mode="file", settings_name=settings_name).openFile()
-        if video == '':
-            print('empty')
-            sys.exit()
+        if len(sys.argv) >= 2:
+            return sys.argv[1]
+        else:
+            # select video file
+            app = QApplication(sys.argv)
+            video = Dialog(title="select the data file", filetype=filetype,
+                           mode="file", settings_name=settings_name).openFile()
+            if video == '':
+                print('empty')
+                sys.exit()
     return video
 
 
@@ -256,6 +258,7 @@ def convertVideo(input_file, output_file=None, rotate=True):
 
             video.append_data(im)
             count += 1
+
         return
 
     vidcap = cv2.VideoCapture(input_file)
