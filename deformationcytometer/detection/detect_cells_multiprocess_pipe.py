@@ -166,7 +166,7 @@ class ProcessFindCells:
     def __call__(self, data):
         import pandas as pd
         from pathlib import Path
-        from deformationcytometer.detection.includes.regionprops import mask_to_cells_edge
+        from deformationcytometer.detection.includes.regionprops import mask_to_cells_edge, mask_to_cells_edge2
         from deformationcytometer.evaluation.helper_functions import filterCells
 
         output_path = Path(data["filename"][:-4] + "_result_new.csv")
@@ -185,7 +185,7 @@ class ProcessFindCells:
 
         log("3find_cells", "detect", 1, data["index"])
 
-        new_cells = mask_to_cells_edge(data["mask"], data["im"], data["config"], r_min,
+        new_cells = mask_to_cells_edge2(data["mask"], data["im"], data["config"], r_min,
                                        frame_data={"frames": data["index"], "timestamp": data["timestamp"]})
         new_cells = pd.DataFrame(new_cells,
                                  columns=["frames", "timestamp", "x", "y", "rp", "long_axis",

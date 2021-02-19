@@ -142,6 +142,58 @@ def mask_to_cells_edge(prediction_mask, im, config, r_min, frame_data, edge_dist
         return cells
 
 
+def mask_to_cells_edge2(prediction_mask, im, config, r_min, frame_data, edge_dist=15, return_mask=False):
+    r_min_pix = r_min / config["pixel_size"]
+    edge_dist_pix = edge_dist / config["pixel_size"]
+    cells = []
+    # iterate over all detected regions
+    for region in regionprops(label(prediction_mask), cache=True):  # region props are based on the original image
+        if region.euler_number <= 0:
+            continue
+
+        a = region.major_axis_length / 2
+        b = region.minor_axis_length / 2
+        r = np.sqrt(a * b)
+
+        if region.orientation > 0:
+            ellipse_angle = np.pi / 2 - region.orientation
+        else:
+            ellipse_angle = -np.pi / 2 - region.orientation
+
+        Amin_pixels = np.pi * (r_min_pix) ** 2  # minimum region area based on minimum radius
+        # filtering cells close to left and right image edge
+        # usually cells do not come close to upper and lower image edge
+        x_pos = region.centroid[1]
+        dist_to_edge =  np.min([x_pos, prediction_mask.shape[1] - x_pos])
+
+        if region.area >= Amin_pixels and dist_to_edge > edge_dist_pix:  # analyze only regions larger than 100 pixels,
+            # and only of the canny filtered band-passed image returend an object
+
+            # the circumference of the ellipse
+            circum = np.pi * ((3 * (a + b)) - np.sqrt(10 * a * b + 3 * (a ** 2 + b ** 2)))
+
+            # %% store the cells
+            yy = region.centroid[0] - config["channel_width_px"] / 2
+            yy = yy * config["pixel_size"]
+
+            data = {}
+            data.update(frame_data)
+            data.update({
+                  "x": region.centroid[1],
+                  "y": region.centroid[0],
+                  "rp": yy,
+                  "long_axis": region.major_axis_length * config["pixel_size"],
+                  "short_axis": region.minor_axis_length * config["pixel_size"],
+                  "angle": np.rad2deg(ellipse_angle),
+                  "irregularity": region.perimeter / circum,
+                  "solidity": region.solidity,
+                  "sharpness": 0,
+            })
+            cells.append(data)
+    if return_mask:
+        return cells, prediction_mask
+    else:
+        return cells
 
 
 
