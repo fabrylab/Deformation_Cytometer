@@ -11,6 +11,9 @@
 
 r_min = 6
 batch_size = 100
+write_clickpoints_file = True
+write_clickpoints_masks = False
+write_clickpoints_markers = False
 
 
 def log(name, name2, onoff, index=0):
@@ -50,8 +53,9 @@ def process_load_images(filename):
     image_count = len(reader)
 
     print("create cdb", filename[:-4]+".cdb")
-    cdb = clickpoints.DataFile(filename[:-4]+".cdb", "w")
-    cdb.setMaskType("prediction", color="#FF00FF", index=1)
+    if write_clickpoints_file:
+        cdb = clickpoints.DataFile(filename[:-4]+".cdb", "w")
+        cdb.setMaskType("prediction", color="#FF00FF", index=1)
 
     yield dict(filename=filename, index=-1, type="start")
     log("1load_images", "prepare", 0)
@@ -67,7 +71,8 @@ def process_load_images(filename):
         # get the timestamp from the file
         timestamp = float(getTimestamp(reader, image_index))
 
-        cdb.setImage(filename, frame=image_index)#, timestamp=timestamp)
+        if write_clickpoints_file:
+            cdb.setImage(filename, frame=image_index)#, timestamp=timestamp)
         log("1load_images", "read", 0, image_index)
         # return everything in a nicely packed dictionary
         yield dict(filename=filename, index=image_index, type="image", timestamp=timestamp, im=im, config=config,
@@ -124,14 +129,25 @@ class ProcessDetectMasksBatch:
             prediction_mask_batch = self.unet.predict(im_batch[:, :, :, None])[:, :, :, 0] > 0.5
 
             import clickpoints
-            with clickpoints.DataFile(data["filename"][:-4] + ".cdb") as cdb:
+            if write_clickpoints_file and write_clickpoints_masks:
+                with clickpoints.DataFile(data["filename"][:-4] + ".cdb") as cdb:
+                    # iterate over all images and return them
+                    for i in range(len(batch)):
+                        data = batch[i]
+                        data["mask"] = prediction_mask_batch[i]
+
+                        cdb.setMask(frame=data["index"], data=data["mask"].astype(np.uint8))
+
+                        data["config"].update({"network": self.network_weights})
+                        log("2detect", "prepare", 0, data["index"])
+                        yield data
+                        if i < len(batch) - 1:
+                            log("2detect", "prepare", 1, data["index"] + 1)
+            else:
                 # iterate over all images and return them
                 for i in range(len(batch)):
                     data = batch[i]
                     data["mask"] = prediction_mask_batch[i]
-
-                    cdb.setMask(frame=data["index"], data=data["mask"].astype(np.uint8))
-
                     data["config"].update({"network": self.network_weights})
                     log("2detect", "prepare", 0, data["index"])
                     yield data
@@ -158,9 +174,10 @@ class ProcessFindCells:
         if data["type"] != "image":
             if data["type"] == "start":
                 # add ellipse marker type
-                import clickpoints
-                with clickpoints.DataFile(data["filename"][:-4] + ".cdb") as cdb:
-                    cdb.setMarkerType("cell", "#FF0000", mode=cdb.TYPE_Ellipse)
+                if write_clickpoints_file and write_clickpoints_markers:
+                    import clickpoints
+                    with clickpoints.DataFile(data["filename"][:-4] + ".cdb") as cdb:
+                        cdb.setMarkerType("cell", "#FF0000", mode=cdb.TYPE_Ellipse)
                 # delete an existing outputfile
                 if output_path.exists():
                     output_path.unlink()
@@ -187,13 +204,14 @@ class ProcessFindCells:
         new_cells = filterCells(new_cells, solidity_threshold=self.solidity_threshold,
                                 irregularity_threshold=self.irregularity_threshold)
 
-        import clickpoints
-        with clickpoints.DataFile(data["filename"][:-4] + ".cdb") as cdb:
-            for i, d in new_cells.iterrows():
-                cdb.setEllipse(frame=int(d.frames), x=d.x, y=d.y,
-                              width=d.long_axis / data["config"]["pixel_size"],
-                              height=d.short_axis / data["config"]["pixel_size"],
-                              angle=d.angle, type="cell")
+        if write_clickpoints_file and write_clickpoints_markers:
+            import clickpoints
+            with clickpoints.DataFile(data["filename"][:-4] + ".cdb") as cdb:
+                for i, d in new_cells.iterrows():
+                    cdb.setEllipse(frame=int(d.frames), x=d.x, y=d.y,
+                                  width=d.long_axis / data["config"]["pixel_size"],
+                                  height=d.short_axis / data["config"]["pixel_size"],
+                                  angle=d.angle, type="cell")
 
         data["config"]["solidity"] = self.solidity_threshold
         data["config"]["irregularity"] = self.irregularity_threshold
@@ -445,7 +463,6 @@ if __name__ == "__main__":
 
     # reading commandline arguments if executed from terminal
     file, network_weight, irregularity_threshold, solidity_threshold = read_args_pipeline()
-    network_weight = "../../ImmuneNIH_20x_sShape_2021_01_22.h5"
 
     clear_logs()
 
