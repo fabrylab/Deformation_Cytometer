@@ -228,7 +228,7 @@ def save_cells_to_file(result_file, cells):
         f.write('Pathname' + '\t' + str(output_path) + '\n')
         for cell in cells:
             f.write("\t".join([
-                str(cell["frame"]),
+                str(cell["frames"]),
                 str(cell["x"]),
                 str(cell["y"]),
                 str(cell["rp"]),

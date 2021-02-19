@@ -61,7 +61,7 @@ with tqdm.tqdm(total=len(vidcap)) as progressbar:
             prediction_mask = prediction_mask_batch[batch_index]
 
             # get the images in the detected mask
-            cells.extend(mask_to_cells_edge(prediction_mask, im, config, r_min, frame_data={"frame": image_index, "timestamp": getTimestamp(vidcap, image_index)}))
+            cells.extend(mask_to_cells_edge(prediction_mask, im, config, r_min, frame_data={"frames": image_index, "timestamp": getTimestamp(vidcap, image_index)}))
 
         # update the count of the progressbar with the current batch
         progressbar.update(len(batch_image_indices))
