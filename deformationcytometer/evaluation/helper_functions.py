@@ -569,7 +569,7 @@ def load_all_data(input_path, solidity_threshold=0.96, irregularity_threshold=1.
 
 
         """ evaluating data"""
-        if 0:#not output_file.exists() or config_changes:
+        if not output_file.exists() or config_changes:
             #refetchTimestamps(data, config)
             #data = data[data.frames % 2 == 0]
             #data.frames = data.frames // 2
@@ -912,3 +912,65 @@ def split_axes(ax=None, join_x_axes=False, join_title=True):
             t = ax.set_xlabel(ax.get_xlabel())
             t.set_position([1 + gap, t.get_position()[1]])
     plt.sca(ax.ax2)
+
+
+def get_mode(x):
+    """ get the mode of a distribution by fitting with a KDE """
+    from scipy import stats
+    x = np.array(x)
+    x = x[~np.isnan(x)]
+
+    kde = stats.gaussian_kde(x)
+    return x[np.argmax(kde(x))]
+
+
+def get_mode_stats(x, do_plot=False):
+    from deformationcytometer.evaluation.helper_functions import bootstrap_error
+    from scipy import stats
+
+    x = np.array(x)
+    x = x[~np.isnan(x)]
+
+    def get_mode(x):
+        kde = stats.gaussian_kde(x)
+        return x[np.argmax(kde(x))]
+
+    mode = get_mode(x)
+    err = bootstrap_error(x, get_mode, repetitions=10)
+    if do_plot is True:
+        def string(x):
+            if x > 1:
+                return str(round(x))
+            else:
+                return str(round(x, 2))
+        plt.text(0.5, 1, string(mode)+"$\pm$"+string(err), transform=plt.gca().transAxes, ha="center", va="top")
+    return mode, err, len(x)
+
+
+
+def bootstrap_match_hist(data_list, bin_width=25, max_bin=300, property="stress"):
+    import pandas as pd
+    # create empty lists
+    data_list2 = [[] for _ in data_list]
+    # iterate over the bins
+    for i in range(0, max_bin, bin_width):
+        # find the maximum
+        counts = [len(data[(i < data[property]) & (data[property] < (i + bin_width))]) for data in data_list]
+        max_count = np.max(counts)
+        min_count = np.min(counts)
+        # we cannot upsample from 0
+        if min_count == 0:
+            continue
+        # iterate over datasets
+        for index, data in enumerate(data_list):
+            # get the subset of the data that is in this bin
+            data_subset = data[(i < data[property]) & (data[property] < (i + bin_width))]
+            # sample from this subset
+            data_list2[index].append(data_subset.sample(max_count, replace=True))
+
+    # concatenate the datasets
+    for index, data in enumerate(data_list):
+        data_list2[index] = pd.concat(data_list2[index])
+
+    return data_list2
+
