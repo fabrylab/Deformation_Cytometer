@@ -123,7 +123,7 @@ def fit_func_velocity_gradient(config):
 def correctCenter(data, config):
     if not "velocity" in data:
         getVelocity(data, config)
-    d = data[~np.isnan(data.velocity)]
+    d = data[np.isfinite(data.velocity)]
     y_pos = d.rp
     vel = d.velocity
 
@@ -131,8 +131,7 @@ def correctCenter(data, config):
         raise ValueError("No velocity values found.")
 
     vel_fit, pcov = curve_fit(fit_func_velocity(config), y_pos, vel,
-                              [np.max(vel), 0.9, -np.mean(y_pos)])  # fit a parabolic velocity profile
-
+                              [np.nanpercentile(vel, 95), 3, -np.mean(y_pos)])  # fit a parabolic velocity profile
     y_pos += vel_fit[2]
     # data.y += vel_fit[2]
     data.rp += vel_fit[2]
@@ -654,10 +653,9 @@ def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshol
     paths = get_folders(input_path, pressure=pressure, repetition=repetition)
     data_list = []
     config = {}
-    print("new", paths)
     for index, file in enumerate(paths):
         output_file = Path(str(file).replace("_result.txt", "_evaluated_new.csv"))
-        output_config_file = Path(str(file).replace("_result.txt", "_evaluated_config_new.txt"))
+        output_config_file = Path(str(output_file).replace("_evaluated_new.csv", "_evaluated_config_new.txt"))
         print(output_file)
 
         with output_config_file.open("r") as fp:
