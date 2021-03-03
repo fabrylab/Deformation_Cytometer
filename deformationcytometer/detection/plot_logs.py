@@ -17,11 +17,16 @@ def plot(x, y, offsety, **kwargs):
 
 files = sorted(glob.glob("log_*.txt"))
 print(files)
+
+min_time = np.inf
+data = loadtxt(files[0])
+min_time = data[0, 0]
+
 for index, file in enumerate(files):
     data = loadtxt(file)
-    plot(data[:, 0], data[:, 1]*0.8, index)
+    plot(data[:, 0] - min_time, data[:, 1]*0.8, index)
     for d in data[-100:]:
         if d[1] and d[0] > 700:
-            plt.text(d[0], index, int(d[2]), rotation=90)
+            plt.text(d[0] - min_time, index, int(d[2]), rotation=90)
 
 plt.show()

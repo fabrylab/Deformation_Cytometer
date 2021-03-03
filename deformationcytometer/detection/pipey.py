@@ -93,10 +93,11 @@ class Task:
 
 
 class Pipeline:
-    def __init__(self):
+    def __init__(self, batch_size=100):
         self.tasks = []
         self.inputQueue = Queue(1)
         self.outputQueue = Queue(1)
+        self.batch_size = batch_size
         self.nextId = 1
 
     def run(self, arg=None):
@@ -113,7 +114,7 @@ class Pipeline:
         inputQueue = self.inputQueue
         outputQueue = self.outputQueue
         if len(self.tasks):
-            inputQueue = Queue(200)
+            inputQueue = Queue(self.batch_size)
             for task in self.tasks:
                 if task.outputQueue == self.outputQueue:
                     task.outputQueue = inputQueue
@@ -212,7 +213,7 @@ class Task2:
 
 
 class Pipeline2:
-    def __init__(self):
+    def __init__(self, batch_size=None):
         self.tasks = []
         self.inputQueue = Queue(1)
         self.outputQueue = Queue(1)
@@ -228,11 +229,15 @@ class Pipeline2:
             if index < len(self.tasks)-1:
                 if inspect.isgenerator(result):
                     for res in result:
+                        if isinstance(res, _STOP):
+                            return
                         if isinstance(res, tuple):
                             pipe_outputs(self.tasks[index](*res), index+1)
                         else:
                             pipe_outputs(self.tasks[index](res), index+1)
                 else:
+                    if isinstance(result, _STOP):
+                        return
                     if isinstance(result, tuple):
                         pipe_outputs(self.tasks[index](*result), index + 1)
                     else:

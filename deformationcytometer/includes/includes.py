@@ -150,6 +150,8 @@ def getConfig(configfile):
     configfile = str(configfile)
     if configfile.endswith("_result.txt"):
         configfile = configfile.replace("_result.txt", "_config.txt")
+    if configfile.endswith("_evaluated_new.csv"):
+        configfile = configfile.replace("_evaluated_new.csv", "_config.txt")
     if configfile.endswith(".tif"):
         configfile = configfile.replace(".tif", "_config.txt")
 

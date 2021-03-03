@@ -30,6 +30,7 @@ class UNet(models.Model):
     def __init__(self, img_shape, num_class, d=32, weights=weights_url):
         concat_axis = 3
         inputs = layers.Input(shape=img_shape)
+        self.shape = img_shape
 
         conv1 = layers.Conv2D(d, (3, 3), activation='relu', padding='same', name='conv1_1')(inputs)
         conv1 = layers.Conv2D(d, (3, 3), activation='relu', padding='same')(conv1)

@@ -61,7 +61,7 @@ def mask_to_cells_edge(prediction_mask, im, config, r_min, frame_data, edge_dist
     # TDOD: consider first applying binary closing operations to avoid impact of very small gaps in the cell border
     filled = fill_voids.fill(prediction_mask)
     # iterate over all detected regions
-    for region in regionprops(label(filled), im):  # region props are based on the original image
+    for region in regionprops(label(filled)):  # region props are based on the original image
         # checking if the anything was filled up by extracting the region form the original image
         # if no significant region was filled, we skip this object
         yc, xc = np.split(region.coords, 2, axis=1)
@@ -148,8 +148,14 @@ def mask_to_cells_edge2(prediction_mask, im, config, r_min, frame_data, edge_dis
     cells = []
     # iterate over all detected regions
     for region in regionprops(label(prediction_mask), cache=True):  # region props are based on the original image
-        if region.euler_number <= 0:
+        # checking if the anything was filled up by extracting the region form the original image
+        # if no significant region was filled, we skip this object
+        if region.filled_area - region.area < 10:
             continue
+        # get the offset for the filled image
+        oy, ox = region.bbox[:2]
+        # and from now on just use the properties of the filled version
+        region = regionprops(region.filled_image.astype(np.uint8))[0]
 
         a = region.major_axis_length / 2
         b = region.minor_axis_length / 2
@@ -163,24 +169,23 @@ def mask_to_cells_edge2(prediction_mask, im, config, r_min, frame_data, edge_dis
         Amin_pixels = np.pi * (r_min_pix) ** 2  # minimum region area based on minimum radius
         # filtering cells close to left and right image edge
         # usually cells do not come close to upper and lower image edge
-        x_pos = region.centroid[1]
+        x_pos = region.centroid[1] + ox
         dist_to_edge =  np.min([x_pos, prediction_mask.shape[1] - x_pos])
 
         if region.area >= Amin_pixels and dist_to_edge > edge_dist_pix:  # analyze only regions larger than 100 pixels,
-            # and only of the canny filtered band-passed image returend an object
 
             # the circumference of the ellipse
             circum = np.pi * ((3 * (a + b)) - np.sqrt(10 * a * b + 3 * (a ** 2 + b ** 2)))
 
             # %% store the cells
-            yy = region.centroid[0] - config["channel_width_px"] / 2
+            yy = region.centroid[0] + oy - config["channel_width_px"] / 2
             yy = yy * config["pixel_size"]
 
             data = {}
             data.update(frame_data)
             data.update({
-                  "x": region.centroid[1],
-                  "y": region.centroid[0],
+                  "x": region.centroid[1] + ox,
+                  "y": region.centroid[0] + oy,
                   "rp": yy,
                   "long_axis": region.major_axis_length * config["pixel_size"],
                   "short_axis": region.minor_axis_length * config["pixel_size"],
@@ -295,20 +300,20 @@ def save_cells_to_file(result_file, cells):
     print(f"Save {len(cells)} cells to {result_file}")
 
 
-def matchVelocities(last_frame_cells, new_cells, dt, next_cell_id, config):
+def matchVelocities(last_frame_cells, new_cells, next_cell_id, config):
 
     if len(last_frame_cells) != 0 and len(new_cells) != 0:
         conditions = (
             # radial pos
-                (np.abs(last_frame_cells.rp[:, None] - new_cells.rp[None, :]) < 1) &
+                (np.abs(np.array(last_frame_cells.rp)[:, None] - np.array(new_cells.rp)[None, :]) < 1) &
                 # long_axis
-                (np.abs(last_frame_cells.long_axis[:, None] - new_cells.long_axis[None, :]) < 1) &
+                (np.abs(np.array(last_frame_cells.long_axis)[:, None] - np.array(new_cells.long_axis)[None, :]) < 1) &
                 # short axis
-                (np.abs(last_frame_cells.short_axis[:, None] - new_cells.short_axis[None, :]) < 1) &
+                (np.abs(np.array(last_frame_cells.short_axis)[:, None] - np.array(new_cells.short_axis)[None, :]) < 1) &
                 # angle
-                (np.abs(last_frame_cells.angle[:, None] - new_cells.angle[None, :]) < 5) &
+                (np.abs(np.array(last_frame_cells.angle)[:, None] - np.array(new_cells.angle)[None, :]) < 5) &
                 # positive velocity
-                (np.abs(last_frame_cells.x[:, None] < new_cells.x[None, :]))  # &
+                (np.abs(np.array(last_frame_cells.x)[:, None] < np.array(new_cells.x)[None, :]))  # &
         )
         indices = np.argmax(conditions, axis=0)
         found = conditions[indices, np.arange(conditions.shape[1])]
@@ -317,6 +322,7 @@ def matchVelocities(last_frame_cells, new_cells, dt, next_cell_id, config):
                 j = indices[i]
                 c1 = new_cells.iloc[i]
                 c2 = last_frame_cells.iloc[j]
+                dt = c1.timestamp - c2.timestamp
                 v = (c1.x - c2.x) * config["pixel_size"] / dt
                 new_cells.iat[i, new_cells.columns.get_loc("velocity")] = v
                 new_cells.iat[i, new_cells.columns.get_loc("cell_id")] = c2.cell_id
