@@ -486,7 +486,6 @@ def get_folders(input_path, pressure=None, repetition=None):
     for path in input_path:
         if "*" in path:
             glob_data = glob.glob(path, recursive=True)
-            # print("glob_data", glob_data, path)
             if repetition is not None:
                 glob_data = glob_data[repetition:repetition + 1]
             paths.extend(glob_data)
@@ -648,7 +647,7 @@ def load_all_data(input_path, solidity_threshold=0.96, irregularity_threshold=1.
     return data, config
 
 
-def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshold=1.06, pressure=None, repetition=None):
+def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshold=1.06, pressure=None, repetition=None, do_group=True):
 
     paths = get_folders(input_path, pressure=pressure, repetition=repetition)
     data_list = []
@@ -663,6 +662,8 @@ def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshol
             config["channel_width_m"] = 0.00019001261833616293
 
         data = pd.read_csv(output_file)
+        if do_group is True:
+            data = data.groupby(['cell_id'], as_index=False).mean()
 
         data_list.append(data)
 
@@ -715,8 +716,12 @@ def plot_velocity_fit(data, color=None):
         x, y = getFitXY(config, np.mean(pressure), p)
         return x, y
 
+    maxima = []
     for pressure in sorted(data.pressure.unique(), reverse=True):
         d = data[data.pressure == pressure]
+        d.delta = d.delta.round(8)
+        d.tau = d.tau.round(10)
+        d.eta0 = d.eta0.round(8)
         d = d.set_index(["eta0", "delta", "tau"])
         for p in d.index.unique():
             dd = d.loc[p]
@@ -724,6 +729,8 @@ def plot_velocity_fit(data, color=None):
             line, = plt.plot(np.abs(dd.rp), dd.velocity * 1e-3 * 1e2, "o", alpha=0.3, ms=2, color=color)
             plt.plot([], [], "o", ms=2, color=line.get_color(), label=f"{pressure:.1f}")
             l, = plt.plot(x[x>=0]* 1e+6, y[x>=0] * 1e2, color="k")
+            maxima.append(np.max(y[x>0]* 1e2))
+    plt.ylim(top=np.max(maxima)*1.1)
     plt.xlabel("position in channel (µm)")
     plt.ylabel("velocity (cm/s)")
 

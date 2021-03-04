@@ -8,10 +8,28 @@ import matplotlib.pyplot as plt
 from deformationcytometer.evaluation.helper_functions import plotDensityScatter, load_all_data, plotBinnedData
 from deformationcytometer.evaluation.helper_functions import plotDensityScatter, load_all_data, all_plots_same_limits, get_cell_properties#, load_all_data_new
 from deformationcytometer.evaluation.helper_functions import plot_velocity_fit, plot_density_hist, \
-    plotDensityLevels, plotBinnedData, plot_joint_density, split_axes
+    plotDensityLevels, plotBinnedData, plot_joint_density, split_axes, load_all_data_new
 import numpy as np
 import pylustrator
 pylustrator.start()
+
+if 0:
+    """"""
+    #\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\january_2021\2021_03_01_NIH3T3_LatrunculinB_doseresponse\100 nM - Kontrolle\2021_03_01_12_21_37.tif
+    #\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\january_2021\2021_03_01_NIH3T3_LatrunculinB_doseresponse\100 nM - Kontrolle\2021_03_01_12_24_36.tif
+    #\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\january_2021\2021_03_01_NIH3T3_LatrunculinB_doseresponse\3.162 nM - Kontrolle\2021_03_01_14_20_57.tif
+    #\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\january_2021\2021_03_01_NIH3T3_LatrunculinB_doseresponse\316.2 nM - Kontrolle\2021_03_01_11_45_42.tif
+    from deformationcytometer.evaluation.helper_functions import correctCenter
+    data, config = load_all_data_new(r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\january_2021\2021_03_01_NIH3T3_LatrunculinB_doseresponse\100 nM - Kontrolle\2021_03_01_12_21_37_result.txt")
+    correctCenter(data, config)
+    d = data
+    y_pos = d.rp
+    vel = d.velocity
+    valid_indices = np.isfinite(y_pos) & np.isfinite(vel)
+
+    plt.plot(y_pos, vel, "o")
+    plt.show()
+    """"""
 
 experiment = {}
 
@@ -47,6 +65,22 @@ if 1:
             if name!="plots":
                 experiment[name] = str(folder) + "\[2-9]\*_result.txt"
 
+if 1:
+    experiment = {}
+    files = sorted(glob.glob(r"\\131.188.117.119\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\january_2021\2021_02_24_NIH3T3_LatrunculinB_doseresponse\*"))
+    #files = sorted(glob.glob(r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\january_2021\2021_03_01_NIH3T3_LatrunculinB_doseresponse\*"))
+    for folder in natsort.natsorted(files):
+        folder = Path(folder)
+        name = str(folder.name).replace(" - ", "/")
+        #experiment[name] = str(folder) + "\*_evaluated_new.csv"
+        experiment[name] = str(folder) + "\*_result.txt"
+
+import os
+outputfolder = Path(os.path.commonprefix(list(experiment.values()))) / "plots"
+outputfolder.mkdir(exist_ok=True)
+
+load_all_data = load_all_data_new
+
 def get_mode_stats(x):
     from scipy import stats
     from deformationcytometer.evaluation.helper_functions import bootstrap_error
@@ -66,19 +100,24 @@ def get_mode_stats(x):
     return mode, err, len(x)
 
 N = len(experiment)
-cols = int(np.sqrt(N))
+cols = 2#int(np.sqrt(N))
 rows = int(np.ceil(N/cols))
 
 import matplotlib as mpl
 mpl.rc("figure.subplot", top=0.95, hspace=0.35, left=0.2, right=0.95)  # defaults top=0.88, hspace=0.2, left=0.125, right=0.9
-
+mpl.rc("figure", figsize=[3.0, 4.8]) # default 6.4, 4.8
 ax_k = []
 ax_a = []
 ax_Gp1 = []
 ax_Gp2 = []
 # iterate over all times
 for index, name in enumerate(experiment.keys()):
-    data, config = load_all_data(experiment[name], pressure=3) #set pressure to 0.5,1,2,3 or what was measured. for all pressures together, delete ", pressure=x"
+    print(experiment[name])
+    try:
+        data, config = load_all_data(experiment[name], pressure=3) #set pressure to 0.5,1,2,3 or what was measured. for all pressures together, delete ", pressure=x"
+    except (FileNotFoundError, ValueError):
+        continue
+    data = data[~np.isnan(data.tt)]
     print(index, name, len(data), np.sum(~np.isnan(data.w_k_cell)), np.sum(~np.isnan(data.k_cell)))
 
     row_title = ""
@@ -139,6 +178,7 @@ for index, name in enumerate(experiment.keys()):
     plt.subplot(rows, cols, index + 1)
     plt.title(name, fontsize=10)
     plot_velocity_fit(data)
+    plt.grid()
     plt.xlim(0, 100)
     all_plots_same_limits() #plt.ylim(0, 1.5)
     plt.xlabel("channel position (µm)")
@@ -173,18 +213,32 @@ for index, name in enumerate(experiment.keys()):
 pylustrator.helper_functions.axes_to_grid(ax_k)
 pylustrator.helper_functions.axes_to_grid(ax_a)
 
+plt.figure(1)
+plt.savefig(outputfolder / "histogram.png")
+
+plt.figure(2)
+plt.savefig(outputfolder / "alpha_over_k.png")
+
+fig = plt.figure(3)
+fig.set_size_inches(6.4, 4.8)
+plt.savefig(outputfolder / "dose-response_without-control.png")
+
 plt.figure(4)
 pylustrator.helper_functions.axes_to_grid()
+plt.savefig(outputfolder / "strain-stress.png")
 
 plt.figure(5)
 pylustrator.helper_functions.axes_to_grid()
+plt.savefig(outputfolder / "velocity.png")
 
 plt.figure(6)
 #pylustrator.helper_functions.axes_to_grid()
 pylustrator.helper_functions.axes_to_grid(ax_Gp1)
 pylustrator.helper_functions.axes_to_grid(ax_Gp2)
+plt.savefig(outputfolder / "g'g''.png")
 
 plt.figure(7)
 pylustrator.helper_functions.axes_to_grid()
+plt.savefig(outputfolder / "angle.png")
 
 plt.show()

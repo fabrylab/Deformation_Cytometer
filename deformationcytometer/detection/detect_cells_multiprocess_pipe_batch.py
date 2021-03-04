@@ -71,10 +71,6 @@ class ProcessLoadImages:
         start_batch_index = 0
         timestamp_start = None
         log("1load_images", "read", 1, 0)
-        #def reader2():
-        #    for i, im in enumerate(reader):
-        #        if i % 2 == 0:
-        #            yield im
         # iterate over all images in the file
         for image_index, im in enumerate(reader):
             # ensure image has only one channel
@@ -275,7 +271,11 @@ class ProcessPairData:
 
         cells = data["cells"]
         row_indices = data["row_indices"]
-        next_id = data["index"]*1000
+        next_id = 1+data["index"]*1000
+
+        _, next_id = matchVelocities(cells.iloc[0:0],
+                                     cells.iloc[row_indices[0]:row_indices[1]],
+                                     next_id, data["config"])
 
         for i, index in enumerate(range(data["index"], data["end_index"]-1)):
             _, next_id = matchVelocities(cells.iloc[row_indices[i]:row_indices[i+1]],
@@ -566,7 +566,7 @@ if __name__ == "__main__":
     video = getInputFile(settings_name="detect_cells.py")
     print(video)
 
-    pipeline = pipey.Pipeline(2)
+    pipeline = pipey.Pipeline(3)
 
     pipeline.add(get_items)
 
