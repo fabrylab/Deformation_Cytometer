@@ -109,7 +109,7 @@ def fit_velocity(data, config, p=None, channel_width=None):
     L = config["channel_length_m"]
 
     x, y = data.rp * 1e-6, data.velocity * 1e-3
-    i = ~np.isnan(x) & ~np.isnan(y)
+    i = np.isfinite(x) & np.isfinite(y)
     x2 = x[i]
     y2 = y[i]
 
@@ -137,10 +137,9 @@ def fit_velocity_pressures(data, config, p=None, channel_width=None, pressures=N
     L = config["channel_length_m"]
 
     x, y = data.rp * 1e-6, data.velocity * 1e-3
-    i = ~np.isnan(x) & ~np.isnan(y)
+    i = np.isfinite(x) & np.isfinite(y)
     x2 = x[i]
     y2 = y[i]
-    print("vel count", len(x2))
 
     all_pressures = np.unique(data.pressure)
     if pressures is None:
