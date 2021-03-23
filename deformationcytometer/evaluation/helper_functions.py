@@ -480,11 +480,11 @@ def get_pressures(input_path, repetition=None):
 
 
 def get_folders(input_path, pressure=None, repetition=None):
-    if isinstance(input_path, str):
+    if isinstance(input_path, (str, Path)):
         input_path = [input_path]
     paths = []
     for path in input_path:
-        if "*" in path:
+        if "*" in str(path):
             glob_data = glob.glob(path, recursive=True)
             if repetition is not None:
                 glob_data = glob_data[repetition:repetition + 1]
@@ -655,7 +655,6 @@ def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshol
     for index, file in enumerate(paths):
         output_file = Path(str(file).replace("_result.txt", "_evaluated_new.csv"))
         output_config_file = Path(str(output_file).replace("_evaluated_new.csv", "_evaluated_config_new.txt"))
-        print(output_file)
 
         with output_config_file.open("r") as fp:
             config = json.load(fp)
@@ -855,11 +854,8 @@ def get_cell_properties(data):
 
     w_Gp1 = mu1
     w_Gp2 = eta1 * np.abs(omega_weissenberg)
-    w_alpha_cell = np.arctan(Gp2 / Gp1) * 2 / np.pi
-    w_k_cell = Gp1 / (omega_weissenberg ** alpha_cell * scipy.special.gamma(1 - alpha_cell) * np.cos(np.pi / 2 * alpha_cell))
-
-    mu1_ = k_cell * omega_weissenberg ** alpha_cell * scipy.special.gamma(1 - alpha_cell) * np.cos(np.pi / 2 * alpha_cell)
-    eta1_ = k_cell * omega_weissenberg ** alpha_cell * scipy.special.gamma(1 - alpha_cell) * np.sin(np.pi / 2 * alpha_cell) / omega_weissenberg
+    w_alpha_cell = np.arctan(w_Gp2 / w_Gp1) * 2 / np.pi
+    w_k_cell = w_Gp1 / (omega_weissenberg ** w_alpha_cell * scipy.special.gamma(1 - w_alpha_cell) * np.cos(np.pi / 2 * w_alpha_cell))
 
     data["w_Gp1"] = w_Gp1
     data["w_Gp2"] = w_Gp2
