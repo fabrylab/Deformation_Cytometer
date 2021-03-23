@@ -1,16 +1,8 @@
 # -*- coding: utf-8 -*-
-# this program reads the frames of an avi video file, averages all images,
-# and stores the normalized image as a floating point numpy array
-# in the same directory as the extracted images, under the name "flatfield.npy"
-#
-# The program then loops again through all images of the video file,
-# identifies cells, extracts the cell shape, fits an ellipse to the cell shape,
-# and stores the information on the cell's centroid position, long and short axis,
-# angle (orientation) of the long axis, and bounding box width and height
-# in a text file (result_file.txt) in the same directory as the video file.
 
+#
 r_min = 6
-batch_size = 10
+batch_size = 100
 write_clickpoints_file = True
 write_clickpoints_masks = False
 write_clickpoints_markers = False
@@ -31,8 +23,7 @@ def clear_logs():
 
 class FileFinished: pass
 
-
-class ProcessLoadImages:
+class ProcessCopyImages:
     def __init__(self, data_storage: "JoinedDataStorage"):
         self.data_storage = data_storage
 
@@ -44,13 +35,62 @@ class ProcessLoadImages:
         from deformationcytometer.detection import pipey
         from deformationcytometer.detection.includes.regionprops import preprocess, getTimestamp
         from deformationcytometer.includes.includes import getConfig
+        from pathlib import Path
         import clickpoints
         import numpy as np
+
+        import shutil
+
+        Path("tmp").mkdir(exist_ok=True)
+        target_file = Path("tmp") / Path(filename).name
+        shutil.copy(filename, target_file)
+
+        return filename, target_file
+
+
+class ProcessLoadImages:
+    def __init__(self, data_storage: "JoinedDataStorage"):
+        self.data_storage = data_storage
+
+    def __call__(self, filename, copy_of_file=None):
+        """
+        Loads an .tif file stack and yields all the images.
+        """
+        import imageio
+        import sys
+        from deformationcytometer.detection import pipey
+        from deformationcytometer.detection.includes.regionprops import preprocess, getTimestamp
+        from deformationcytometer.includes.includes import getConfig
+        import clickpoints
+        import numpy as np
+
+        class reader2:
+            def __init__(self, reader):
+                self.reader = reader
+
+            def __len__(self):
+                return len(self.reader)//2
+
+            def __iter__(self):
+                for i, im in enumerate(self.reader):
+                    if i % 2 == 0:
+                        yield im
+
+            def get_meta_data(self, index):
+                return self.reader.get_meta_data(index*2)
+
+            def close(self):
+                self.reader.close()
 
         log("1load_images", "prepare", 1)
 
         # open the image reader
-        reader = imageio.get_reader(filename)
+        #reader = reader2(imageio.get_reader(copy_of_file or filename))
+        try:
+            reader = imageio.get_reader(copy_of_file or filename)
+        except Exception as err:
+            print(err, file=sys.stderr)
+            return
         # get the config file
         config = getConfig(filename)
         # get the total image count
@@ -71,6 +111,7 @@ class ProcessLoadImages:
         start_batch_index = 0
         timestamp_start = None
         log("1load_images", "read", 1, 0)
+
         # iterate over all images in the file
         for image_index, im in enumerate(reader):
             # ensure image has only one channel
@@ -89,27 +130,31 @@ class ProcessLoadImages:
             timestamps.append(timestamp)
 
             if image_index == image_count-1 or len(images) == batch_size:
-                images = np.array(images, dtype=np.float32)
 
-                info = self.data_storage.allocate(images.shape, dtype=np.float32)
-                info_mask = self.data_storage.allocate(images.shape, dtype=np.uint8)
+                info = self.data_storage.allocate([len(images)]+list(images[0].shape), dtype=np.float32)
+                info_mask = self.data_storage.allocate([len(images)]+list(images[0].shape), dtype=np.uint8)
                 data_storage_numpy = self.data_storage.get_stored(info)
-                data_storage_numpy[:] = images
+                for i, im in enumerate(images):
+                    data_storage_numpy[i] = im
 
                 log("1load_images", "read", 0, start_batch_index)
 
-                yield dict(filename=filename, index=start_batch_index, end_index=start_batch_index+images.shape[0], type="image", timestamps=timestamps,
+                yield dict(filename=filename, index=start_batch_index, end_index=start_batch_index+len(images), type="image", timestamps=timestamps,
                            data_info=info, mask_info=info_mask,
                            config=config, image_count=image_count)
 
                 if image_index != image_count-1:
-                    log("1load_images", "read", 1, start_batch_index+images.shape[0])
+                    log("1load_images", "read", 1, start_batch_index+len(images))
                 images = []
                 timestamps = []
                 start_batch_index = image_index+1
 
             if image_index == image_count - 1:
                 break
+
+        reader.close()
+        if copy_of_file is not None:
+            copy_of_file.unlink()
 
         yield dict(filename=filename, index=image_count, type="end")
 
@@ -353,6 +398,7 @@ class ResultCombiner:
         self.filenames = {}
 
     def __call__(self, data):
+        import sys
         # if the file is finished, store the results
 
         if data["filename"] not in self.filenames:
@@ -382,7 +428,10 @@ class ResultCombiner:
         self.data_storage.deallocate(data["mask_info"])
 
         if file["progress_count"] == data["image_count"]:
-            self.save(data)
+            try:
+                self.save(data)
+            except Exception as err:
+                print(err, file=sys.stderr)
             file["progressbar"].close()
             del self.filenames[data["filename"]]
 
@@ -410,8 +459,8 @@ class ResultCombiner:
 
         try:
             correctCenter(data, config)
-        except RuntimeError:
-            print("WARNING: could not fit center for", filename)
+        except Exception as err:
+            print("WARNING: could not fit center for", filename, err)
 
         if 0:
             try:
@@ -449,6 +498,7 @@ class ResultCombiner:
 def to_filelist(paths):
     import glob
     from pathlib import Path
+    from deformationcytometer.includes.includes import getConfig
 
     if not isinstance(paths, list):
         paths = [paths]
@@ -463,7 +513,12 @@ def to_filelist(paths):
             files.extend(glob.glob(path + "/**/*.tif", recursive=True))
     files2 = []
     for filename in files:
-        if 1:#not Path(str(filename)[:-4] + "_evaluated_config_new.txt").exists():
+        if not Path(str(filename)[:-4] + "_evaluated_config_new.txt").exists():
+            # check if the config file exists
+            try:
+                config = getConfig(filename)
+            except (OSError, ValueError):
+                continue
             files2.append(filename)
         else:
             print(filename, "already evaluated")
@@ -549,13 +604,11 @@ class DataBlock:
 
 if __name__ == "__main__":
     from deformationcytometer.detection import pipey
-    from deformationcytometer.includes.includes import getInputFile, read_args_pipeline
+    from deformationcytometer.includes.includes import getInputFile, read_args_pipeline, getInputFolder
     import sys
     import multiprocessing
 
-    #data_storage = multiprocessing.Array("f", 540*720*3000)
-    #data_storage_mask = multiprocessing.Array("B", 540*720*3000)
-    data_storage = JoinedDataStorage(10000)
+    data_storage = JoinedDataStorage(5000)
 
     # reading commandline arguments if executed from terminal
     file, network_weight, irregularity_threshold, solidity_threshold = read_args_pipeline()
@@ -563,12 +616,14 @@ if __name__ == "__main__":
     clear_logs()
 
     print(sys.argv)
-    video = getInputFile(settings_name="detect_cells.py")
+    video = getInputFolder(settings_name="detect_cells.py")
     print(video)
 
     pipeline = pipey.Pipeline(3)
 
     pipeline.add(get_items)
+
+    pipeline.add(ProcessCopyImages(data_storage))
 
     # one process reads the documents
     #pipeline.add(process_load_images)
