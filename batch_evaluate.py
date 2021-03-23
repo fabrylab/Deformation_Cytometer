@@ -23,7 +23,7 @@ parent_folder = getInputFolder(settings_name=settings_name)
 irregularity_threshold = 1.06
 solidity_threshold = 0.96
 # get all the _result.txt files in the folder and its subfolders
-files = glob.glob(f"{parent_folder}/**/*_result.txt", recursive=True)
+files = glob.glob(f"{parent_folder}/**/*_evaluated_new.csv", recursive=True)
 print(f"selected {parent_folder} with {len(files)} files")
 
 

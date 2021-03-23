@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
 
-from deformationcytometer.evaluation.helper_functions import plotDensityScatter, load_all_data, get_cell_properties
+from deformationcytometer.evaluation.helper_functions import plotDensityScatter, load_all_data_new, get_cell_properties
 from deformationcytometer.evaluation.helper_functions import plot_velocity_fit, plot_density_hist, \
     plotDensityLevels, plotBinnedData
 settings_name = "strain_vs_stress_clean"
@@ -29,7 +29,7 @@ file, irregularity_threshold, solidity_threshold = read_args_evaluate()
 datafile = getInputFile(filetype="txt file (*_result.txt)", settings_name=settings_name, video=file)
 print("evaluate file", datafile)
 # load the data and the config
-data, config = load_all_data(datafile, solidity_threshold, irregularity_threshold)
+data, config = load_all_data_new(datafile)
 
 plt.figure(0, (10, 8))
 
