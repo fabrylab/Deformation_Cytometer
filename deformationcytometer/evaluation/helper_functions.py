@@ -752,14 +752,17 @@ def plot_density_hist(x, orientation='vertical', do_stats=True, only_kde=False, 
     from scipy import stats
     x = np.array(x)
     x = x[~np.isnan(x)]
-    kde = stats.gaussian_kde(x)
-    xx = np.linspace(np.nanmin(x), np.nanmax(x), 1000)
-    if orientation == 'horizontal':
-        l, = ax.plot(kde(xx), xx, **kwargs)
+    if len(x) != 0:
+        kde = stats.gaussian_kde(x)
+        xx = np.linspace(np.nanmin(x), np.nanmax(x), 1000)
+        if orientation == 'horizontal':
+            l, = ax.plot(kde(xx), xx, **kwargs)
+        else:
+            l, = ax.plot(xx, kde(xx), **kwargs)
+        if not only_kde:
+            ax.hist(x, bins=50, density=True, color=l.get_color(), alpha=0.5, orientation=orientation)
     else:
-        l, = ax.plot(xx, kde(xx), **kwargs)
-    if not only_kde:
-        ax.hist(x, bins=50, density=True, color=l.get_color(), alpha=0.5, orientation=orientation)
+        l, = ax.plot([], [], **kwargs)
     return l
 
 def plot_joint_density(x, y, label=None, only_kde=False, color=None, growx=1, growy=1, offsetx=0):
