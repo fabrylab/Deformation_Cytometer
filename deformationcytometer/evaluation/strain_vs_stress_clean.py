@@ -26,7 +26,7 @@ settings_name = "strain_vs_stress_clean"
 file, irregularity_threshold, solidity_threshold = read_args_evaluate()
 
 # get the results file (by command line parameter or user input dialog)
-datafile = getInputFile(filetype="txt file (*_result.txt)", settings_name=settings_name, video=file)
+datafile = getInputFile(filetype="csv file (*_evaluated_new.csv)", settings_name=settings_name, video=file)
 print("evaluate file", datafile)
 # load the data and the config
 data, config = load_all_data_new(datafile)
