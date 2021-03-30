@@ -647,10 +647,30 @@ def load_all_data(input_path, solidity_threshold=0.96, irregularity_threshold=1.
     return data, config
 
 
+def getMeta(filename):
+    import yaml
+    filename = Path(filename)
+    parent_list = []
+    meta = {}
+    while filename.parent != filename:
+        filename = filename.parent
+        yaml_file = filename / "meta.yaml"
+        if yaml_file.exists():
+            with yaml_file.open() as fp:
+                data = yaml.load(fp, Loader=yaml.SafeLoader)
+            data.update(meta)
+            meta = data
+        parent_list.append(filename)
+    return meta
+
+
 ureg = None
 def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshold=1.06, pressure=None, repetition=None, do_group=True, add_units=False):
     import datetime
+    import re
     import configparser
+
+    unit_matcher = re.compile(r"(\d*\.?\d+)([^\d]+)$")
 
     paths = get_folders(input_path, pressure=pressure, repetition=repetition)
     data_list = []
@@ -674,6 +694,29 @@ def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshol
         #data["datetime"] = measurement_datetime
         #data["time_after_harvest"] = float(config_raw["CELL"]["time after harvest"].strip(" mins").strip(" min"))
 
+        if add_units is True:
+            import pint, pint_pandas
+            global ureg
+
+            if ureg is None:
+                ureg = pint.UnitRegistry()
+                ureg.define('frame = []')
+                ureg.setup_matplotlib(True)
+                ureg.define(f'cam_pixel = {config["pixel_size_m"]} * m = px')
+
+        # add meta data
+        meta = getMeta(output_file)
+        for key, value in meta.items():
+            if isinstance(value, str) and unit_matcher.match(value):
+                if add_units is True:
+                    try:
+                        value = ureg(value)
+                    except pint.errors.UndefinedUnitError:
+                        value = float(unit_matcher.match(value).groups()[0])
+                else:
+                    value = float(unit_matcher.match(value).groups()[0])
+            data[key] = value
+
         data_list.append(data)
 
     data = pd.concat(data_list)
@@ -681,13 +724,6 @@ def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshol
 
     if add_units is True:
         import pint, pint_pandas
-        global ureg
-
-        if ureg is None:
-            ureg = pint.UnitRegistry()
-            ureg.define('frame = []')
-            ureg.setup_matplotlib(True)
-            ureg.define(f'cam_pixel = {config["pixel_size_m"]} * m = px')
 
         units = {
             "timestamp": "ms",
