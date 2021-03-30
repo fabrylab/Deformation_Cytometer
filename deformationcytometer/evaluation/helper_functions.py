@@ -648,6 +648,8 @@ def load_all_data(input_path, solidity_threshold=0.96, irregularity_threshold=1.
 
 
 def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshold=1.06, pressure=None, repetition=None, do_group=True):
+    import datetime
+    import configparser
 
     paths = get_folders(input_path, pressure=pressure, repetition=repetition)
     data_list = []
@@ -655,14 +657,21 @@ def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshol
     for index, file in enumerate(paths):
         output_file = Path(str(file).replace("_result.txt", "_evaluated_new.csv"))
         output_config_file = Path(str(output_file).replace("_evaluated_new.csv", "_evaluated_config_new.txt"))
+        output_config_file_raw = Path(str(output_file).replace("_evaluated_new.csv", "_config.txt"))
+
+        measurement_datetime = datetime.datetime.strptime(Path(output_file).name[:19], "%Y_%m_%d_%H_%M_%S")
 
         with output_config_file.open("r") as fp:
             config = json.load(fp)
             config["channel_width_m"] = 0.00019001261833616293
+        config_raw = configparser.ConfigParser()
+        config_raw.read(output_config_file_raw)
 
         data = pd.read_csv(output_file)
         if do_group is True:
             data = data.groupby(['cell_id'], as_index=False).mean()
+        data["datetime"] = measurement_datetime
+        data["time_after_harvest"] = float(config_raw["CELL"]["time after harvest"].strip(" mins").strip(" min"))
 
         data_list.append(data)
 
