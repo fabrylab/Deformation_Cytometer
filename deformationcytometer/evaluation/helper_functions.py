@@ -647,7 +647,8 @@ def load_all_data(input_path, solidity_threshold=0.96, irregularity_threshold=1.
     return data, config
 
 
-def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshold=1.06, pressure=None, repetition=None, do_group=True):
+ureg = None
+def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshold=1.06, pressure=None, repetition=None, do_group=True, add_units=False):
     import datetime
     import configparser
 
@@ -670,13 +671,72 @@ def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshol
         data = pd.read_csv(output_file)
         if do_group is True:
             data = data.groupby(['cell_id'], as_index=False).mean()
-        data["datetime"] = measurement_datetime
-        data["time_after_harvest"] = float(config_raw["CELL"]["time after harvest"].strip(" mins").strip(" min"))
+        #data["datetime"] = measurement_datetime
+        #data["time_after_harvest"] = float(config_raw["CELL"]["time after harvest"].strip(" mins").strip(" min"))
 
         data_list.append(data)
 
     data = pd.concat(data_list)
     data.reset_index(drop=True, inplace=True)
+
+    if add_units is True:
+        import pint, pint_pandas
+        global ureg
+
+        if ureg is None:
+            ureg = pint.UnitRegistry()
+            ureg.define('frame = []')
+            ureg.setup_matplotlib(True)
+            ureg.define(f'cam_pixel = {config["pixel_size_m"]} * m = px')
+
+        units = {
+            "timestamp": "ms",
+            #"datetime": "dimensionless",
+            #"time_after_harvest": "min",
+            "frames": "frame",
+            "x": "cam_pixel",
+            "y": "cam_pixel",
+            "rp": "µm",
+            "long_axis": "µm",
+            "short_axis": "µm",
+            "angle": "deg",
+            "irregularity": "dimensionless",
+            "solidity": "dimensionless",
+            "sharpness": "dimensionless",
+            "velocity": "mm/s",
+            "cell_id": "dimensionless",
+            "tt": "rad/s",
+            "tt_r2": "dimensionless",
+            "omega": "rad/s",
+            "velocity_gradient": "1/s",
+            "velocity_fitted": "mm/s",
+            "imaging_pos_mm": "mm",
+            "stress": "Pa",
+            "stress_center": "Pa",
+            "strain": "dimensionless",
+            "area": "µm**2",
+            "pressure": "bar",
+            "vel": "m/s",
+            "vel_grad": "1/s",
+            "eta": "Pa*s",
+            "eta0": "Pa*s",
+            "delta": "dimensionless",
+            "tau": "s",
+            "mu1": "Pa",
+            "eta1": "Pa*s",
+            "Gp1": "Pa",
+            "Gp2": "Pa",
+            "k_cell": "Pa",
+            "alpha_cell": "dimensionless",
+            "epsilon": "dimensionless",
+            "w_Gp1": "Pa",
+            "w_Gp2": "Pa",
+            "w_k_cell": "Pa",
+            "w_alpha_cell": "dimensionless",
+        }
+        for key, value in units.items():
+            if value is not None and key in data:
+                data[key] = pint_pandas.PintArray(data[key].values, getattr(ureg, value))
 
     return data, config
 
