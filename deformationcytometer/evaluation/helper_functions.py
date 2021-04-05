@@ -676,7 +676,7 @@ def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshol
     data_list = []
     config = {}
     for index, file in enumerate(paths):
-        output_file = Path(str(file).replace("_result.txt", "_evaluated_new.csv"))
+        output_file = Path(str(file).replace("_result.txt", "_evaluated_new.csv").replace(".tif", "_evaluated_new.csv"))
         output_config_file = Path(str(output_file).replace("_evaluated_new.csv", "_evaluated_config_new.txt"))
         output_config_file_raw = Path(str(output_file).replace("_evaluated_new.csv", "_config.txt"))
 
@@ -938,8 +938,7 @@ def get_cell_properties(data):
     def curve(x, x0, a):
         return 1 / 2 * 1 / (1 + (x / x0) ** a)
 
-    omega_weissenberg = curve(np.abs(data.vel_grad), (1 / data.tau) * 3, data.delta) * np.abs(
-        data.vel_grad)  # * np.pi*2
+    omega_weissenberg = curve(np.abs(data.vel_grad), (1 / data.tau) * 3, data.delta) * np.abs(data.vel_grad)  # * np.pi*2
     #omega = omega_weissenberg
 
     Gp1 = mu1
@@ -965,6 +964,7 @@ def get_cell_properties(data):
     w_alpha_cell = np.arctan(w_Gp2 / w_Gp1) * 2 / np.pi
     w_k_cell = w_Gp1 / (omega_weissenberg ** w_alpha_cell * scipy.special.gamma(1 - w_alpha_cell) * np.cos(np.pi / 2 * w_alpha_cell))
 
+    data["omega_weissenberg"] = omega_weissenberg
     data["w_Gp1"] = w_Gp1
     data["w_Gp2"] = w_Gp2
     data["w_k_cell"] = w_k_cell
