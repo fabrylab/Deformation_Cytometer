@@ -117,7 +117,7 @@ class MeasruementPlot(QtWidgets.QWidget):
             plt.axline([0,0], slope=1, color="k")
             plt.plot(data.omega, data.omega_weissenberg, "o", ms=1)
             plt.xlabel("omega")
-            plt.xlabel("cell size")
+            plt.ylabel("omega weissenberg")
 
             plt.subplot(3, 3, 3)
             plotDensityScatter(data.stress, data.epsilon)
