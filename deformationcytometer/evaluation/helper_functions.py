@@ -653,14 +653,20 @@ def getMeta(filename):
     parent_list = []
     meta = {}
     while filename.parent != filename:
-        filename = filename.parent
-        yaml_file = filename / "meta.yaml"
+        if str(filename).endswith(".tif"):
+            yaml_file = Path(str(filename).replace(".tif", "_meta.yaml"))
+        elif str(filename).endswith("_evaluated_new.csv"):
+            yaml_file = Path(str(filename).replace("_evaluated_new.csv", "_meta.yaml"))
+        else:
+            yaml_file = filename / "meta.yaml"
+
         if yaml_file.exists():
             with yaml_file.open() as fp:
                 data = yaml.load(fp, Loader=yaml.SafeLoader)
             data.update(meta)
             meta = data
         parent_list.append(filename)
+        filename = filename.parent
     return meta
 
 
@@ -681,6 +687,7 @@ def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshol
         output_config_file_raw = Path(str(output_file).replace("_evaluated_new.csv", "_config.txt"))
 
         measurement_datetime = datetime.datetime.strptime(Path(output_file).name[:19], "%Y_%m_%d_%H_%M_%S")
+        measurement_datetime = Path(output_file).name[:19]
 
         with output_config_file.open("r") as fp:
             config = json.load(fp)
@@ -691,7 +698,7 @@ def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshol
         data = pd.read_csv(output_file)
         if do_group is True:
             data = data.groupby(['cell_id'], as_index=False).mean()
-        #data["datetime"] = measurement_datetime
+        data["datetime"] = measurement_datetime
         #data["time_after_harvest"] = float(config_raw["CELL"]["time after harvest"].strip(" mins").strip(" min"))
 
         if add_units is True:
@@ -826,15 +833,18 @@ def plot_velocity_fit(data, color=None):
         d.delta = d.delta.round(8)
         d.tau = d.tau.round(10)
         d.eta0 = d.eta0.round(8)
-        d = d.set_index(["eta0", "delta", "tau"])
+        d = d.set_index(["eta0", "delta", "tau"]).copy()
         for p in d.index.unique():
             dd = d.loc[p]
             x, y = getFitLine(pressure, p)
             line, = plt.plot(np.abs(dd.rp), dd.velocity * 1e-3 * 1e2, "o", alpha=0.3, ms=2, color=color)
             plt.plot([], [], "o", ms=2, color=line.get_color(), label=f"{pressure:.1f}")
             l, = plt.plot(x[x>=0]* 1e+6, y[x>=0] * 1e2, color="k")
-            maxima.append(np.max(y[x>0]* 1e2))
-    plt.ylim(top=np.max(maxima)*1.1)
+            maxima.append(np.nanmax(y[x>0]* 1e2))
+    try:
+        plt.ylim(top=np.nanmax(maxima)*1.1)
+    except ValueError:
+        pass
     plt.xlabel("position in channel (µm)")
     plt.ylabel("velocity (cm/s)")
 
@@ -843,6 +853,7 @@ def apply_velocity_fit(data2):
     config = {"channel_length_m": 5.8e-2, "channel_width_m": 186e-6}
     p0, vel, vel_grad = fit_velocity_pressures(data2, config, x_sample=100)
     eta0, delta, tau = p0
+    print("eta0, delta, tau", eta0, delta, tau)
     eta = eta0 / (1 + tau ** delta * np.abs(vel_grad) ** delta)
     data2["vel"] = vel
     data2["vel_grad"] = vel_grad
