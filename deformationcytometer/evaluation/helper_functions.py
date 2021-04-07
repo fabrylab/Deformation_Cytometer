@@ -853,7 +853,6 @@ def apply_velocity_fit(data2):
     config = {"channel_length_m": 5.8e-2, "channel_width_m": 186e-6}
     p0, vel, vel_grad = fit_velocity_pressures(data2, config, x_sample=100)
     eta0, delta, tau = p0
-    print("eta0, delta, tau", eta0, delta, tau)
     eta = eta0 / (1 + tau ** delta * np.abs(vel_grad) ** delta)
     data2["vel"] = vel
     data2["vel_grad"] = vel_grad

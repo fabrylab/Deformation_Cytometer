@@ -75,7 +75,7 @@ plt.text(0.9, 0.9, f"mean($\\alpha$) {np.mean(data.alpha_cell):.2f}\nstd($\\alph
 
 plt.tight_layout()
 try:
-    plt.savefig(datafile[:-11] + '_evaluation.pdf')
+    plt.savefig(datafile[:-18] + '_evaluation.pdf')
 except PermissionError:
     pass
 #plt.show()

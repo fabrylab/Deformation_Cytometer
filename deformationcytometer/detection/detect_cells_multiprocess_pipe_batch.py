@@ -3,9 +3,11 @@
 #
 r_min = 6
 batch_size = 100
-write_clickpoints_file = True
+write_clickpoints_file = False
 write_clickpoints_masks = False
 write_clickpoints_markers = False
+copy_images = True
+shared_memory_size = 3000
 
 
 def log(name, name2, onoff, index=0):
@@ -198,7 +200,7 @@ class ProcessDetectMasksBatch:
         im = data_storage_numpy[0]  # batch[0]["im"]
         if self.unet is None or self.unet.shape[:2] != im.shape:
             im = data_storage_numpy[0]#batch[0]["im"]
-            if self.network_weights is not None:
+            if self.network_weights is not None and self.network_weights != "":
                 self.unet = UNet((im.shape[0], im.shape[1], 1), 1, d=8, weights=self.network_weights)
             else:
                 self.unet = UNet((im.shape[0], im.shape[1], 1), 1, d=8)
@@ -495,7 +497,7 @@ class ResultCombiner:
             json.dump(config, fp, indent=0)
 
 
-def to_filelist(paths):
+def to_filelist(paths, reevaluate=False):
     import glob
     from pathlib import Path
     from deformationcytometer.includes.includes import getConfig
@@ -513,7 +515,7 @@ def to_filelist(paths):
             files.extend(glob.glob(path + "/**/*.tif", recursive=True))
     files2 = []
     for filename in files:
-        if not Path(str(filename)[:-4] + "_evaluated_config_new.txt").exists():
+        if reevaluate or not Path(str(filename)[:-4] + "_evaluated_config_new.txt").exists():
             # check if the config file exists
             try:
                 config = getConfig(filename)
@@ -525,12 +527,16 @@ def to_filelist(paths):
     return files2
 
 
-def get_items(d):
-    from deformationcytometer.detection import pipey
-    d = to_filelist(d)
-    for x in d:
-        yield x
-    yield pipey.STOP
+class get_items:
+    def __init__(self, reevaluate):
+        self.reevaluate = reevaluate
+
+    def __call__(self, d):
+        from deformationcytometer.detection import pipey
+        d = to_filelist(d, self.reevaluate)
+        for x in d:
+            yield x
+        yield pipey.STOP
 
 
 import numpy as np
@@ -607,11 +613,23 @@ if __name__ == "__main__":
     from deformationcytometer.includes.includes import getInputFile, read_args_pipeline, getInputFolder
     import sys
     import multiprocessing
+    import argparse
 
-    data_storage = JoinedDataStorage(5000)
+    data_storage = JoinedDataStorage(shared_memory_size)
 
     # reading commandline arguments if executed from terminal
-    file, network_weight, irregularity_threshold, solidity_threshold = read_args_pipeline()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('file', default=None, help='specify an input file or folder')  # positional argument
+    parser.add_argument('-n', '--network_weight', default="", help='provide an external the network weight file')
+    parser.add_argument('-r', '--irregularity_filter', type=float, default=1.06, help='cells with larger irregularity (deviation from elliptical shape) are excluded')
+    parser.add_argument('-s', '--solidity_filter', type=float, default=0.96, help='cells with smaller solidity are excluded')
+    parser.add_argument('-f', '--force', type=bool, default=False, help='if True reevaluate already evaluated files')
+    args = parser.parse_args()
+
+    file = args.file
+    network_weight = args.network_weight
+    irregularity_threshold = args.irregularity_filter
+    solidity_threshold = args.solidity_filter
 
     clear_logs()
 
@@ -621,9 +639,10 @@ if __name__ == "__main__":
 
     pipeline = pipey.Pipeline(3)
 
-    pipeline.add(get_items)
+    pipeline.add(get_items(args.force))
 
-    pipeline.add(ProcessCopyImages(data_storage))
+    if copy_images is True:
+        pipeline.add(ProcessCopyImages(data_storage))
 
     # one process reads the documents
     #pipeline.add(process_load_images)
