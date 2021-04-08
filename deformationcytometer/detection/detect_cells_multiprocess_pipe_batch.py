@@ -6,8 +6,8 @@ batch_size = 100
 write_clickpoints_file = False
 write_clickpoints_masks = False
 write_clickpoints_markers = False
-copy_images = True
-shared_memory_size = 3000
+copy_images = False
+shared_memory_size = 1000
 
 
 def log(name, name2, onoff, index=0):
@@ -619,7 +619,7 @@ if __name__ == "__main__":
 
     # reading commandline arguments if executed from terminal
     parser = argparse.ArgumentParser()
-    parser.add_argument('file', default=None, help='specify an input file or folder')  # positional argument
+    parser.add_argument('file', nargs='?', default=None, help='specify an input file or folder')  # positional argument
     parser.add_argument('-n', '--network_weight', default="", help='provide an external the network weight file')
     parser.add_argument('-r', '--irregularity_filter', type=float, default=1.06, help='cells with larger irregularity (deviation from elliptical shape) are excluded')
     parser.add_argument('-s', '--solidity_filter', type=float, default=0.96, help='cells with smaller solidity are excluded')
