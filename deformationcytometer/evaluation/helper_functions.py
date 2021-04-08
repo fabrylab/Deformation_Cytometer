@@ -946,9 +946,6 @@ def get_cell_properties(data):
     x = [0.113, 0.45]
     omega_weissenberg = func(np.abs(data.vel_grad), *x)
 
-    omega_weissenberg = curve(np.abs(data.vel_grad), (1 / data.tau) * 3, data.delta) * np.abs(data.vel_grad)  # * np.pi*2
-    #omega = omega_weissenberg
-
     Gp1 = mu1
     Gp2 = eta1 * np.abs(omega)
     alpha_cell = np.arctan(Gp2 / Gp1) * 2 / np.pi
