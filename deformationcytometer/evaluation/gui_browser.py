@@ -108,10 +108,11 @@ class MeasruementPlot(QtWidgets.QWidget):
     def selected(self, name):
         plt.clf()
         if name.endswith(".tif"):
-            data, config = load_all_data_new(name)
+            data, config = load_all_data_new(name, do_excude=False)
 
             plt.subplot(3, 3, 1)
             plot_velocity_fit(data)
+            plt.text(0.8, 0.8, data.iloc[0]["vel_fit_error"], transform=plt.gca().transAxes)
 
             plt.subplot(3, 3, 2)
             plt.axline([0,0], slope=1, color="k")

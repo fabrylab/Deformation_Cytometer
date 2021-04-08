@@ -260,8 +260,6 @@ def plotDensityScatter(x, y, cmap='viridis', alpha=1, skip=1, y_factor=1, s=5, l
 
     if levels != None:
         X, Y = np.meshgrid(np.linspace(np.min(x), np.max(x), 100), np.linspace(np.min(y), np.max(y), 100))
-        print(xy.shape)
-        print(np.dstack([X, Y*y_factor]).shape)
         XY = np.dstack([X, Y*y_factor])
         Z = kde(XY.reshape(-1, 2).T).reshape(XY.shape[:2])
         ax.contour(X, Y, Z, levels=1)
@@ -283,8 +281,6 @@ def plotDensityLevels(x, y, skip=1, y_factor=1, levels=None, cmap="viridis", col
     x, y, z = x[idx], y[idx], kd[idx]
 
     X, Y = np.meshgrid(np.linspace(np.min(x), np.max(x), 100), np.linspace(np.min(y), np.max(y), 100))
-    print(xy.shape)
-    print(np.dstack([X, Y*y_factor]).shape)
     XY = np.dstack([X, Y*y_factor])
     Z = kde(XY.reshape(-1, 2).T).reshape(XY.shape[:2])
     plt.contour(X, Y, Z, levels=levels, cmap=cmap, colors=colors)
@@ -489,13 +485,11 @@ def get_folders(input_path, pressure=None, repetition=None):
             if repetition is not None:
                 glob_data = glob_data[repetition:repetition + 1]
             paths.extend(glob_data)
-            # print("glob_data", glob_data)
         else:
             paths.append(path)
 
     new_paths = []
     for file in paths:
-        # print("->", file)
         try:
             config = getConfig(file)
             new_paths.append(file)
@@ -503,18 +497,15 @@ def get_folders(input_path, pressure=None, repetition=None):
             print(err, file=sys.stderr)
             continue
     paths = new_paths
-    # print("new paths", new_paths)
 
     if pressure is not None:
         pressures = []
         for index, file in enumerate(paths):
             config = getConfig(file)
             pressures.append(config['pressure_pa'] / 100_000)
-            # print("->", file, pressures[-1])
 
         paths = np.array(paths)
         pressures = np.array(pressures)
-        # print("pressures", pressures, pressure)
         paths = paths[pressures == pressure]
 
     return paths
@@ -547,7 +538,6 @@ def load_all_data(input_path, solidity_threshold=0.96, irregularity_threshold=1.
     filters = []
     config = {}
     for index, file in enumerate(paths):
-        #print(file)
         output_file = Path(str(file).replace("_result.txt", "_evaluated.csv"))
         output_config_file = Path(str(file).replace("_result.txt", "_evaluated_config.txt"))
 
@@ -615,7 +605,6 @@ def load_all_data(input_path, solidity_threshold=0.96, irregularity_threshold=1.
                 config["solidity"] = solidity_threshold
                 config["irregularity"] = irregularity_threshold
                 data.to_csv(output_file, index=False)
-                #print("config", config, type(config))
                 with output_config_file.open("w") as fp:
                     json.dump(config, fp, indent=0)
 
@@ -671,7 +660,7 @@ def getMeta(filename):
 
 
 ureg = None
-def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshold=1.06, pressure=None, repetition=None, do_group=True, add_units=False):
+def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshold=1.06, pressure=None, repetition=None, do_group=True, add_units=False, do_excude=True):
     import datetime
     import re
     import configparser
@@ -724,6 +713,9 @@ def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshol
                     value = float(unit_matcher.match(value).groups()[0])
             data[key] = value
 
+        if "exclude" in meta and do_excude is True:
+            if meta["exclude"] is True:
+                continue
         data_list.append(data)
 
     data = pd.concat(data_list)
@@ -854,6 +846,9 @@ def apply_velocity_fit(data2):
     p0, vel, vel_grad = fit_velocity_pressures(data2, config, x_sample=100)
     eta0, delta, tau = p0
     eta = eta0 / (1 + tau ** delta * np.abs(vel_grad) ** delta)
+
+    data2["vel_fit_error"] = np.sqrt(np.sum(((vel-data2.velocity)/data2.velocity)**2))
+
     data2["vel"] = vel
     data2["vel_grad"] = vel_grad
     data2["eta"] = eta
@@ -945,8 +940,11 @@ def get_cell_properties(data):
 
     # omega = data.freq * 2 * np.pi
 
-    def curve(x, x0, a):
-        return 1 / 2 * 1 / (1 + (x / x0) ** a)
+    def func(x, a, b):
+        return x / 2 * 1 / (1 + a * x ** b)
+
+    x = [0.113, 0.45]
+    omega_weissenberg = func(np.abs(data.vel_grad), *x)
 
     omega_weissenberg = curve(np.abs(data.vel_grad), (1 / data.tau) * 3, data.delta) * np.abs(data.vel_grad)  # * np.pi*2
     #omega = omega_weissenberg
