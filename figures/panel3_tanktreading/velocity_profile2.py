@@ -5,7 +5,7 @@ from pathlib import Path
 
 from deformationcytometer.evaluation.helper_functions import plotDensityScatter, load_all_data, get_cell_properties
 from deformationcytometer.evaluation.helper_functions import plot_velocity_fit, plot_density_hist, \
-    plotDensityLevels, plotBinnedData
+    plotDensityLevels, plotBinnedData, load_all_data_new
 from deformationcytometer.includes.fit_velocity import fit_velocity, fit_velocity_pressures, getFitXY, getFitXYDot
 settings_name = "strain_vs_stress_clean"
 """ loading data """
@@ -173,7 +173,6 @@ def plot_tt(ax1, ax2):
     perimeter_pixels = getPerimeter(data0.long_axis.mean() / pixel_size / 2, data0.short_axis.mean() / pixel_size / 2)
     mask = getMask(data0.iloc[0], images[0])
 
-
     for i in range(len(images) - 1):
         dt = times[i + 1] - times[i]
         flow = skimage.registration.optical_flow_tvl1(images[i], images[i + 1], attachment=30)
@@ -245,12 +244,54 @@ plot_velocity_fit_dot(data)
 plt.subplot(243)
 plot_viscisity(data)
 plt.subplot(244)
+
+data, config = load_all_data_new(rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\september_2020\2020_09_16_alginate2%_NIH_tanktreading\1\*_result.txt")
 plot_viscisoty_over_shear_rate(data)
 
 plot_tt(plt.subplot(245), plt.subplot(246))
 
 plt.subplot(247)
 plot_omega(data)
+
+def func(x, a, b):
+    return x / 2 * 1 / (1 + a * x ** b)
+x = [0.113, 0.45]
+xx = np.arange(0, 500)
+yy = func(xx, *x)
+plt.plot(xx, yy, "r-")
+plt.subplot(248)
+""""""
+
+data_alg, config = load_all_data_new([
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_24_alginate2.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_27_alginate2.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
+    # r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_14_alginate2.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_28_alginate2.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
+    # r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_30_alginate2.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
+
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_27_alginate2.0%_dmem_NIH_3T3\*\*_evaluated_new.csv",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_28_alginate2.0%_dmem_NIH_3T3\*\*_evaluated_new.csv",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_28_alginate2.0%_dmem_NIH_3T3\*\*_evaluated_new.csv",
+    # r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_30_alginate2.0%_dmem_NIH_3T3\*\*_evaluated_new.csv",
+
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_30_alginate1.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_14_alginate1.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
+    # r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_14_alginate1.5%_dmem_NIH_3T3_2\*\*_evaluated_new.csv",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_28_alginate1.5%_dmem_NIH_3T3\*\*_evaluated_new.csv"
+    # r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_30_alginate1.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
+], pressure=2)
+
+i = 0
+d = data_alg[data_alg.tt_r2 > 0.6]
+for alg, d in d.groupby("alginate"):
+    d = d[d.alginate == alg]
+    p, = plt.plot(-d.vel_grad, d.omega, "o", ms=1, label=f"{alg}%")
+    print(alg, len(d))
+    #plotBinnedData(-d.vel_grad, d.omega, np.arange(0, 400, 10), mfc=p.get_color(), label=f"NIH 3T3 {alg}%")
+plt.legend("alginate")
+plt.plot(xx, yy, "r-")
+""""""
+
 plt.legend(title="pressure (bar)")
 
 #% start: automatic generated code from pylustrator
@@ -298,13 +339,15 @@ plt.figure(1).axes[2].texts[0].set_position([-0.242285, 0.970000])
 plt.figure(1).axes[2].texts[0].set_text("c")
 plt.figure(1).axes[2].texts[0].set_weight("bold")
 plt.figure(1).axes[3].set_xlim(0.01, 1000.0)
-plt.figure(1).axes[3].set_ylim(0.3, 3.869813081501242)
+plt.figure(1).axes[3].set_ylim(0.3, 4.0)
 plt.figure(1).axes[3].set_xticks([0.01, 0.1, 1.0, 10.0, 100.0, 1000.0])
-plt.figure(1).axes[3].set_yticks([0.3, 1.0, 3.0])
+plt.figure(1).axes[3].set_yticks([1.0])
 plt.figure(1).axes[3].set_xticklabels([".01", ".1", "1", "10", "100", "1k"], fontsize=10.0, fontweight="normal", color="black", fontstyle="normal", fontname="Arial", horizontalalignment="center")
-plt.figure(1).axes[3].set_yticklabels([".3", "1.", "3."], fontsize=10.0, fontweight="normal", color="black", fontstyle="normal", fontname="Arial", horizontalalignment="right")
+plt.figure(1).axes[3].set_yticklabels(["1"], fontsize=10.0, fontweight="normal", color="black", fontstyle="normal", fontname="Arial", horizontalalignment="right")
 plt.figure(1).axes[3].set_position([0.808120, 0.660336, 0.176478, 0.310334])
-plt.figure(1).axes[3].set_yticks([np.nan], minor=True)
+plt.figure(1).axes[3].set_xticks([0.02, 0.04, 0.06, 0.08, 0.2, 0.4, 0.6, 0.8, 2.0, 4.0, 6.0, 8.0, 20.0, 40.0, 60.0, 80.0, 200.0, 400.0, 600.0, 800.0], minor=True)
+plt.figure(1).axes[3].set_yticklabels(["", "", "", "", "", "", "", "", ""], minor=True)
+plt.figure(1).axes[3].set_yticks([0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 2.0, 3.0], minor=True)
 plt.figure(1).axes[3].spines['right'].set_visible(False)
 plt.figure(1).axes[3].spines['top'].set_visible(False)
 plt.figure(1).axes[3].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[3].transAxes)  # id=plt.figure(1).axes[3].texts[0].new
@@ -318,7 +361,11 @@ plt.figure(1).axes[4].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[4]
 plt.figure(1).axes[4].texts[0].set_position([-0.076818, 0.972343])
 plt.figure(1).axes[4].texts[0].set_text("e")
 plt.figure(1).axes[4].texts[0].set_weight("bold")
-plt.figure(1).axes[5].set_position([0.332296, 0.137565, 0.221903, 0.362423])
+plt.figure(1).axes[5].set_ylim(-0.8184063448875512, 8.14487720247547)
+plt.figure(1).axes[5].set_yticks([0.0, 5.0])
+plt.figure(1).axes[5].set_yticklabels(["", ""], minor=True)
+plt.figure(1).axes[5].set_position([0.312455, 0.161581, 0.153887, 0.314390])
+plt.figure(1).axes[5].set_yticks([2.5, 7.5], minor=True)
 plt.figure(1).axes[5].set_zorder(1)
 plt.figure(1).axes[5].spines['right'].set_visible(False)
 plt.figure(1).axes[5].spines['top'].set_visible(False)
@@ -326,21 +373,45 @@ plt.figure(1).axes[5].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[5]
 plt.figure(1).axes[5].texts[0].set_position([-0.286155, 0.972343])
 plt.figure(1).axes[5].texts[0].set_text("f")
 plt.figure(1).axes[5].texts[0].set_weight("bold")
-plt.figure(1).axes[6].set_ylim(-5.223895317219428, 90.0)
-plt.figure(1).axes[6].legend(handlelength=1.1, handletextpad=0.0, columnspacing=0.30000000000000004, ncol=3, title="pressure (bar)", fontsize=8.0, title_fontsize=8.0)
-plt.figure(1).axes[6].set_position([0.655757, 0.137565, 0.295029, 0.362423])
+plt.figure(1).axes[6].set_xlim(-32.05083319558484, 673.0674971072816)
+plt.figure(1).axes[6].set_ylim(-5.2679643223479395, 100.0)
+plt.figure(1).axes[6].set_xticks([0.0, 250.0, 500.0])
+plt.figure(1).axes[6].set_yticks([0.0, 50.0, 100.0])
+plt.figure(1).axes[6].set_xticklabels(["0", "250", "500"], fontsize=10.0, fontweight="normal", color="black", fontstyle="normal", fontname="Arial", horizontalalignment="center")
+plt.figure(1).axes[6].set_yticklabels(["", ""], minor=True)
+plt.figure(1).axes[6].legend(frameon=False, handlelength=1.5, handletextpad=0.0, columnspacing=0.30000000000000004, markerscale=3.0, ncol=2, title="pressure (bar)", fontsize=6.0, title_fontsize=6.0)
+plt.figure(1).axes[6].set_position([0.589812, 0.137565, 0.185743, 0.356707])
+plt.figure(1).axes[6].set_yticks([25.0, 75.0], minor=True)
 plt.figure(1).axes[6].spines['right'].set_visible(False)
 plt.figure(1).axes[6].spines['top'].set_visible(False)
-plt.figure(1).axes[6].get_legend()._set_loc((0.621234, 0.030272))
+plt.figure(1).axes[6].get_legend()._set_loc((0.584887, 0.020099))
 plt.figure(1).axes[6].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[6].transAxes)  # id=plt.figure(1).axes[6].texts[0].new
-plt.figure(1).axes[6].texts[0].set_position([-0.320562, 0.972343])
+plt.figure(1).axes[6].texts[0].set_position([-0.551166, 0.989300])
 plt.figure(1).axes[6].texts[0].set_text("g")
 plt.figure(1).axes[6].texts[0].set_weight("bold")
 plt.figure(1).axes[6].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[6].transAxes)  # id=plt.figure(1).axes[6].texts[1].new
-plt.figure(1).axes[6].texts[1].set_position([0.182483, 0.849579])
+plt.figure(1).axes[6].texts[1].set_position([0.169672, 0.849579])
 plt.figure(1).axes[6].texts[1].set_rotation(67.0)
 plt.figure(1).axes[6].texts[1].set_text("0.5")
 plt.figure(1).axes[6].get_yaxis().get_label().set_text("tank treading\nangular freq. (rad/s)")
+plt.figure(1).axes[7].set_xlim(-32.05083319558484, 673.0674971072816)
+plt.figure(1).axes[7].set_ylim(-5.2679643223479395, 100.0)
+plt.figure(1).axes[7].set_xticks([0.0, 250.0, 500.0])
+plt.figure(1).axes[7].set_yticks([0.0, 50.0, 100.0])
+plt.figure(1).axes[7].set_xticklabels(["0", "250", "500"], fontsize=10.0, fontweight="normal", color="black", fontstyle="normal", fontname="Arial", horizontalalignment="center")
+plt.figure(1).axes[7].set_yticklabels(["", "", ""], fontsize=10.0, fontweight="normal", color="black", fontstyle="normal", fontname="Arial", horizontalalignment="right")
+plt.figure(1).axes[7].legend(frameon=False, handlelength=1.5, handletextpad=0.0, markerscale=3.0, title="alg.", fontsize=6.0, title_fontsize=6.0)
+plt.figure(1).axes[7].set_position([0.798855, 0.137565, 0.185743, 0.356707])
+plt.figure(1).axes[7].set_yticks([25.0, 75.0], minor=True)
+plt.figure(1).axes[7].spines['right'].set_visible(False)
+plt.figure(1).axes[7].spines['top'].set_visible(False)
+plt.figure(1).axes[7].get_legend()._set_loc((0.711069, 0.020099))
+plt.figure(1).axes[7].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[7].transAxes)  # id=plt.figure(1).axes[7].texts[0].new
+plt.figure(1).axes[7].texts[0].set_position([-0.177153, 0.989300])
+plt.figure(1).axes[7].texts[0].set_text("h")
+plt.figure(1).axes[7].texts[0].set_weight("bold")
+plt.figure(1).axes[7].get_xaxis().get_label().set_text("shear rate (1/s)")
+plt.figure(1).axes[7].get_yaxis().get_label().set_text('')
 #% end: automatic generated code from pylustrator
 plt.savefig(__file__[:-3]+".png")
 plt.savefig(__file__[:-3]+".pdf")
