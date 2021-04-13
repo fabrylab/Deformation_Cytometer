@@ -97,7 +97,7 @@ class SetFile(QtWidgets.QHBoxLayout):
 
 
 #TODo: update to new analysis pipe line
-def load_all_data_old(input_path, solidity_threshold=0.96, irregularity_threshold=1.06, pressure=None, repetition=None):
+def load_all_data_old(input_path, solidity_threshold=0.96, irregularity_threshold=1.06, pressure=None, repetition=None, new_eval=False):
     global ax
 
     evaluation_version = 8
@@ -128,7 +128,7 @@ def load_all_data_old(input_path, solidity_threshold=0.96, irregularity_threshol
 
 
         """ evaluating data"""
-        if not output_file.exists() or config_changes:
+        if not output_file.exists() or config_changes or new_eval:
 
             getVelocity(data, config)
             # take the mean of all values of each cell

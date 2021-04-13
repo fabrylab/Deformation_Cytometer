@@ -35,7 +35,7 @@ from deformationcytometer.detection.includes.UNETmodel import UNet, store_path
 from deformationcytometer.detection.includes.regionprops import mask_to_cells_edge, getTimestamp, save_cells_to_file
 from deformationcytometer.includes.includes import getConfig, getData
 from deformationcytometer.evaluation.helper_functions import getVelocity, correctCenter, plotDensityScatter, \
-    load_all_data, plot_density_hist
+    load_all_data, plot_density_hist, load_all_data_new
 from deformationcytometer.clickpoints_flowcytometer_addon.includes import *
 
 
@@ -124,6 +124,10 @@ class Addon(clickpoints.Addon):
         self.button_stressstrain.clicked.connect(self.plot_stress_strain)
         self.button_stressstrain.setToolTip(tooltip_strings["stress-strain"])
         layout.addWidget(self.button_stressstrain)
+        self.button_ksize = QtWidgets.QPushButton("k-cellsize")
+        self.button_ksize.clicked.connect(self.plot_k_size)
+        self.button_ksize.setToolTip(tooltip_strings["k-cellsize"])
+        layout.addWidget(self.button_ksize)
         self.button_reg_sol = QtWidgets.QPushButton("regularity-solidity")
         self.button_reg_sol.clicked.connect(self.plot_irreg)
         self.button_reg_sol.setToolTip(tooltip_strings["regularity-solidity"])
@@ -180,12 +184,14 @@ class Addon(clickpoints.Addon):
         if not os.path.isabs(self.filename):
             self.filename = str(
                 Path(self.db._database_filename).parent.joinpath(Path(self.filename)))
-        self.config_file = Path(self.filename.replace(".tif", "_config.txt"))
-        self.result_file = Path(self.filename.replace(".tif", "_result.txt"))
-        self.addon_result_file = Path(self.filename.replace(".tif", "_addon_result.txt"))
-        self.addon_evaluated_file = Path(self.filename.replace(".tif", "_addon_evaluated.csv"))
-        self.addon_config_file = Path(self.filename.replace(".tif", "_addon_config.txt"))
+
+        self.config_file = self.constructFileNames("_config.txt")
+        self.result_file = self.constructFileNames("_result.txt")
+        self.addon_result_file = self.constructFileNames("_addon_result.txt")
+        self.addon_evaluated_file = self.constructFileNames("_addon_evaluated.csv")
+        self.addon_config_file = self.constructFileNames("_addon_config.txt")
         self.vidcap = imageio.get_reader(self.filename)
+
 
         # reading in config an data
         self.data_all_existing = pd.DataFrame()
@@ -210,12 +216,17 @@ class Addon(clickpoints.Addon):
         else:  # get a default config if no config is found
             self.config = getConfig(default_config_path)
 
+        ## loading data from previous addon action
+        if self.addon_result_file.exists():
+            self.data_all_new, self.data_mean_new = self.load_data(self.addon_result_file, self.sol_threshold, self.reg_threshold)
+            self.start_threaded(partial(self.display_ellipses, type=self.marker_type_cell2, data=self.data_all_new))
         # create an addon config file
         # presence of this file allows easy implementation of the load_data and tank threading pipelines when
         # calculating new data
         if not self.addon_config_file.exists():
             shutil.copy(self.config_file, self.addon_config_file)
 
+        self.plot_data_frame = self.data_all
         # initialize plot
         self.plot_stress_strain()
 
@@ -225,6 +236,12 @@ class Addon(clickpoints.Addon):
         self.start_threaded(partial(self.display_ellipses, type=self.marker_type_cell1, data=self.data_all_existing))
 
         print("loading finished")
+
+    def constructFileNames(self, replace):
+        if self.filename.endswith(".tif"):
+            return Path(self.filename.replace(".tif", replace))
+        if self.filename.endswith(".cdb"):
+            return Path(self.filename.replace(".cdb", replace))
 
     # slots to update the progress bar from another thread (update cell detection and display_ellipse)
     @pyqtSlot(tuple, str)  # the decorator is not really necessary
@@ -291,13 +308,17 @@ class Addon(clickpoints.Addon):
         self.thread.quit()
 
     def load_data(self, file, solidity_threshold, irregularity_threshold):
+
         data_all = getData(file)
+        if not "area" in data_all.keys():
+            data_all["area"] = data_all["long_axis"] * data_all["short_axis"] * np.pi/4
+
         if len(data_all) == 0:
             print("no data loaded from file '%s'" % file)
             return pd.DataFrame(), pd.DataFrame()
         # use a "read sol from config flag here
         data_mean, config_eval = load_all_data_old(str(file), solidity_threshold=solidity_threshold,
-                                               irregularity_threshold=irregularity_threshold)
+                                               irregularity_threshold=irregularity_threshold, new_eval=True)
         return data_all, data_mean
 
     # plotting functions
@@ -312,11 +333,16 @@ class Addon(clickpoints.Addon):
             return
         if (np.all(np.isnan(x))) or (np.all(np.isnan(x))):
             return
-        plotDensityScatter(x, y, cmap='viridis', alpha=1, skip=1, y_factor=1, s=5, levels=None, loglog=False,
-                           ax=self.plot.axes)
-        self.plot_data = np.array([x, y])
-        self.plot.axes.set_xlabel(type1)
-        self.plot.axes.set_ylabel(type2)
+        try:
+            plotDensityScatter(x, y, cmap='viridis', alpha=1, skip=1, y_factor=1, s=5, levels=None, loglog=False,
+                               ax=self.plot.axes)
+            self.plot_data = np.array([x, y])
+            self.plot_data_frame = data
+            self.plot.axes.set_xlabel(type1)
+            self.plot.axes.set_ylabel(type2)
+        except (ValueError, np.LinAlgError):
+            print("kernel density estimation failed? not enough cells found?")
+            return
 
     # clearing axis and plot.data
     def init_newPlot(self):
@@ -363,6 +389,14 @@ class Addon(clickpoints.Addon):
         self.plot.figure.tight_layout()
         self.plot.draw()
 
+    def plot_k_size(self):
+        self.plot_type = self.plot_k_size
+        self.plot_scatter(self.data_mean, "area", "w_k_cell") # use self.data_all for unfiltered data
+        self.plot.axes.set_ylabel("w_k")
+        self.plot.axes.set_xlabel("area")
+        self.plot.figure.tight_layout()
+        self.plot.draw()
+
     def plot_irreg(self):
         self.plot_type = self.plot_irreg
         # unfiltered plot of irregularity and solidity to easily identify errors
@@ -386,12 +420,12 @@ class Addon(clickpoints.Addon):
         if event.button != 1 or event.inaxes is None or self.plot_data.size == 0:
             return
         xy = np.array([event.xdata, event.ydata])
-        scale = np.mean(self.plot_data, axis=1)
+        scale = np.nanmean(self.plot_data, axis=1)
         distance = np.linalg.norm(self.plot_data / scale[:, None] - xy[:, None] / scale[:, None], axis=0)
-        nearest_point = np.argmin(distance)
+        nearest_point = np.nanargmin(distance)
         print("clicked", xy)
-        self.cp.jumpToFrame(self.data_all.frames[nearest_point])
-        self.cp.centerOn(self.data_all.x[nearest_point], self.data_all.y[nearest_point])
+        self.cp.jumpToFrame(int(self.plot_data_frame.frames[nearest_point]))
+        self.cp.centerOn(self.plot_data_frame.x[nearest_point], self.plot_data_frame.y[nearest_point])
 
     # not sure what this is for ^^
     def buttonPressedEvent(self):
@@ -502,7 +536,8 @@ class Addon(clickpoints.Addon):
         prediction_mask = probability_map > 0.5
         cells, prediction_mask = mask_to_cells_edge(prediction_mask, img, self.config, self.rmin, {}, edge_dist=15,
                                                     return_mask=True)
-        [c.update({"frames": frame, "timestamp": timestamp}) for c in cells]  # maybe use map for this?
+
+        [c.update({"frames": frame, "timestamp": timestamp, "area": np.pi * (c["long_axis"] * c["short_axis"])/4}) for c in cells]  # maybe use map for this?
 
         self.db.setMask(image=im, data=prediction_mask.astype(np.uint8))
         self.db.deleteEllipses(type=self.marker_type_cell2, image=im)
