@@ -652,8 +652,9 @@ def getMeta(filename):
         if yaml_file.exists():
             with yaml_file.open() as fp:
                 data = yaml.load(fp, Loader=yaml.SafeLoader)
-            data.update(meta)
-            meta = data
+            if data is not None:
+                data.update(meta)
+                meta = data
         parent_list.append(filename)
         filename = filename.parent
     return meta
@@ -715,6 +716,7 @@ def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshol
 
         if "exclude" in meta and do_excude is True:
             if meta["exclude"] is True:
+                print("excluding", output_file)
                 continue
         data_list.append(data)
 
@@ -1062,8 +1064,10 @@ def get_mode_stats(x, do_plot=False):
 
 
 
-def bootstrap_match_hist(data_list, bin_width=25, max_bin=300, property="stress"):
+def bootstrap_match_hist(data_list, bin_width=25, max_bin=300, property="stress", groupby=None):
     import pandas as pd
+    if groupby is not None and isinstance(data_list, pd.DataFrame):
+        data_list = [d for name, d in data_list.groupby(groupby)]
     # create empty lists
     data_list2 = [[] for _ in data_list]
     # iterate over the bins
@@ -1085,6 +1089,9 @@ def bootstrap_match_hist(data_list, bin_width=25, max_bin=300, property="stress"
     # concatenate the datasets
     for index, data in enumerate(data_list):
         data_list2[index] = pd.concat(data_list2[index])
+
+    if groupby is not None:
+        return pd.concat(data_list2)
 
     return data_list2
 

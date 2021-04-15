@@ -107,7 +107,7 @@ class UNet(models.Model):
 
     def load_weight_file(self, url):
         # load from a local file or an url (cached)
-        if url.startswith("http"):
+        if str(url).startswith("http"):
             filename = get_store_path(url)
             if not filename.exists():
                 filename.parent.mkdir(exist_ok=True)

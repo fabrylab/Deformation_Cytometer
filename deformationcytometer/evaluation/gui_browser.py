@@ -112,7 +112,7 @@ class MeasruementPlot(QtWidgets.QWidget):
 
             plt.subplot(3, 3, 1)
             plot_velocity_fit(data)
-            plt.text(0.8, 0.8, data.iloc[0]["vel_fit_error"], transform=plt.gca().transAxes)
+            plt.text(0.8, 0.8, f'{data.iloc[0]["vel_fit_error"]:.0f}', transform=plt.gca().transAxes)
 
             plt.subplot(3, 3, 2)
             plt.axline([0,0], slope=1, color="k")
@@ -127,15 +127,32 @@ class MeasruementPlot(QtWidgets.QWidget):
             plt.ylabel("strain")
 
             plt.subplot(3, 3, 4)
-            plt.loglog(data.omega, data.Gp1, "o", alpha=0.25, ms=1)
-            plt.loglog(data.omega, data.Gp2, "o", alpha=0.25, ms=1)
+            plt.loglog(data.omega_weissenberg, data.w_Gp1, "o", alpha=0.25, ms=1)
+            plt.loglog(data.omega_weissenberg, data.w_Gp2, "o", alpha=0.25, ms=1)
+            from scipy.special import gamma
+            def fit(omega, k, alpha):
+                omega = np.array(omega)
+                G = k * (1j * omega) ** alpha * gamma(1 - alpha)
+                return np.real(G), np.imag(G)
+
+            def cost(p):
+                Gp1, Gp2 = fit(data.omega_weissenberg, *p)
+                return np.sum((np.log10(data.w_Gp1) - np.log10(Gp1)) ** 2) + np.sum(
+                    (np.log10(data.w_Gp2) - np.log10(Gp2)) ** 2)
+
+            from scipy.optimize import minimize
+            res = minimize(cost, [80, 0.5], bounds=([0, np.inf], [0, 1]))
+            print(res)
+            plt.plot([1e-1, 1e0, 1e1, 3e1], fit([1e-1, 1e0, 1e1, 3e1], *res.x)[0], "k-", lw=0.8)
+            plt.plot([1e-1, 1e0, 1e1, 3e1], fit([1e-1, 1e0, 1e1, 3e1], *res.x)[1], "k--", lw=0.8)
+
             plt.ylabel("G' / G''")
             plt.xlabel("angular frequency")
 
             plt.subplot(3, 3, 5)
             plt.cla()
             plt.xlim(0, 4)
-            plot_density_hist(np.log10(data.k_cell), color="C0")
+            plot_density_hist(np.log10(data.w_k_cell), color="C0")
             plt.xlabel("log10(k)")
             plt.ylabel("relative density")
             plt.text(0.9, 0.9,
@@ -145,7 +162,7 @@ class MeasruementPlot(QtWidgets.QWidget):
             plt.subplot(3, 3, 6)
             plt.cla()
             plt.xlim(0, 1)
-            plot_density_hist(data.alpha_cell, color="C1")
+            plot_density_hist(data.w_alpha_cell, color="C1")
             plt.xlabel("alpha")
             plt.text(0.9, 0.9,
                      f"mean($\\alpha$) {np.mean(data.alpha_cell):.2f}\nstd($\\alpha$) {np.std(data.alpha_cell):.2f}\n",
