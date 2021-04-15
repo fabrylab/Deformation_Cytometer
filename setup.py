@@ -24,6 +24,7 @@ setup(name='deformationcytometer',
             'tifffile',
             "fill_voids == 2.0.1",
             "opencv-python",
+            'qtawesome>=1.0.0',
             "pandas",
       ],
 )

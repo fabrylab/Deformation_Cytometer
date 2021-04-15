@@ -2,6 +2,7 @@ import sys
 
 # Setting the Qt bindings for QtPy
 import os
+import qtawesome as qta
 from qtpy import QtCore, QtWidgets, QtGui
 from qtpy import API_NAME as QT_API_NAME
 if QT_API_NAME.startswith("PyQt4"):
@@ -68,6 +69,10 @@ def pathParts(path):
 class MainWindow(QtWidgets.QWidget):
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
+        try:
+            self.setWindowIcon(qta.icon("mdi.folder-pound-outline"))
+        except Exception:
+            pass
 
         # QSettings
         self.settings = QtCore.QSettings("DeformationCytometer", "DeformationCytometer")
@@ -79,13 +84,21 @@ class MainWindow(QtWidgets.QWidget):
         hlayout = QtWidgets.QHBoxLayout(self)
 
         self.browser = Browser()
-        hlayout.addWidget(self.browser)
+        #hlayout.addWidget(self.browser)
 
-        self.plot = MeasruementPlot()
-        hlayout.addWidget(self.plot)
+        self.plot = MeasurementPlot()
+        #hlayout.addWidget(self.plot)
 
         self.text = MetaDataEditor()
-        hlayout.addWidget(self.text)
+        #hlayout.addWidget(self.text)
+
+        self.splitter_filebrowser = QtWidgets.QSplitter()
+        self.splitter_filebrowser.addWidget(self.browser)
+        self.splitter_filebrowser.addWidget(self.plot)
+        self.splitter_filebrowser.addWidget(self.text)
+        hlayout.addWidget(self.splitter_filebrowser)
+        #splitter_filebrowser.setStretchFactor(0, 2)
+        #splitter_filebrowser.setStretchFactor(1, 4)
 
         self.browser.signal_selection_changed.connect(self.selected)
 
@@ -94,7 +107,7 @@ class MainWindow(QtWidgets.QWidget):
         self.plot.selected(name)
 
 
-class MeasruementPlot(QtWidgets.QWidget):
+class MeasurementPlot(QtWidgets.QWidget):
     def __init__(self):
         QtWidgets.QWidget.__init__(self)
         self.hlayout = QtWidgets.QVBoxLayout(self)
@@ -112,7 +125,8 @@ class MeasruementPlot(QtWidgets.QWidget):
 
             plt.subplot(3, 3, 1)
             plot_velocity_fit(data)
-            plt.text(0.8, 0.8, f'{data.iloc[0]["vel_fit_error"]:.0f}', transform=plt.gca().transAxes)
+            if "vel_fit_error" in data.iloc[0]:
+                plt.text(0.8, 0.8, f'{data.iloc[0]["vel_fit_error"]:.0f}', transform=plt.gca().transAxes)
 
             plt.subplot(3, 3, 2)
             plt.axline([0,0], slope=1, color="k")
@@ -220,11 +234,13 @@ class MetaDataEditor(QtWidgets.QWidget):
             self.text2.setPlainText("")
         self.yaml_file = yaml_file
 
+
 class Browser(QtWidgets.QTreeView):
     signal_selection_changed = QtCore.Signal(str)
 
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
+        self.settings = QtCore.QSettings("fabrylab", "flowcytometer browser")
 
         # self.setCentralWidget(self.frame)
         #hlayout = QtWidgets.QVBoxLayout(self)
@@ -250,52 +266,10 @@ class Browser(QtWidgets.QTreeView):
 
         #hlayout.addWidget(self.folder_view)
 
-        self.set_path(
-            r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_21_alginate2%_NIH_xposition_1")
-        return
-        splitter_filebrowser = QtWidgets.QSplitter()
-        splitter_filebrowser.addWidget(self.folder_view)
-        splitter_filebrowser.addWidget(self.frame)
-        splitter_filebrowser.setStretchFactor(0, 2)
-        splitter_filebrowser.setStretchFactor(1, 4)
-
-        hbox = QtWidgets.QHBoxLayout(self.fileBrowserWidget)
-        hbox.addWidget(splitter_filebrowser)
-        # self.set_path(__file__)
-        self.set_path(
-            r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_21_alginate2%_NIH_xposition_1")
-        """"""
-        return
-
-        vlayout = QtWidgets.QVBoxLayout()
-        hlayout.addLayout(vlayout)
-
-        layout_vert_plot = QtWidgets.QHBoxLayout()
-        vlayout.addLayout(layout_vert_plot)
-
-        self.button_export = QtWidgets.QPushButton("save image")
-        layout_vert_plot.addWidget(self.button_export)
-        self.button_export.clicked.connect(self.saveScreenshot)
-
-        # add the pyvista interactor object
-        self.plotter_layout = QtWidgets.QHBoxLayout()
-        vlayout.addLayout(self.plotter_layout)
-
-        # simple menu to demo functions
-        mainMenu = self.menuBar()
-        fileMenu = mainMenu.addMenu('File')
-        exitButton = QtWidgets.QAction('Load', self)
-        exitButton.setShortcut('Ctrl+L')
-        exitButton.triggered.connect(self.openLoadDialog)
-        fileMenu.addAction(exitButton)
-
-        exitButton = QtWidgets.QAction('Exit', self)
-        exitButton.setShortcut('Ctrl+Q')
-        exitButton.triggered.connect(self.close)
-        fileMenu.addAction(exitButton)
-
-        self.setAcceptDrops(True)
-        print("show")
+        if self.settings.value("browser/path"):
+            self.set_path(self.settings.value("browser/path"))
+        else:
+            self.set_path(r"\\131.188.117.96\biophysDS")
 
     def set_path(self, path):
         path = Path(path)
@@ -311,56 +285,20 @@ class Browser(QtWidgets.QTreeView):
         index = self.selectionModel.currentIndex()
         dir_path = self.dirmodel.filePath(index)
         print(dir_path)
+        self.settings.setValue("browser/path", dir_path)
         self.signal_selection_changed.emit(dir_path)
 
         if dir_path.endswith(".npz"):
             print("################# load", dir_path)
             self.loadFile(dir_path)
 
-    def dragEnterEvent(self, event: QtGui.QDragEnterEvent):
-        # accept url lists (files by drag and drop)
-        for url in event.mimeData().urls():
-            if str(url.toString()).strip().endswith(".npz"):
-                event.accept()
-                return
-        event.ignore()
-
-    def dragMoveEvent(self, event: QtGui.QDragMoveEvent):
-        event.acceptProposedAction()
-
-    def dropEvent(self, event: QtCore.QEvent):
-        for url in event.mimeData().urls():
-            print(url)
-            url = str(url.toString()).strip()
-            if url.startswith("file:///"):
-                url = url[len("file:///"):]
-            if url.startswith("file:"):
-                url = url[len("file:"):]
-            self.loadFile(url)
-
-    def openLoadDialog(self):
-        # opening last directory von sttings
-        self._open_dir = self.settings.value("_open_dir")
-        if self._open_dir is None:
-            self._open_dir = os.getcwd()
-
-        dialog = QtWidgets.QFileDialog()
-        dialog.setDirectory(self._open_dir)
-        filename = dialog.getOpenFileName(self, "Open Positions", "", "Position Files (*.tif)")
-        if isinstance(filename, tuple):
-            filename = str(filename[0])
-        else:
-            filename = str(filename)
-        if os.path.exists(filename):
-            # noting directory to q settings
-            self._open_dir = os.path.split(filename)[0]
-            self.settings.setValue("_open_dir", self._open_dir)
-            self.settings.sync()
-            self.loadFile(filename)
-
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
+    # set an application id, so that windows properly stacks them in the task bar
+    if sys.platform[:3] == 'win':
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('fabrybiophysics.deformationcytometer_browser')  # arbitrary string
     print(sys.argv)
     window = MainWindow()
     if len(sys.argv) >= 2:
