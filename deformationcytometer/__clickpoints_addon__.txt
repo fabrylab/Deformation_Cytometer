@@ -1,1 +1,2 @@
 clickpoints_flowcytometer_addon/CP_addon.txt
+clickpoints_flowcytometer_addon_classify/CP_addon.txt
