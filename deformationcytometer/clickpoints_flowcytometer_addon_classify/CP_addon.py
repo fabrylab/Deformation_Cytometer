@@ -1,3 +1,4 @@
+import numpy as np
 import clickpoints
 from deformationcytometer.evaluation.helper_functions import load_all_data_new
 from qtpy import QtCore, QtGui, QtWidgets
