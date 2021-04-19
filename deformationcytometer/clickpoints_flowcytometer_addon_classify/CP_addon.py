@@ -3,18 +3,53 @@ import clickpoints
 from qimage2ndarray import array2qimage
 from deformationcytometer.evaluation.helper_functions import load_all_data_new
 from qtpy import QtCore, QtGui, QtWidgets
+from threading import Thread
+
+
+def AnimationChange(target, setter, start=0, end=1, duration=200, fps=36, endcall=None, transition="ease"):
+    timer = QtCore.QTimer()
+    timer.animation_counter = 0
+    duration /= 1e3
+
+    def timerEvent():
+        timer.animation_time += 1. / (fps * duration)
+        timer.animation_counter += 1
+        if timer.animation_time >= 1:
+            setter(end)
+            timer.stop()
+            if endcall:
+                endcall()
+            return
+        x = timer.animation_time
+        k = 3
+        if transition == "ease" or transition == "ease-in-out":
+            y = 0.5 * (x * 2) ** k * (x < 0.5) + (1 - 0.5 * ((1 - x) * 2) ** k) * (x >= 0.5)
+        elif transition == "ease-out":
+            y = 1 - 0.5 * (1 - x) ** k
+        elif transition == "ease-in":
+            y = 0.5 * x ** k
+        elif transition == "linear":
+            y = x
+        setter(y * (end - start) + start)
+
+    timer.timeout.connect(timerEvent)
+    timer.animation_time = 0
+    setter(start)
+    target.animation_timer = timer
+    timer.start(1e3 / fps)
 
 
 class Addon(clickpoints.Addon):
-    signal_update_plot = QtCore.Signal()
-    signal_plot_finished = QtCore.Signal()
-    disp_text_existing = "displaying existing data"
-    disp_text_new = "displaying new data"
+    image_loaded = QtCore.Signal(int, QtGui.QPixmap)
+    w = 500
+    h = 300
+    s = 2
 
     def __init__(self, *args, **kwargs):
         clickpoints.Addon.__init__(self, *args, **kwargs)
 
         self.layout = QtWidgets.QVBoxLayout(self)
+        self.resize(1300, 400)
 
         # Setting up marker Types
         self.marker_type_cell1 = self.db.setMarkerType("cell", "#0a2eff", self.db.TYPE_Ellipse)
@@ -28,7 +63,7 @@ class Addon(clickpoints.Addon):
         # set the title and layout
         self.setWindowTitle("DeformationCytometer - ClickPoints")
 
-        self.filename = self.db.getImage(0).get_full_filename()[:-4]+"_evaluated_new.csv"
+        self.filename = self.db.getImage(0).get_full_filename()[:-4] + "_evaluated_new.csv"
         self.data, self.config = load_all_data_new(self.db.getImage(0).get_full_filename())
         if "manual_exclude" not in self.data:
             self.data["manual_exclude"] = np.nan
@@ -48,36 +83,35 @@ class Addon(clickpoints.Addon):
 
         if 0:
             self.markers = self.db.setEllipses(
-                           frame=list(np.array(self.data.frames).astype(np.int)),
-                           x=np.array(self.data.x),
-                           y=np.array(self.data.y),
-                           width=np.array(self.data.long_axis / pixel_size),
-                           height=np.array(self.data.short_axis / pixel_size),
-                           angle=np.array(self.data.angle),
-                           type=self.marker_type_cell1
+                frame=list(np.array(self.data.frames).astype(np.int)),
+                x=np.array(self.data.x),
+                y=np.array(self.data.y),
+                width=np.array(self.data.long_axis / pixel_size),
+                height=np.array(self.data.short_axis / pixel_size),
+                angle=np.array(self.data.angle),
+                type=self.marker_type_cell1
             )
         print(self.markers)
         self.show()
         self.progressbar.setRange(0, len(self.data) - 1)
-        if 1:
+        if 0:
             for i, d in self.data.iterrows():
-                 self.progressbar.setValue(i)
-                 self.label.setText(f"Cell {i}")
-                 self.cp.window.app.processEvents()
-                 type_ = self.marker_type_cell3 if d.manual_exclude == 1 else self.marker_type_cell2 if d.manual_exclude == 0 else self.marker_type_cell1
-                 ell = self.db.setEllipse(frame=int(d.frames), x=d.x, y=d.y,
-                              width=d.long_axis / pixel_size, height=d.short_axis / pixel_size,
-                              text=f"{i} {d.cell_id}",
-                              angle=d.angle, type=type_)
-                 self.markers.append(ell)
+                self.progressbar.setValue(i)
+                self.label.setText(f"Cell {i}")
+                self.cp.window.app.processEvents()
+                type_ = self.marker_type_cell3 if d.manual_exclude == 1 else self.marker_type_cell2 if d.manual_exclude == 0 else self.marker_type_cell1
+                ell = self.db.setEllipse(frame=int(d.frames), x=d.x, y=d.y,
+                                         width=d.long_axis / pixel_size, height=d.short_axis / pixel_size,
+                                         text=f"{i} {d.cell_id}",
+                                         angle=d.angle, type=type_)
+                self.markers.append(ell)
         self.index = 0
-
 
         from clickpoints.includes import QExtendedGraphicsView
         self.view = QExtendedGraphicsView()
         self.layout.addWidget(self.view)
-        #self.view.zoomEvent = self.zoomEvent
-        #self.view.panEvent = self.panEvent
+        # self.view.zoomEvent = self.zoomEvent
+        # self.view.panEvent = self.panEvent
         self.local_scene = self.view.scene
         self.origin = self.view.origin
 
@@ -86,22 +120,16 @@ class Addon(clickpoints.Addon):
         self.addCellRect(1, 300)
         self.addCellRect(2, 600)
 
-        w = 600
-        h = 400
-        self.focus_rect = QtWidgets.QGraphicsRectItem(-w/2, -200, w, h*2, self.origin)
-        self.focus_rect.setPen(QtGui.QPen(QtGui.QColor(255, 255, 0), 3))
+        self.focus_rect = QtWidgets.QGraphicsRectItem(-self.w / 2, -self.h / 2, self.w, self.h * 2, self.origin)
+        self.focus_rect.setPen(QtGui.QPen(QtGui.QColor(255, 255, 0), 8))
         self.focus_rect.setZValue(10)
 
-        self.view.setExtend(w * 5, h)
+        self.view.setExtend(self.w * 5, self.h*2)
         self.view.fitInView()
 
         self.start_pos = 0
-        self.current_pos = self.index-0.1
+        self.current_pos = self.index - 0.1
         self.timer_percent = 0
-        self.transition_timer = QtCore.QTimer()
-        self.transition_timer.setTimerType(100)
-        self.transition_timer.timeout.connect(self.timerCall)
-        self.transition_timer.start()
 
         self.view.keyPressEvent = self.keyPressEvent2
 
@@ -116,64 +144,69 @@ class Addon(clickpoints.Addon):
         layout.addWidget(self.button_save)
         layout.addStretch()
 
+        self.image_loaded.connect(self.addImage)
+
         self.focusOnCell()
+
+    def loadImage(self, index):
+        print("load image", index)
+        d = self.data.iloc[index]
+        im = self.db.getImage(d.frames).data
+        pixmap = QtGui.QPixmap(array2qimage(im))
+        self.image_loaded.emit(index, pixmap)
+
+    def addImage(self, index, pixmap):
+        print("loaded image", index)
+        self.cell_rects[index].pixmap.setPixmap(pixmap)
 
     def addCellRect(self, index, offset):
         if index in self.cell_rects:
             return
-        w = 600
-        h = 400
-        s = 2
+
         d = self.data.iloc[index]
-        self.rect_parent = QtWidgets.QGraphicsRectItem(0, -h, w, h*3, self.origin)
-        #self.rect.setFlag(QtWidgets.QGraphicsItem.ItemClipsChildrenToShape, True)
-        self.rect_parent.setX(index*w)
-        self.rect_parent.setBrush(QtGui.QColor("black"))
+        rect_parent = QtWidgets.QGraphicsRectItem(0, -self.h, self.w, self.h * 3, self.origin)
+        rect_parent.setX(index * self.w)
+        rect_parent.setBrush(QtGui.QColor("black"))
 
-        self.rect = QtWidgets.QGraphicsRectItem(0, 0, w, h, self.rect_parent)
-        self.rect.setFlag(QtWidgets.QGraphicsItem.ItemClipsChildrenToShape, True)
-        #self.rect.setX(index*w)
-        self.rect.setBrush(QtGui.QColor("gray"))
+        rect_parent.rect = QtWidgets.QGraphicsRectItem(0, 0, self.w, self.h, rect_parent)
+        rect_parent.rect.setFlag(QtWidgets.QGraphicsItem.ItemClipsChildrenToShape, True)
+        rect_parent.rect.setBrush(QtGui.QColor("gray"))
 
-        self.pix_origin = QtWidgets.QGraphicsPixmapItem(self.rect)
+        rect_parent.pixmap = QtWidgets.QGraphicsPixmapItem(rect_parent.rect)
+        rect_parent.pixmap.setScale(self.s)
+        rect_parent.pixmap.setOffset((-d.x)+(self.w/2)/self.s, (-d.y)+(self.h/2)/self.s)
+        #rect_parent.pixmap.setOffset((-d.x), (-d.y))
 
-        self.im = self.db.getImage(d.frames).data
-        self.pixmap = QtWidgets.QGraphicsPixmapItem(self.rect)
-        self.pixmap.setPixmap(QtGui.QPixmap(array2qimage(self.im)))
-        self.pixmap.setScale(s)
-        self.pixmap.setOffset((-d.x)+(w/2)/s, (-d.y)+(h/2)/s)
-        pixel_size = self.config["pixel_size"]
-        self.ellipse = QtWidgets.QGraphicsEllipseItem(- d.long_axis / pixel_size / 2, - d.short_axis / pixel_size / 2, d.long_axis / pixel_size, d.short_axis / pixel_size, self.pixmap)
-        if d.manual_exclude == 0:
-            self.ellipse.setPen(self.pen_include)
-            self.rect_parent.setY(-200)
-        elif d.manual_exclude == 1:
-            self.ellipse.setPen(self.pen_exclude)
-            self.rect_parent.setY(200)
+        if 1:
+            rect_parent.load_thread = Thread(target=self.loadImage, args=(index,))
+            rect_parent.load_thread.start()
         else:
-            self.ellipse.setPen(self.pen_neutral)
+            im = self.db.getImage(d.frames).data
+            pixmap = QtGui.QPixmap(array2qimage(im))
+            rect_parent.pixmap.setPixmap(pixmap)
 
-        self.ellipse.setRotation(d.angle)
-        self.ellipse.setPos((w/2)/s, (h/2)/s)
-        self.rect_parent.ellipse = self.ellipse
-        #self.pixmap.setScale(0.5)
-        self.cell_rects[index] = self.rect_parent
+        pixel_size = self.config["pixel_size"]
+        ellipse = QtWidgets.QGraphicsEllipseItem(- d.long_axis / pixel_size / 2, - d.short_axis / pixel_size / 2,
+                                                 d.long_axis / pixel_size, d.short_axis / pixel_size,
+                                                 rect_parent.pixmap)
+        if d.manual_exclude == 0:
+            ellipse.setPen(self.pen_include)
+            rect_parent.setY(-self.h / 2)
+        elif d.manual_exclude == 1:
+            ellipse.setPen(self.pen_exclude)
+            rect_parent.setY(self.h / 2)
+        else:
+            ellipse.setPen(self.pen_neutral)
 
-    def timerCall(self):
-        w = 600
-        h = 400
-        if self.index != self.current_pos:
-            if self.timer_percent < 100:
-                self.timer_percent += 10
-                self.current_pos = self.start_pos * (100-self.timer_percent) / 100 + self.index * self.timer_percent / 100
-            if 0:
-                if self.index > self.current_pos:
-                    self.current_pos = min(self.current_pos + 0.01, self.index)
-                elif self.index < self.current_pos:
-                    self.current_pos = max(self.current_pos - 0.01, self.index)
+        ellipse.setRotation(d.angle)
+        ellipse.setPos((self.w / 2) / self.s, (self.h / 2) / self.s)
+        rect_parent.ellipse = ellipse
+        self.cell_rects[index] = rect_parent
 
-            self.focus_rect.setX(w * (self.current_pos + 0.5))
-            self.view.centerOn(w * (self.current_pos + 0.5), h / 2)
+    def setFocusPos(self, index):
+        self.current_pos = index
+        self.focus_rect.setX(self.w * (self.current_pos + 0.5))
+        self.view.centerOn(self.w * (self.current_pos + 0.5), self.h / 2)
 
     # not sure what this is for ^^
     def buttonPressedEvent(self):
@@ -185,21 +218,27 @@ class Addon(clickpoints.Addon):
 
     def setCellCategory(self, index, value):
         self.data.at[index, "manual_exclude"] = value
-        if value == 1:
+        if value == 0:
             self.cell_rects[self.index].ellipse.setPen(self.pen_include)
-            self.cell_rects[self.index].setY(-200)
-            self.markers[self.index].changeType(self.marker_type_cell2)
-        elif value == 0:
+            AnimationChange(self.cell_rects[self.index], self.cell_rects[self.index].setY,
+                            start=self.cell_rects[self.index].y(), end=-self.h/2)
+            # self.cell_rects[self.index].setY(-200)
+            if self.index in self.markers:
+                self.markers[self.index].changeType(self.marker_type_cell2)
+        elif value == 1:
             self.cell_rects[self.index].ellipse.setPen(self.pen_exclude)
-            self.cell_rects[self.index].setY(200)
-            self.markers[self.index].changeType(self.marker_type_cell3)
+            AnimationChange(self.cell_rects[self.index], self.cell_rects[self.index].setY,
+                            start=self.cell_rects[self.index].y(), end=self.h/2)
+            # self.cell_rects[self.index].setY(200)
+            if self.index in self.markers:
+                self.markers[self.index].changeType(self.marker_type_cell3)
         else:
             self.cell_rects[self.index].ellipse.setPen(self.pen_neutral)
             self.cell_rects[self.index].setY(0)
             self.markers[self.index].changeType(self.marker_type_cell1)
 
-        self.cp.reloadMarker()
-        self.cp.window.app.processEvents()
+        # self.cp.reloadMarker()
+        # self.cp.window.app.processEvents()
 
         if self.auto_save.isChecked():
             print("save")
@@ -211,7 +250,7 @@ class Addon(clickpoints.Addon):
             if self.index > 0:
                 self.index -= 1
         if event.key() == QtCore.Qt.Key_Right:
-            if self.index < len(self.data)-1:
+            if self.index < len(self.data) - 1:
                 self.index += 1
         if event.key() == QtCore.Qt.Key_Up:
             self.setCellCategory(self.index, 0)
@@ -248,22 +287,23 @@ class Addon(clickpoints.Addon):
             self.focusOnCell()
 
     def focusOnCell(self):
-            self.label.setText(f"Cell {self.index}")
-            d = self.data.iloc[self.index]
-            print(self.index)
-            # jump to the frame in time
-            self.cp.jumpToFrame(d.frames)
-            # and to the xy position
-            self.cp.centerOn(d.x, d.y)
+        self.label.setText(f"Cell {self.index}")
+        d = self.data.iloc[self.index]
+        print(self.index)
+        # jump to the frame in time
+        # self.cp.jumpToFrame(d.frames)
+        # and to the xy position
+        # self.cp.centerOn(d.x, d.y)
 
-            self.progressbar.setValue(self.index)
-            for i in range(self.index - 2, self.index + 3):
-                self.start_pos = self.current_pos
-                self.timer_percent = 0
-                if i >= 0:
-                    self.addCellRect(i, 0)
-            for key in list(self.cell_rects.keys()):
-                if np.abs(key - self.index) > 10:
-                    self.cell_rects[key].scene().removeItem(self.cell_rects[key])
-                    del self.cell_rects[key]
-
+        self.progressbar.setValue(self.index)
+        for i in range(self.index - 4, self.index + 4 + 1):
+            self.start_pos = self.current_pos
+            self.timer_percent = 0
+            if i >= 0:
+                self.addCellRect(i, 0)
+        for key in list(self.cell_rects.keys()):
+            if np.abs(key - self.index) > 10:
+                self.cell_rects[key].scene().removeItem(self.cell_rects[key])
+                del self.cell_rects[key]
+        AnimationChange(self, self.setFocusPos,
+                        start=self.current_pos, end=self.index, transition="ease-out")
