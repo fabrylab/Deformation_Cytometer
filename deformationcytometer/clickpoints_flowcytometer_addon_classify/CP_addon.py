@@ -4,22 +4,31 @@ from qimage2ndarray import array2qimage
 from deformationcytometer.evaluation.helper_functions import load_all_data_new
 from qtpy import QtCore, QtGui, QtWidgets
 from threading import Thread
+from clickpoints.includes import QExtendedGraphicsView
 
 
 def AnimationChange(target, setter, start=0, end=1, duration=200, fps=36, endcall=None, transition="ease"):
+    # stop old animation if present
+    old_timer = getattr(target, "animation_timer", None)
+    if old_timer is not None:
+        old_timer.stop()
+    # create a new timer
     timer = QtCore.QTimer()
-    timer.animation_counter = 0
+    # convert ms to s
     duration /= 1e3
 
+    # define the timer callback
     def timerEvent():
+        # advance the time
         timer.animation_time += 1. / (fps * duration)
-        timer.animation_counter += 1
+        # it the animation is finished, directly set the end value and stop the timer
         if timer.animation_time >= 1:
             setter(end)
             timer.stop()
             if endcall:
                 endcall()
             return
+        # calculate the transition function
         x = timer.animation_time
         k = 3
         if transition == "ease" or transition == "ease-in-out":
@@ -30,12 +39,20 @@ def AnimationChange(target, setter, start=0, end=1, duration=200, fps=36, endcal
             y = 0.5 * x ** k
         elif transition == "linear":
             y = x
+        else:
+            raise ValueError("Unknown transition")
+        # set the value
         setter(y * (end - start) + start)
 
     timer.timeout.connect(timerEvent)
     timer.animation_time = 0
+    # set the start value
     setter(start)
+    # attach the timer to the target object
+    # This is important to prevent the garbage collector from removing the timer
+    # also it is needed to stop the timer in case a second timer gets attached to this object
     target.animation_timer = timer
+    # start the animation
     timer.start(1e3 / fps)
 
 
@@ -48,8 +65,10 @@ class Addon(clickpoints.Addon):
     def __init__(self, *args, **kwargs):
         clickpoints.Addon.__init__(self, *args, **kwargs)
 
+        # open the window
         self.layout = QtWidgets.QVBoxLayout(self)
         self.resize(1300, 400)
+        self.show()
 
         # Setting up marker Types
         self.marker_type_cell1 = self.db.setMarkerType("cell", "#0a2eff", self.db.TYPE_Ellipse)
@@ -63,6 +82,7 @@ class Addon(clickpoints.Addon):
         # set the title and layout
         self.setWindowTitle("DeformationCytometer - ClickPoints")
 
+        # load the data
         self.filename = self.db.getImage(0).get_full_filename()[:-4] + "_evaluated_new.csv"
         self.data, self.config = load_all_data_new(self.db.getImage(0).get_full_filename(), do_group=False, do_excude=False)
         if "manual_exclude" not in self.data:
@@ -70,18 +90,22 @@ class Addon(clickpoints.Addon):
 
         print("loading finished", self.db.getImage(0).get_full_filename())
 
+        # add a label and the progressbar
         self.label = QtWidgets.QLabel("Cell")
         self.layout.addWidget(self.label)
         self.progressbar = QtWidgets.QProgressBar()
+        self.progressbar.setRange(0, len(self.data) - 1)
         self.layout.addWidget(self.progressbar)
 
         pixel_size = self.config["pixel_size"]
+        # remove previous markers of the time in case there are any (e.g. when the addon is activated twice)
         self.db.deleteEllipses(type=self.marker_type_cell1)
         self.db.deleteEllipses(type=self.marker_type_cell2)
         self.db.deleteEllipses(type=self.marker_type_cell3)
         self.markers = []
 
         if 0:
+            # add all markers at once
             self.markers = self.db.setEllipses(
                 frame=list(np.array(self.data.frames).astype(np.int)),
                 x=np.array(self.data.x),
@@ -91,10 +115,8 @@ class Addon(clickpoints.Addon):
                 angle=np.array(self.data.angle),
                 type=self.marker_type_cell1
             )
-        print(self.markers)
-        self.show()
-        self.progressbar.setRange(0, len(self.data) - 1)
         if 0:
+            # iteratively create the markers
             for i, d in self.data.iterrows():
                 self.progressbar.setValue(i)
                 self.label.setText(f"Cell {i}")
@@ -107,7 +129,6 @@ class Addon(clickpoints.Addon):
                 self.markers.append(ell)
         self.index = 0
 
-        from clickpoints.includes import QExtendedGraphicsView
         self.view = QExtendedGraphicsView()
         self.layout.addWidget(self.view)
         # self.view.zoomEvent = self.zoomEvent
@@ -116,9 +137,6 @@ class Addon(clickpoints.Addon):
         self.origin = self.view.origin
 
         self.cell_rects = {}
-        self.addCellRect(0, 0)
-        self.addCellRect(1, 300)
-        self.addCellRect(2, 600)
 
         self.focus_rect = QtWidgets.QGraphicsRectItem(-self.w / 2, -self.h / 2, self.w, self.h * 2, self.origin)
         self.focus_rect.setPen(QtGui.QPen(QtGui.QColor(255, 255, 0), 8))
@@ -132,6 +150,16 @@ class Addon(clickpoints.Addon):
         self.timer_percent = 0
 
         self.view.keyPressEvent = self.keyPressEvent2
+
+        self.slider = QtWidgets.QSlider()
+        self.slider.setOrientation(QtCore.Qt.Horizontal)
+        self.layout.addWidget(self.slider)
+        self.slider.setRange(0, len(self.data)-1)
+        def setIndex(x):
+            if x != self.index:
+                self.index = x
+                self.focusOnCell()
+        self.slider.valueChanged.connect(setIndex)
 
         layout = QtWidgets.QHBoxLayout()
         self.layout.addLayout(layout)
@@ -157,10 +185,11 @@ class Addon(clickpoints.Addon):
 
     def addImage(self, index, pixmap):
         print("loaded image", index)
-        self.cell_rects[index].pixmap.setPixmap(pixmap)
-
-    def addCellRect(self, index, offset):
         if index in self.cell_rects:
+            self.cell_rects[index].pixmap.setPixmap(pixmap)
+
+    def addCellRect(self, index):
+        if index in self.cell_rects or not (0 <= index < len(self.data)):
             return
 
         d = self.data.iloc[index]
@@ -296,11 +325,12 @@ class Addon(clickpoints.Addon):
         # self.cp.centerOn(d.x, d.y)
 
         self.progressbar.setValue(self.index)
+        self.slider.setValue(self.index)
         for i in range(self.index - 4, self.index + 4 + 1):
             self.start_pos = self.current_pos
             self.timer_percent = 0
             if i >= 0:
-                self.addCellRect(i, 0)
+                self.addCellRect(i)
         for key in list(self.cell_rects.keys()):
             if np.abs(key - self.index) > 10:
                 self.cell_rects[key].scene().removeItem(self.cell_rects[key])
