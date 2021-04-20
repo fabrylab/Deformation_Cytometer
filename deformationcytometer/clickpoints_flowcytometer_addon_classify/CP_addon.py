@@ -64,7 +64,7 @@ class Addon(clickpoints.Addon):
         self.setWindowTitle("DeformationCytometer - ClickPoints")
 
         self.filename = self.db.getImage(0).get_full_filename()[:-4] + "_evaluated_new.csv"
-        self.data, self.config = load_all_data_new(self.db.getImage(0).get_full_filename())
+        self.data, self.config = load_all_data_new(self.db.getImage(0).get_full_filename(), do_group=False, do_excude=False)
         if "manual_exclude" not in self.data:
             self.data["manual_exclude"] = np.nan
 
