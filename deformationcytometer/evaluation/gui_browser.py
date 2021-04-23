@@ -31,6 +31,14 @@ sys._excepthook = sys.excepthook
 sys.excepthook = lambda *args: sys._excepthook(*args)
 
 
+def QUrl2PythonPath(url):
+    url = str(url.toString()).strip()
+    if url.startswith("file:///"):
+        url = url[len("file:///"):]
+    if url.startswith("file:"):
+        url = url[len("file:"):]
+    return Path(url)
+
 class MatplotlibWidget(Canvas):
 
     def __init__(self, parent=None, width=4, height=3, dpi=100):
@@ -155,10 +163,14 @@ class MeasurementPlot(QtWidgets.QWidget):
                     (np.log10(data.w_Gp2) - np.log10(Gp2)) ** 2)
 
             from scipy.optimize import minimize
-            res = minimize(cost, [80, 0.5], bounds=([0, np.inf], [0, 1]))
+            res = minimize(cost, [np.median(data.w_k_cell), np.mean(data.w_alpha_cell)], bounds=([0, np.inf], [0, 1]))
             print(res)
-            plt.plot([1e-1, 1e0, 1e1, 3e1], fit([1e-1, 1e0, 1e1, 3e1], *res.x)[0], "k-", lw=0.8)
-            plt.plot([1e-1, 1e0, 1e1, 3e1], fit([1e-1, 1e0, 1e1, 3e1], *res.x)[1], "k--", lw=0.8)
+            xx = [10**np.floor(np.log10(np.min(data.w_Gp1))), 10**np.ceil(np.log10(np.max(data.w_Gp1)))]
+            plt.plot(xx, fit(xx, *res.x)[0], "k-", lw=0.8)
+            plt.plot(xx, fit(xx, *res.x)[1], "k--", lw=0.8)
+
+            plt.plot(xx, fit(xx, np.median(data.w_k_cell), np.mean(data.w_alpha_cell))[0], "r-", lw=0.8)
+            plt.plot(xx, fit(xx, np.median(data.w_k_cell), np.mean(data.w_alpha_cell))[1], "r--", lw=0.8)
 
             plt.ylabel("G' / G''")
             plt.xlabel("angular frequency")
@@ -170,7 +182,7 @@ class MeasurementPlot(QtWidgets.QWidget):
             plt.xlabel("log10(k)")
             plt.ylabel("relative density")
             plt.text(0.9, 0.9,
-                     f"mean(log10(k)) {np.mean(np.log10(data.k_cell)):.2f}\nstd(log10(k)) {np.std(np.log10(data.k_cell)):.2f}\nmean(k) {np.mean(data.k_cell):.2f}\nstd(k) {np.std(data.k_cell):.2f}\n",
+                     f"mean(log10(k)) {np.mean(np.log10(data.w_k_cell)):.2f}\nstd(log10(k)) {np.std(np.log10(data.w_k_cell)):.2f}\nmean(k) {np.mean(data.k_cell):.2f}\nstd(k) {np.std(data.k_cell):.2f}\n",
                      transform=plt.gca().transAxes, va="top", ha="right")
 
             plt.subplot(3, 3, 6)
@@ -179,7 +191,7 @@ class MeasurementPlot(QtWidgets.QWidget):
             plot_density_hist(data.w_alpha_cell, color="C1")
             plt.xlabel("alpha")
             plt.text(0.9, 0.9,
-                     f"mean($\\alpha$) {np.mean(data.alpha_cell):.2f}\nstd($\\alpha$) {np.std(data.alpha_cell):.2f}\n",
+                     f"mean($\\alpha$) {np.mean(data.w_alpha_cell):.2f}\nstd($\\alpha$) {np.std(data.w_alpha_cell):.2f}\n",
                      transform=plt.gca().transAxes, va="top", ha="right")
 
             plt.tight_layout()
@@ -270,6 +282,26 @@ class Browser(QtWidgets.QTreeView):
             self.set_path(self.settings.value("browser/path"))
         else:
             self.set_path(r"\\131.188.117.96\biophysDS")
+
+        self.setAcceptDrops(True)
+
+    def dragEnterEvent(self, event: QtGui.QDragEnterEvent):
+        # accept url lists (files by drag and drop)
+        for url in event.mimeData().urls():
+            url = QUrl2PythonPath(url)
+            if url.is_dir() or url.suffix == ".tif":
+                event.accept()
+                return
+        event.ignore()
+
+    def dragMoveEvent(self, event: QtGui.QDragMoveEvent):
+        event.acceptProposedAction()
+
+    def dropEvent(self, event: QtCore.QEvent):
+        for url in event.mimeData().urls():
+            url = QUrl2PythonPath(url)
+            if url.is_dir() or url.suffix == ".tif":
+                self.set_path(url)
 
     def set_path(self, path):
         path = Path(path)
