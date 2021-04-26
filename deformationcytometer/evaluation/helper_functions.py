@@ -511,6 +511,53 @@ def get_folders(input_path, pressure=None, repetition=None):
     return paths
 
 
+def processPaths(name, filter=None, file_name=None):
+    results = []
+    # if the function is called with a list or tuple, iterate over those and join the results
+    if isinstance(name, (tuple, list)):
+        for n in name:
+            results.extend(processPaths(n, filter=filter, file_name=file_name))
+    else:
+        if file_name is not None and Path(name).suffix is not Path(file_name).suffix:
+            name = Path(name) / "**" / file_name
+        # if it is a glob pattern, add all matching elements
+        if "*" in str(name):
+            results = glob.glob(str(name), recursive=True)
+        # or add the name directly
+        elif Path(name).exists():
+            results = [name]
+        # filter results if a filter is provided
+        if filter is not None:
+            results = [n for n in results if filter(n)]
+
+        # if nothing was found, try to give a meaningful error message
+        if len(results) == 0:
+            # get a list of all parent folders
+            name = Path(name).absolute()
+            hierarchy = []
+            while name.parent != name:
+                hierarchy.append(name)
+                name = name.parent
+            # iterate over the parent folders, starting from the lowest
+            for path in hierarchy[::-1]:
+                # check if the path exists (or is a glob pattern with matches)
+                if "*" in str(path):
+                    exists = len(glob.glob(str(path)))
+                else:
+                    exists = path.exists()
+                # if it does not exist, we have found our problem
+                if not exists:
+                    target = f"No file/folder \"{path.name}\""
+                    if "*" in str(path.name):
+                        target = f"Pattern \"{path.name}\" not found"
+                    source = f"in folder \"{path.parent}\""
+                    if "*" in str(path.parent):
+                        source = f"in any folder matching the pattern \"{path.parent}\""
+                    print(f"WARNING: {target} {source}", file=sys.stderr)
+                    break
+    return results
+
+
 def check_config_changes(config, evaluation_version, solidity_threshold, irregularity_threshold):
     # checking if evaluation version, solidity or regularity thresholds have changed or if flag
     # for new network evaluation is set to True
@@ -668,7 +715,19 @@ def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshol
 
     unit_matcher = re.compile(r"(\d*\.?\d+)([^\d]+)$")
 
-    paths = get_folders(input_path, pressure=pressure, repetition=repetition)
+    def filter(file):
+        try:
+            config = getConfig(file)
+        except OSError as err:
+            print(err, file=sys.stderr)
+            return False
+        data_pressure = config['pressure_pa'] / 100_000
+        if data_pressure != pressure:
+            return False
+        return True
+
+    paths = processPaths(input_path, filter, "*_evaluated_new.csv")
+    #paths = get_folders(input_path, pressure=pressure, repetition=repetition)
     data_list = []
     config = {}
     for index, file in enumerate(paths):
