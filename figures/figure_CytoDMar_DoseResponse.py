@@ -4,7 +4,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pandas as pd
 import matplotlib.pyplot as plt
-from deformationcytometer.evaluation.helper_functions import load_all_data, load_all_data_new, bootstrap_match_hist
+from deformationcytometer.evaluation.helper_functions import load_all_data, load_all_data_new, bootstrap_match_hist, bootstrap_error
 import numpy as np
 import pylustrator
 
@@ -51,24 +51,41 @@ def get_mode_stats_err(x):
 
 def plotMeasurementOfParameter(data, parameter, value, agg="mean", color=None, label=None):
     agg_func = {"mean": np.mean, "median": np.median, "mode": get_mode_stats, "logmode": get_mode_stats_log}[agg]
+    agg_func_err = {"mean": lambda x: np.std(x)/len(x), "median": lambda x: bootstrap_error(x, np.median),
+                    "mode": lambda x: bootstrap_error(x, get_mode_stats, repetitions=100), "logmode": lambda x: bootstrap_error(x, get_mode_stats_log, repetitions=100)}[agg]
 
-    agg = data.groupby([parameter, "measurement_id"])[value].agg(agg_func).reset_index()
-    #agg_err = data.groupby([parameter, "measurement_id"])[value].agg(get_mode_stats_err).reset_index()
-    #agg = data.groupby([parameter, "measurement_id"])[value].mean().reset_index()
-    #agg_err = data.groupby([parameter, "measurement_id"])[value].sem().reset_index()
-    agg_mean = agg.groupby(parameter)[value].mean()
-    agg_err_mean = agg.groupby(parameter)[value].sem()#agg(lambda x: 0.5*np.sqrt((x**2).sum()))
-    l = plt.errorbar(agg_mean.index, agg_mean.values, agg_err_mean.values, capsize=3, color=color, zorder=2, label=label)
-    for measurement_id, meas_data in agg.groupby("measurement_id"):
-        plt.plot(meas_data[parameter], meas_data[value], "o", ms=3, color=l[0].get_color(), alpha=0.5)
-        plt.plot(meas_data[parameter], meas_data[value], "-", ms=3, color="gray", alpha=0.5)
-        #plt.text(meas_data[parameter].values[0], meas_data[value].values[0], measurement_id)
+    if 0:
+        plt.violinplot([meas_data[value].values for measurement_id, meas_data in data.groupby(parameter)], positions=np.log10(data[parameter].unique()))
+        #data.groupby(parameter)[value].boxplot()
+    if 1:
+        #agg = data.groupby([parameter, "measurement_id"])[value].agg(agg_func).reset_index()
+        # agg_err = data.groupby([parameter, "measurement_id"])[value].agg(get_mode_stats_err).reset_index()
+        # agg = data.groupby([parameter, "measurement_id"])[value].mean().reset_index()
+        # agg_err = data.groupby([parameter, "measurement_id"])[value].sem().reset_index()
+        agg_mean = data.groupby(parameter)[value].agg(agg_func)
+        agg_err_mean = data.groupby(parameter)[value].agg(agg_func_err)  # agg(lambda x: 0.5*np.sqrt((x**2).sum()))
+        #l = plt.errorbar(np.log10(agg_mean.index), agg_mean.values, agg_err_mean.values, capsize=3, color=color, zorder=2, label=label)
+        l = plt.errorbar(agg_mean.index, agg_mean.values, agg_err_mean.values, capsize=3, color=color, zorder=2, label=label)
+    else:
+        agg = data.groupby([parameter, "measurement_id"])[value].agg(agg_func).reset_index()
+        #agg_err = data.groupby([parameter, "measurement_id"])[value].agg(get_mode_stats_err).reset_index()
+        #agg = data.groupby([parameter, "measurement_id"])[value].mean().reset_index()
+        #agg_err = data.groupby([parameter, "measurement_id"])[value].sem().reset_index()
+        agg_mean = agg.groupby(parameter)[value].mean()
+        agg_err_mean = agg.groupby(parameter)[value].sem()#agg(lambda x: 0.5*np.sqrt((x**2).sum()))
+        l = plt.errorbar(agg_mean.index, agg_mean.values, agg_err_mean.values, capsize=3, color=color, zorder=2, label=label)
+        for measurement_id, meas_data in agg.groupby("measurement_id"):
+            plt.plot(meas_data[parameter], meas_data[value], "o", ms=3, color=l[0].get_color(), alpha=0.5)
+            plt.plot(meas_data[parameter], meas_data[value], "-", ms=3, color="gray", alpha=0.5)
+            #plt.text(meas_data[parameter].values[0], meas_data[value].values[0], measurement_id)
     plt.xlabel(parameter)
     plt.ylabel(value)
 
 
+
 def plot_pair(data, parameter, color=["C0", "C1"], label=None, scaling=None):
     plt.axes([0.05, .2, 0.4, 0.5], label=f"{parameter}_alpha")
+    data["log10k"] = np.log10(data.w_k_cell)
     plotMeasurementOfParameter(data, parameter, "w_k_cell", agg="logmode", color=color[0], label=label)
     plt.ylim(bottom=0)
     if scaling == "semilogx":
@@ -79,29 +96,52 @@ def plot_pair(data, parameter, color=["C0", "C1"], label=None, scaling=None):
     if scaling == "semilogx":
         plt.semilogx()
 
+if 0:
+    data, config = load_all_data_new([
+    r"\\131.188.117.96\biophysDS\meroles\SPRING2021\24.03.2021_THP1_2%Alginate\**\*_evaluated_new.csv",
+    r"\\131.188.117.96\biophysDS\meroles\SPRING2021\30.03.2021_THP1_Ag2%\**\*_evaluated_new.csv",
+    #r"\\131.188.117.96\biophysDS\meroles\SPRING2021\30.03.2021_THP1_Ag2%_2\**\*_evaluated_new.csv",
+    r"\\131.188.117.96\biophysDS\meroles\SPRING2021\30.03.2021_THP1_Ag2%_3\**\*_evaluated_new.csv",
+
+    r"\\131.188.117.96\biophysDS\meroles\SPRING2021\22.04.2021_THP1_CytoD_*\**\*_evaluated_new.csv",
+    r"\\131.188.117.96\biophysDS\meroles\SPRING2021\21.04.2021_THP1_Cyto*\**\*_evaluated_new.csv",
+    r"\\131.188.117.96\biophysDS\meroles\SPRING2021\21.04.2021_THP1_*Cyto\**\*_evaluated_new.csv",
+    r"\\131.188.117.96\biophysDS\meroles\SPRING2021\23.04.2021_THP1_Cyto*M*\**\*_evaluated_new.csv",
+    ])
 
 data, config = load_all_data_new([
-r"\\131.188.117.96\biophysDS\meroles\SPRING2021\24.03.2021_THP1_2%Alginate\**\*_evaluated_new.csv",
-r"\\131.188.117.96\biophysDS\meroles\SPRING2021\30.03.2021_THP1_Ag2%\**\*_evaluated_new.csv",
-#r"\\131.188.117.96\biophysDS\meroles\SPRING2021\30.03.2021_THP1_Ag2%_2\**\*_evaluated_new.csv",
-r"\\131.188.117.96\biophysDS\meroles\SPRING2021\30.03.2021_THP1_Ag2%_3\**\*_evaluated_new.csv",
+# CONTROL
+r"\\131.188.117.96\biophysDS\meroles\SPRING2021\21.04.2021_THP1_alginate2%",
 
-r"\\131.188.117.96\biophysDS\meroles\SPRING2021\22.04.2021_THP1_CytoD_*\**\*_evaluated_new.csv",
-r"\\131.188.117.96\biophysDS\meroles\SPRING2021\21.04.2021_THP1_Cyto*\**\*_evaluated_new.csv",
-r"\\131.188.117.96\biophysDS\meroles\SPRING2021\21.04.2021_THP1_*Cyto\**\*_evaluated_new.csv",
-r"\\131.188.117.96\biophysDS\meroles\SPRING2021\23.04.2021_THP1_Cyto*M*\**\*_evaluated_new.csv",
+# 10nM cytoD
+r"\\131.188.117.96\biophysDS\meroles\SPRING2021\22.04.2021_THP1_CytoD_10nM",
+
+# 100nM cytoD
+r"\\131.188.117.96\biophysDS\meroles\SPRING2021\22.04.2021_THP1_CytoD_100nM",
+
+# 300nM  cytoD
+r"\\131.188.117.96\biophysDS\meroles\SPRING2021\22.04.2021_THP1_CytoD_300nM",
+
+# 1microM
+r"\\131.188.117.96\biophysDS\meroles\SPRING2021\23.04.2021_THP1_Cyto1µM",
+
+# 3microM
+r"\\131.188.117.96\biophysDS\meroles\SPRING2021\23.04.2021_THP1_Cyto3µM",
 ], pressure=2)
+print(data.measurement_id)
+print(data.columns)
 # filter only the 60min data
 data = data[data.time == 60]
+print(data.columns)
 # print the table to chech that all folders where loaded in correctly
-print(data.groupby(["measurement_id", "datetime"])["cytoD"].mean().sort_values("cytoD"))
+print(data.groupby(["measurement_id", "datetime"])["cytoD"].mean().sort_values())
 # convert cytoD form nM to µM
 data.cytoD /= 1e3
 # fake the 0 value to 0.001 so that it can be displayed in the logplot
 data.loc[data.cytoD.isnull(), 'cytoD'] = 0.001
 # plot the data
 plot_pair(data, "cytoD", ["C3", "C3"], scaling="semilogx")
-
+#plt.show()
 #% start: automatic generated code from pylustrator
 plt.figure(1).ax_dict = {ax.get_label(): ax for ax in plt.figure(1).axes}
 import matplotlib as mpl
