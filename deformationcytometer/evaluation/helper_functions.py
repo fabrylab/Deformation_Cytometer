@@ -518,7 +518,8 @@ def processPaths(name, filter=None, file_name=None):
         for n in name:
             results.extend(processPaths(n, filter=filter, file_name=file_name))
     else:
-        if file_name is not None and Path(name).suffix is not Path(file_name).suffix:
+        # add the file_name pattern if there is one and if it is not already there
+        if file_name is not None and Path(name).suffix != Path(file_name).suffix:
             name = Path(name) / "**" / file_name
         # if it is a glob pattern, add all matching elements
         if "*" in str(name):
@@ -722,7 +723,7 @@ def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshol
             print(err, file=sys.stderr)
             return False
         data_pressure = config['pressure_pa'] / 100_000
-        if data_pressure != pressure:
+        if pressure is not None and data_pressure != pressure:
             return False
         return True
 
