@@ -129,7 +129,7 @@ class MeasurementPlot(QtWidgets.QWidget):
     def selected(self, name):
         plt.clf()
         if name.endswith(".tif"):
-            data, config = load_all_data_new(name, do_excude=False)
+            data, config = load_all_data_new(name.replace(".tif", "_evaluated_new.csv"), do_excude=False)
 
             plt.subplot(3, 3, 1)
             plot_velocity_fit(data)
