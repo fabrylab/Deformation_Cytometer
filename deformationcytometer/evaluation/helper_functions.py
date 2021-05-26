@@ -527,6 +527,7 @@ def processPaths(name, filter=None, file_name=None):
         # or add the name directly
         elif Path(name).exists():
             results = [name]
+
         # filter results if a filter is provided
         if filter is not None:
             results = [n for n in results if filter(n)]
@@ -684,12 +685,18 @@ def load_all_data(input_path, solidity_threshold=0.96, irregularity_threshold=1.
     return data, config
 
 
-def getMeta(filename):
+
+def getMeta(filename, cached_meta_files={}):
     import yaml
     filename = Path(filename)
-    parent_list = []
-    meta = {}
-    while filename.parent != filename:
+    # if the data is not cached yet
+    if filename not in cached_meta_files:
+        # get meta data from parent folder
+        cached_meta_files[filename] = {}
+        if filename.parent != filename:
+            cached_meta_files[filename] = getMeta(filename.parent).copy()
+
+        # find meta data filename
         if str(filename).endswith(".tif"):
             yaml_file = Path(str(filename).replace(".tif", "_meta.yaml"))
         elif str(filename).endswith("_evaluated_new.csv"):
@@ -697,15 +704,15 @@ def getMeta(filename):
         else:
             yaml_file = filename / "meta.yaml"
 
+        # load data from file and join with parent meta data
         if yaml_file.exists():
             with yaml_file.open() as fp:
                 data = yaml.load(fp, Loader=yaml.SafeLoader)
             if data is not None:
-                data.update(meta)
-                meta = data
-        parent_list.append(filename)
-        filename = filename.parent
-    return meta
+                cached_meta_files[filename].update(data)
+
+    # return the metadata
+    return cached_meta_files[filename]
 
 
 ureg = None
@@ -724,6 +731,7 @@ def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshol
             return False
         data_pressure = config['pressure_pa'] / 100_000
         if pressure is not None and data_pressure != pressure:
+            print("filtered due to pressure")
             return False
         return True
 
@@ -736,8 +744,8 @@ def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshol
         output_config_file = Path(str(output_file).replace("_evaluated_new.csv", "_evaluated_config_new.txt"))
         output_config_file_raw = Path(str(output_file).replace("_evaluated_new.csv", "_config.txt"))
 
-        measurement_datetime = datetime.datetime.strptime(Path(output_file).name[:19], "%Y_%m_%d_%H_%M_%S")
-        measurement_datetime = Path(output_file).name[:19]
+        #measurement_datetime = datetime.datetime.strptime(Path(output_file).name[:19], "%Y_%m_%d_%H_%M_%S")
+        #measurement_datetime = Path(output_file).name[:19]
 
         with output_config_file.open("r") as fp:
             config = json.load(fp)
@@ -748,7 +756,7 @@ def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshol
         data = pd.read_csv(output_file)
         if do_group is True:
             data = data.groupby(['cell_id'], as_index=False).mean()
-        data["datetime"] = measurement_datetime
+        #data["datetime"] = measurement_datetime
         #data["time_after_harvest"] = float(config_raw["CELL"]["time after harvest"].strip(" mins").strip(" min"))
 
         if add_units is True:

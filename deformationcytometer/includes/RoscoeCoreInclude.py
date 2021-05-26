@@ -46,6 +46,9 @@ def getEta1(alpha1, alpha2, theta, eta0):
     B = (alpha1**2 + alpha2**2) / (2 * alpha1 * alpha2)
     C = (alpha1**2 - alpha2**2) / (2 * alpha1 * alpha2)
     eta1 = eta0 * (5/2 * K * (1-np.cos(2*theta)*A) / (C**2 * np.cos(2*theta)*A - B**2) + 1)
+    print(np.cos(2*theta))
+    print(1/A * (1 + 2/(5*K)*(eta1-eta0)/eta0 * B**2)/ (1 + 2/(5*K)*(eta1-eta0)/eta0 * C**2))
+    np.testing.assert_almost_equal(np.array(np.cos(2*theta)), np.array(1/A * (1 + 2/(5*K)*(eta1-eta0)/eta0 * B**2)/ (1 + 2/(5*K)*(eta1-eta0)/eta0 * C**2)))
     return eta1
 
 def getMu1(alpha1, alpha2, theta, stress):
@@ -178,16 +181,21 @@ def getRatio(eta0, alpha, tau, vdot, NHmodulus, viscSolid):
     ratio = np.zeros_like(eta)
     for i in range(len(ratio)):
         test_rations = np.geomspace(1, 10, 1000)
-        j = np.nanargmax(getShearRate(viscLiquid[i], NHmodulus, viscSolid, test_rations))
+        try:
+            print(i, viscLiquid[i], NHmodulus[i], viscSolid[i])
+            j = np.nanargmax(getShearRate(viscLiquid[i], NHmodulus[i], viscSolid[i], test_rations))
+        except ValueError:
+            ratio[i] = np.nan
+            continue
         max_ratio = test_rations[j]
-        if j == len(test_rations)-1 and getShearRate(viscLiquid[i], NHmodulus, viscSolid, max_ratio) - vdot[i] < 0:
+        if j == len(test_rations)-1 and getShearRate(viscLiquid[i], NHmodulus[i], viscSolid[i], max_ratio) - vdot[i] < 0:
             break
-        while getShearRate(viscLiquid[i], NHmodulus, viscSolid, max_ratio) - vdot[i] < 0:
+        while getShearRate(viscLiquid[i], NHmodulus[i], viscSolid[i], max_ratio) - vdot[i] < 0:
             test_rations = np.geomspace(test_rations[j], test_rations[j+1], 1000)
-            j = np.nanargmax(getShearRate(viscLiquid[i], NHmodulus, viscSolid, test_rations))
+            j = np.nanargmax(getShearRate(viscLiquid[i], NHmodulus[i], viscSolid[i], test_rations))
             max_ratio = test_rations[j]
 
-        ratio[i] = scipy.optimize.root_scalar(lambda ratio: getShearRate(viscLiquid[i], NHmodulus, viscSolid, ratio) - vdot[i], bracket=[1, max_ratio]).root
+        ratio[i] = scipy.optimize.root_scalar(lambda ratio: getShearRate(viscLiquid[i], NHmodulus[i], viscSolid[i], ratio) - vdot[i], bracket=[1, max_ratio]).root
 
     vdot = vdot[ratio > 0]
     eta = eta[ratio > 0]
