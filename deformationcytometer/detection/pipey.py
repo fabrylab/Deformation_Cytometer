@@ -226,7 +226,7 @@ class Pipeline2:
                 fn.init()
 
         def pipe_outputs(result, index):
-            if index < len(self.tasks)-1:
+            if index < len(self.tasks):
                 if inspect.isgenerator(result):
                     for res in result:
                         if isinstance(res, _STOP):

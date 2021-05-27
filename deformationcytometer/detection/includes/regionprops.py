@@ -142,15 +142,16 @@ def mask_to_cells_edge(prediction_mask, im, config, r_min, frame_data, edge_dist
         return cells
 
 
-def mask_to_cells_edge2(prediction_mask, im, config, r_min, frame_data, edge_dist=15, return_mask=False):
+def mask_to_cells_edge2(prediction_mask, im, config, r_min, frame_data, edge_dist=15, return_mask=False, hollow_masks=True):
     r_min_pix = r_min / config["pixel_size"]
     edge_dist_pix = edge_dist / config["pixel_size"]
     cells = []
     # iterate over all detected regions
-    for region in regionprops(label(prediction_mask), cache=True):  # region props are based on the original image
+    from skimage.morphology import dilation
+    for region in regionprops(label(dilation(prediction_mask)), cache=True):  # region props are based on the original image
         # checking if the anything was filled up by extracting the region form the original image
         # if no significant region was filled, we skip this object
-        if region.filled_area - region.area < 10:
+        if hollow_masks is True and region.filled_area - region.area < 10:
             continue
         # get the offset for the filled image
         oy, ox = region.bbox[:2]

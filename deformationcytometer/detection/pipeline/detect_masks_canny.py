@@ -1,0 +1,64 @@
+from deformationcytometer.detection.includes.pipe_helpers import *
+
+
+
+class ProcessDetectMasksBatchCanny:
+    """
+    Takes images and groups them into batches to feed them into the neural network to create masks.
+    """
+    unet = None
+    batch = None
+
+    def __init__(self, batch_size, network_weights, data_storage, data_storage_mask):
+        # store the batch size
+        self.batch_size = batch_size
+        self.network_weights = network_weights
+        self.data_storage = data_storage
+        self.data_storage_mask = data_storage_mask
+
+    def __call__(self, data):
+        import time
+        predict_start_first = time.time()
+        from deformationcytometer.detection.includes.UNETmodel import UNet
+        import numpy as np
+        import cv2
+        from skimage.filters import gaussian
+        from skimage.morphology import area_opening
+        from skimage import feature
+        from scipy.ndimage import generate_binary_structure, binary_fill_holes
+        from skimage import morphology
+        from deformationcytometer.detection.includes.regionprops import preprocess, getTimestamp
+
+        if data["type"] == "start" or data["type"] == "end":
+            yield data
+            return
+
+        log("2detect", "prepare", 1, data["index"])
+
+
+        data_storage_numpy = self.data_storage.get_stored(data["data_info"])
+        data_storage_mask_numpy = self.data_storage.get_stored(data["mask_info"])
+
+        for i, im in enumerate(data_storage_numpy):
+            f = im
+            ff = f / f.max() * 255
+            ffl = ff
+            ffl = np.uint8(ffl / ffl.max() * 255)
+            fban = gaussian(f, sigma=1) - gaussian(f, sigma=6)
+            fban = fban - fban.min()
+            fban = np.uint8(fban / fban.max() * 255)
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (4, 4))
+            gradient = cv2.morphologyEx(fban, cv2.MORPH_GRADIENT, kernel)
+            fban = np.uint8(gradient / gradient.max() * 255)
+            edges = feature.canny(fban, sigma=2, low_threshold=0.99, high_threshold=0.99, use_quantiles=True)
+            struct = generate_binary_structure(2, 1)
+            ffil = binary_fill_holes(edges, structure=struct).astype(int)
+            ffil = np.uint8(ffil * 255)
+            mask = area_opening(ffil, area_threshold=600, connectivity=1)
+            import matplotlib.pyplot as plt
+            data_storage_mask_numpy[i] = mask
+
+        data["config"].update({"network": self.network_weights})
+
+        log("2detect", "prepare", 0, data["index"])
+        yield data

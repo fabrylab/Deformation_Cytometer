@@ -54,25 +54,19 @@ if __name__ == "__main__":
 
     pipeline = pipey.Pipeline(3)
 
-    if 1:
-        pipeline.add(get_items(args.force))
+    pipeline.add(get_items(args.force))
 
-        if copy_images is True:
-            pipeline.add(ProcessCopyImages(data_storage))
+    if copy_images is True:
+        pipeline.add(ProcessCopyImages(data_storage))
 
-        # one process reads the documents
-        #pipeline.add(process_load_images)
-        pipeline.add(ProcessLoadImages(data_storage, batch_size=batch_size, write_clickpoints_file=write_clickpoints_file))
-        pipeline.add(ProcessDetectMasksBatch(batch_size, network_weight, data_storage, None))
+    # one process reads the documents
+    #pipeline.add(process_load_images)
+    pipeline.add(ProcessLoadImages(data_storage, batch_size=batch_size, write_clickpoints_file=write_clickpoints_file))
 
-        #pipeline.add(ProcessReadMasksBatch(batch_size, network_weight, data_storage, None))
-        #pipeline.add(ProcessDetectMasksBatchCanny(batch_size, network_weight, data_storage, None))
-    else:
-        pipeline.add(get_items(args.force))
-        pipeline.add(ProcessLoadImagesClickpointsAndMasks(data_storage, batch_size=batch_size, type="mask"))
+    pipeline.add(ProcessDetectMasksBatchCanny(batch_size, network_weight, data_storage, None))
 
     # One process combines the results into a file.
-    pipeline.add(ProcessFindCells(irregularity_threshold, solidity_threshold, data_storage, r_min=r_min, write_clickpoints_markers=write_clickpoints_file and write_clickpoints_markers, hollow_masks=True), 1)
+    pipeline.add(ProcessFindCells(irregularity_threshold, solidity_threshold, data_storage, r_min=r_min, write_clickpoints_markers=write_clickpoints_file and write_clickpoints_markers, hollow_masks=False), 1)
 
     pipeline.add(ProcessPairData())
 
