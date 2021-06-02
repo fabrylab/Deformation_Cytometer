@@ -63,7 +63,7 @@ if __name__ == "__main__":
     #pipeline.add(process_load_images)
     pipeline.add(ProcessLoadImages(data_storage, batch_size=batch_size, write_clickpoints_file=write_clickpoints_file))
 
-    pipeline.add(ProcessDetectMasksBatchCanny(batch_size, network_weight, data_storage, None))
+    pipeline.add(ProcessDetectMasksBatchCanny(batch_size, network_weight, data_storage, None, write_clickpoints_file and write_clickpoints_masks))
 
     # One process combines the results into a file.
     pipeline.add(ProcessFindCells(irregularity_threshold, solidity_threshold, data_storage, r_min=r_min, write_clickpoints_markers=write_clickpoints_file and write_clickpoints_markers, hollow_masks=False), 1)

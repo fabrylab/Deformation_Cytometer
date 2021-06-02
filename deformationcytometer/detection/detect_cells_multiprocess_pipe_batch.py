@@ -63,7 +63,7 @@ if __name__ == "__main__":
         # one process reads the documents
         #pipeline.add(process_load_images)
         pipeline.add(ProcessLoadImages(data_storage, batch_size=batch_size, write_clickpoints_file=write_clickpoints_file))
-        pipeline.add(ProcessDetectMasksBatch(batch_size, network_weight, data_storage, None))
+        pipeline.add(ProcessDetectMasksBatch(batch_size, network_weight, data_storage, None, write_clickpoints_masks=write_clickpoints_file and write_clickpoints_masks))
 
         #pipeline.add(ProcessReadMasksBatch(batch_size, network_weight, data_storage, None))
         #pipeline.add(ProcessDetectMasksBatchCanny(batch_size, network_weight, data_storage, None))

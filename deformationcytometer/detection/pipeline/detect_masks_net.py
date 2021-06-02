@@ -9,12 +9,13 @@ class ProcessDetectMasksBatch:
     unet = None
     batch = None
 
-    def __init__(self, batch_size, network_weights, data_storage, data_storage_mask):
+    def __init__(self, batch_size, network_weights, data_storage, data_storage_mask, write_clickpoints_masks):
         # store the batch size
         self.batch_size = batch_size
         self.network_weights = network_weights
         self.data_storage = data_storage
         self.data_storage_mask = data_storage_mask
+        self.write_clickpoints_masks
 
     def __call__(self, data):
         import time
@@ -57,7 +58,7 @@ class ProcessDetectMasksBatch:
         data_storage_mask_numpy[:] = prediction_mask_batch
 
         import clickpoints
-        if write_clickpoints_file and write_clickpoints_masks:
+        if self.write_clickpoints_masks:
             with clickpoints.DataFile(data["filename"][:-4] + ".cdb") as cdb:
                 # iterate over all images and return them
                 for mask, index in zip(data_storage_mask_numpy, range(data["index"], data["end_index"])):
