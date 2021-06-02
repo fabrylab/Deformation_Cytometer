@@ -124,10 +124,10 @@ class Addon(clickpoints.Addon):
         self.button_stressstrain.clicked.connect(self.plot_stress_strain)
         self.button_stressstrain.setToolTip(tooltip_strings["stress-strain"])
         layout.addWidget(self.button_stressstrain)
-        self.button_ksize = QtWidgets.QPushButton("k-cellsize")
-        self.button_ksize.clicked.connect(self.plot_k_size)
-        self.button_ksize.setToolTip(tooltip_strings["k-cellsize"])
-        layout.addWidget(self.button_ksize)
+        self.button_kpos = QtWidgets.QPushButton("k-pos")
+        self.button_kpos.clicked.connect(self.plot_k_pos)
+        self.button_kpos.setToolTip(tooltip_strings["k-pos"])
+        layout.addWidget(self.button_kpos)
         self.button_reg_sol = QtWidgets.QPushButton("regularity-solidity")
         self.button_reg_sol.clicked.connect(self.plot_irreg)
         self.button_reg_sol.setToolTip(tooltip_strings["regularity-solidity"])
@@ -317,8 +317,7 @@ class Addon(clickpoints.Addon):
             print("no data loaded from file '%s'" % file)
             return pd.DataFrame(), pd.DataFrame()
         # use a "read sol from config flag here
-        data_mean, config_eval = load_all_data_old(str(file), solidity_threshold=solidity_threshold,
-                                               irregularity_threshold=irregularity_threshold, new_eval=True)
+        data_mean, config_eval = load_all_data_new(self.db.getImage(0).get_full_filename().replace(".tif", "_evaluated_new.csv"), do_group=False, do_excude=False)
         return data_all, data_mean
 
     # plotting functions
@@ -394,6 +393,14 @@ class Addon(clickpoints.Addon):
         self.plot_scatter(self.data_mean, "area", "w_k_cell") # use self.data_all for unfiltered data
         self.plot.axes.set_ylabel("w_k")
         self.plot.axes.set_xlabel("area")
+        self.plot.figure.tight_layout()
+        self.plot.draw()
+
+    def plot_k_pos(self):
+        self.plot_type = self.plot_k_pos
+        self.plot_scatter(self.data_mean, "rp", "w_k_cell") # use self.data_all for unfiltered data
+        self.plot.axes.set_ylabel("w_k")
+        self.plot.axes.set_xlabel("radiale position")
         self.plot.figure.tight_layout()
         self.plot.draw()
 
