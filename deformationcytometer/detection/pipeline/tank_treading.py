@@ -10,7 +10,6 @@ class ProcessTankTreading:
         import numpy as np
         import pandas as pd
         pd.options.mode.chained_assignment = 'raise'
-        print("tt", data["type"], data["index"])
         if data["type"] == "start" or data["type"] == "end":
             return data
 

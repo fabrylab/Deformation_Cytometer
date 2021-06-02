@@ -39,11 +39,9 @@ class ProcessFindCells:
         row_indices = [0]
         for mask, timestamp, index in zip(data_storage_mask_numpy, data["timestamps"], range(data["index"], data["index"]+data_storage_mask_numpy.shape[0])):
             cells = mask_to_cells_edge2(mask, None, data["config"], self.r_min, frame_data={"frames": index, "timestamp": timestamp}, hollow_masks=self.hollow_masks)
-            print(index, cells)
             row_indices.append(row_indices[-1]+len(cells))
             new_cells.extend(cells)
 
-        print("new_cells", new_cells)
         new_cells = pd.DataFrame(new_cells,
                                  columns=["frames", "timestamp", "x", "y", "rp", "long_axis",
                                           "short_axis",

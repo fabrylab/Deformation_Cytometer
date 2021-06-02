@@ -69,7 +69,6 @@ class ProcessLoadImages:
 
         # iterate over all images in the file
         for image_index, im in enumerate(reader):
-            print("reading", image_index)
             # ensure image has only one channel
             if len(im.shape) == 3:
                 im = im[:, :, 0]
@@ -94,11 +93,9 @@ class ProcessLoadImages:
                     data_storage_numpy[i] = im
 
                 log("1load_images", "read", 0, start_batch_index)
-                print("yield images")
                 yield dict(filename=filename, index=start_batch_index, end_index=start_batch_index+len(images), type="image", timestamps=timestamps,
                            data_info=info, mask_info=info_mask,
                            config=config, image_count=image_count)
-                print("yieldes images")
                 if image_index != image_count-1:
                     log("1load_images", "read", 1, start_batch_index+len(images))
                 images = []
@@ -164,7 +161,6 @@ class ProcessLoadImagesClickpoints:
         # iterate over all images in the file
         for image_index, im in enumerate(cdb.getImages()):
             im = im.data
-            print("reading", image_index)
             # ensure image has only one channel
             if len(im.shape) == 3:
                 im = im[:, :, 0]
@@ -186,11 +182,9 @@ class ProcessLoadImagesClickpoints:
                     data_storage_numpy[i] = im
 
                 log("1load_images", "read", 0, start_batch_index)
-                print("yield images")
                 yield dict(filename=filename, index=start_batch_index, end_index=start_batch_index+len(images), type="image", timestamps=timestamps,
                            data_info=info, mask_info=info_mask,
                            config=config, image_count=image_count)
-                print("yieldes images")
                 if image_index != image_count-1:
                     log("1load_images", "read", 1, start_batch_index+len(images))
                 images = []
@@ -260,7 +254,6 @@ class ProcessLoadImagesClickpointsAndMasks:
         # iterate over all images in the file
         for image_index, img in enumerate(cdb.getImages()):
             im = img.data
-            print("reading", image_index)
             # ensure image has only one channel
             if len(im.shape) == 3:
                 im = im[:, :, 0]
@@ -288,22 +281,18 @@ class ProcessLoadImagesClickpointsAndMasks:
             timestamps.append(timestamp)
 
             if image_index == image_count-1 or len(images) == self.batch_size:
-                print("wait for allocatie")
                 info = self.data_storage.allocate([len(images)]+list(images[0].shape), dtype=np.float32)
                 info_mask = self.data_storage.allocate([len(images)]+list(images[0].shape), dtype=np.uint8)
                 data_storage_numpy = self.data_storage.get_stored(info)
                 data_storage_numpy_mask = self.data_storage.get_stored(info_mask)
                 for i, im in enumerate(images):
                     data_storage_numpy[i] = im
-                    print("len", len(masks), i, np.mean(masks[i]))
                     data_storage_numpy_mask[i] = masks[i]
 
                 log("1load_images", "read", 0, start_batch_index)
-                print("yield images")
                 yield dict(filename=filename, index=start_batch_index, end_index=start_batch_index+len(images), type="image", timestamps=timestamps,
                            data_info=info, mask_info=info_mask,
                            config=config, image_count=image_count)
-                print("yieldes images")
                 if image_index != image_count-1:
                     log("1load_images", "read", 1, start_batch_index+len(images))
                 images = []

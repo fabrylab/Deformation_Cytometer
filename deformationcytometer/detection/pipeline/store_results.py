@@ -12,7 +12,6 @@ class ResultCombiner:
     def __call__(self, data):
         import sys
         # if the file is finished, store the results
-        print("combine", data["type"], data["index"])
         if data["filename"] not in self.filenames:
             self.filenames[data["filename"]] = dict(cached={}, next_index=-1, cell_count=0, cells=[], progressbar=None,
                                                     config=dict())
@@ -35,7 +34,6 @@ class ResultCombiner:
         file["config"] = data["config"]
         file["progressbar"].update(data["end_index"]-data["index"])
         file["progressbar"].set_description(f"cells {file['cell_count']}")
-        print("combine", "deallocated", data["data_info"])
         self.data_storage.deallocate(data["data_info"])
         self.data_storage.deallocate(data["mask_info"])
 
