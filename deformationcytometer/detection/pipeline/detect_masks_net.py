@@ -15,7 +15,7 @@ class ProcessDetectMasksBatch:
         self.network_weights = network_weights
         self.data_storage = data_storage
         self.data_storage_mask = data_storage_mask
-        self.write_clickpoints_masks
+        self.write_clickpoints_masks = write_clickpoints_masks
 
     def __call__(self, data):
         import time
