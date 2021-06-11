@@ -125,6 +125,5 @@ class DataBlock:
         return dict(shape=shape, offset=start, dtype=dtype, name="data_storage", allocation_index=i)
 
     def deallocate(self, info):
-        print("deallocated")
         allocated_blocks = np.frombuffer(self.data_storage_allocated.get_obj(), dtype=np.uint32).reshape(-1, 2)
         allocated_blocks[info["allocation_index"], :] = 0
