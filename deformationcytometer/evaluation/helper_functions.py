@@ -73,6 +73,12 @@ def getStressStrain(data, config):
     data["strain"] = (data.long_axis - data.short_axis) / np.sqrt(data.long_axis * data.short_axis)
 
 
+def filterCenterCells(data):
+    r = np.sqrt(data.long_axis/2 * data.short_axis/2) * 1e-6
+    data = data[np.abs(data.rp * 1e-6) > r]
+    return data
+
+
 def filterCells(data, config=None, solidity_threshold=0.96, irregularity_threshold=1.06):
     l_before = data.shape[0]
     data = data[(data.solidity > solidity_threshold) & (data.irregularity < irregularity_threshold)]  # & (data.rp.abs() < 65)]
@@ -756,6 +762,8 @@ def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshol
         data = pd.read_csv(output_file)
         if do_group is True:
             data = data.groupby(['cell_id'], as_index=False).mean()
+            # filter the cells in the center
+            data = filterCenterCells(data)
         #data["datetime"] = measurement_datetime
         #data["time_after_harvest"] = float(config_raw["CELL"]["time after harvest"].strip(" mins").strip(" min"))
 
