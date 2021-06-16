@@ -4,7 +4,7 @@ from Neural_Network.includes.network_evaluation_display import *
 #### Evaluation parameters #######
 
 # output folder for data and plots
-out_folder = '.'
+out_folder = './'
 # list of .h5 network weight files. Provide the full path to each file.
 # You can add our classical segmentation algorithm by using "classical" as one element of the network_list
 network_list = [r"/home/user/network1.h5",

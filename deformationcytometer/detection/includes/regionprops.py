@@ -262,7 +262,7 @@ def mask_to_cells(prediction_mask, im, config, r_min, frame_data, edge_dist=15):
             data = {}
             data.update(frame_data)
             data.update({
-                          "xs": region.centroid[1],  # x_pos
+                          "x": region.centroid[1],  # x_pos
                           "y": region.centroid[0],  # y_pos
                           "rp": yy,                  # RadialPos
                           "long_axis": float(format(region.major_axis_length)) * config["pixel_size_m"] * 1e6,  # LongAxis

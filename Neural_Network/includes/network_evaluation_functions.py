@@ -97,10 +97,10 @@ def load_polygones(cdb, img_o, ny, nx, points, im, config, r_min, frame_data, ed
     cells = mask_to_cells(mask, im, config, r_min, frame_data, edge_dist)
     cells_filtered = filter_cells(cells, irr_th, sol_th)
     ellipses = np.array(
-        [[cell["y_pos"], cell["x_pos"], cell["long_axis"], cell["short_axis"], cell["angle"], getStrain(cell)] for cell
+        [[cell["y"], cell["x"], cell["long_axis"], cell["short_axis"], cell["angle"], getStrain(cell)] for cell
          in cells])
     ellipses_filtered = np.array(
-        [[cell["y_pos"], cell["x_pos"], cell["long_axis"], cell["short_axis"], cell["angle"], getStrain(cell)] for cell
+        [[cell["y"], cell["x"], cell["long_axis"], cell["short_axis"], cell["angle"], getStrain(cell)] for cell
          in cells_filtered])
     return mask, ellipses, ellipses_filtered, q_polys
 
@@ -280,10 +280,10 @@ def evaluate_database(result, result_filtered, cdb_file, network_path, parameter
         # apply regularity and solidity filters to prediction
         cells_filtered = filter_cells(cells, irr_th, sol_th)
         ellipses = np.array(
-            [[cell["y_pos"], cell["x_pos"], cell["long_axis"], cell["short_axis"], cell["angle"], getStrain(cell)] for
+            [[cell["y"], cell["x"], cell["long_axis"], cell["short_axis"], cell["angle"], getStrain(cell)] for
              cell in cells])
         ellipses_filtered = np.array(
-            [[cell["y_pos"], cell["x_pos"], cell["long_axis"], cell["short_axis"], cell["angle"], getStrain(cell)] for
+            [[cell["y"], cell["x"], cell["long_axis"], cell["short_axis"], cell["angle"], getStrain(cell)] for
              cell in cells_filtered])
         regus = [cell["irregularity"] for cell in cells]
         regus_filtered = [cell["irregularity"] for cell in cells_filtered]

@@ -14,10 +14,10 @@ flier_props = dict(marker="o", markersize=10)
 plt.rcParams.update({'font.size': 20})
 
 
-def set_limits(ax, cdb_files, networks, dist1, dist2, ylim=None):
+def set_limits(ax, cdb_files, networks, dist1, dist2,width=0.17, ylim=None):
 
     plot_lenght = dist2 * (len(np.unique(cdb_files)) - 1) + dist1 * len(np.unique(networks))
-    ax.set_xlim(0 - plot_lenght * 0.1, plot_lenght * 1.1)
+    ax.set_xlim(0 - (plot_lenght * 0.1 + width), plot_lenght * 1.1)
     if not ylim is None:
         ax.set_ylim(ylim)
 
@@ -87,7 +87,7 @@ def make_bar_plot(results, err_type, ax, dist1=0.2, width=0.17, use_abs=True, xl
         ax.spines['right'].set_color('none')
         ax.spines['top'].set_color('none')
 
-    set_limits(ax, cdb_files, networks, dist1, dist2, ylim=ylim)
+    set_limits(ax, cdb_files, networks, dist1, dist2, width=width, ylim=ylim)
     # tick labels
     set_ticks(ax, cdb_files, pos, cdb_file, dist1, dist2,
               err_type, xlabel)
@@ -156,7 +156,8 @@ def plot_results(res, out_folder, name, width=0.2, dist=0.6, use_pylustrator=Fal
         plt.rcParams.update({'font.size': 16})
         figsize = (30 * n_network * width * dist * n_db, 7.5)
     else:
-        figsize = (40 * n_network * width * dist * n_db, 10)
+        figsize = [45 * n_network * width * dist * n_db, 12.5]
+        figsize[0] = figsize[0] if figsize[0] > 8 else 8
     fig, axs = plt.subplots(6, 1, figsize=figsize)
     add_legend(res, axs[0], dist1=0.2, width=0.17)
     add_detect_numbers(res, axs[1], dist1=0.2, width=0.17)
@@ -168,4 +169,5 @@ def plot_results(res, out_folder, name, width=0.2, dist=0.6, use_pylustrator=Fal
     plt.tight_layout()
     if not use_pylustrator:
         plt.savefig(os.path.join(out_folder, name))
+        plt.show()
     return fig

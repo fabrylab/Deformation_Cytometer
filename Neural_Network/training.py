@@ -12,21 +12,20 @@ from deformationcytometer.detection.includes.UNETmodel import UNet
 from tensorflow_addons.optimizers import RectifiedAdam
 
 # list of paths to ClickPoints databases  that contain the training data
-search_path1 = '/home/user/Desktop/2020_Deformation_Cytometer/data/train/outline_GT_old_setup'
-search_path2 = '/home/user/Desktop/2020_Deformation_Cytometer/data/train/gt_celltypes'
+search_path1 = '/home/johannes/data2/jbartl/BasicDataSet_10-6-21/train/Immune_cells/'
 cdb_files1 = find_cdb_files(search_path1)
-cdb_files2 = find_cdb_files(search_path2)
+
 
 """ the following parameters need to be set according to your data """
 
 # number of images taken from databases in cdb_files1 and cdb_files2; use "all" for all images
 n_images1 = 50
-n_images2 = 50
+#n_images2 = 50
 # set whether to use all images or only images with marked cells for training
 empty_images1 = False
-empty_images2 = False
+#empty_images2 = False
 # joining everything to a list; you can add as many groups as desired
-cdb_files_list = [[cdb_files1, empty_images1, n_images1], [cdb_files2, empty_images2, n_images2]]
+cdb_files_list = [[cdb_files1, empty_images1, n_images1]]#, [cdb_files2, empty_images2, n_images2]]
 # Shape of the input images.The program will try to transpose images if the shape of the images is
 # equivalent to the transposed # im_shape. You can set im_shape= None if your are sure,
 # #that all images have the same size
@@ -34,7 +33,7 @@ im_shape = (540, 720)
 # Full path to a weight file if you are performing Transfer Learning (which is highly recommended)
 weight_path = None
 # Path where logs, networks and predictions during training are stored.
-output_path = "."
+output_path = "./"
 # Name of the log folder and part of the network filename.
 log_name = "network_training"
 
@@ -50,7 +49,7 @@ use_existing_data = False
 # Location where the training data is stored and/or loaded from. The directory will be created automatically
 # if it doesnt already yet. The new directory will contain three subdirectories (x_data, y_data, w_data)
 # If the subdirectories already existed they will be completely emptied before new data is written.
-dir_training_data = "."
+dir_training_data = "./"
 
 # Additional training settings
 # number of training epochs. Usually training shows no more progress after 40 epochs
