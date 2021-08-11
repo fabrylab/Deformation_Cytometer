@@ -274,6 +274,58 @@ def plotDensityScatter(x, y, cmap='viridis', alpha=1, skip=1, y_factor=1, s=5, l
         ax.loglog()
     return ax
 
+def plotDensityScatter2(x, y, x2, y2, cmap='viridis', cmap2="viridis", alpha=1, skip=1, y_factor=1, s=5, levels=None, loglog=False, ax=None):
+    colors1 = cmap(np.linspace(0., 1, 128))
+    colors2 = cmap2(np.linspace(0, 1, 128))
+
+    # combine them and build a new colormap
+    colors = np.vstack((colors1, colors2))
+    import matplotlib.colors as mcolors
+    cmap = mcolors.LinearSegmentedColormap.from_list('my_colormap', colors)
+
+    ax = plt.gca() if ax is None else ax
+
+    def process(x, y):
+        x = np.array(x)[::skip]
+        y = np.array(y)[::skip]
+        filter = ~np.isnan(x) & ~np.isnan(y)
+        if loglog is True:
+            filter &= (x>0) & (y>0)
+        x = x[filter]
+        y = y[filter]
+        if loglog is True:
+            xy = np.vstack([np.log10(x), np.log10(y)])
+        else:
+            xy = np.vstack([x, y*y_factor])
+        kde = gaussian_kde(xy)
+        kd = kde(xy)
+        return x, y, kd
+    x, y, kd = process(x, y)
+    x2, y2, kd2 = process(x2, y2)
+    kd -= np.min(kd)
+    kd = kd/np.max(kd)
+    kd2 -= np.min(kd2)
+    kd2 = kd2/np.max(kd2)
+    offset = np.max([np.max(kd), np.max(kd2)])
+    o = np.concatenate([np.zeros(x.shape[0]), np.ones(x2.shape[0])]) * offset
+    x = np.concatenate([x, x2])
+    y = np.concatenate([y, y2])
+    kd = np.concatenate([kd, kd2])
+
+    idx = kd.argsort()
+    x, y, z, o = x[idx], y[idx], kd[idx], o[idx]
+    ax.scatter(x, y, c=z+o, s=s, alpha=alpha, cmap=cmap)  # plot in kernel density colors e.g. viridis
+
+    if levels != None:
+        X, Y = np.meshgrid(np.linspace(np.min(x), np.max(x), 100), np.linspace(np.min(y), np.max(y), 100))
+        XY = np.dstack([X, Y*y_factor])
+        Z = kde(XY.reshape(-1, 2).T).reshape(XY.shape[:2])
+        ax.contour(X, Y, Z, levels=1)
+
+    if loglog is True:
+        ax.loglog()
+    return ax
+
 def plotDensityLevels(x, y, skip=1, y_factor=1, levels=None, cmap="viridis", colors=None):
     x = np.array(x)[::skip]
     y = np.array(y)[::skip]
@@ -339,9 +391,11 @@ def bootstrap_error(data, func=np.median, repetitions=1000):
     return np.nanstd(medians)
 
 
-def plotBinnedData(x, y, bins, bin_func=np.median, error_func=None, color="black", **kwargs):
+def plotBinnedData(x, y, bins, bin_func=np.median, error_func=None, color="black", xscale="normal", **kwargs):
     x = np.asarray(x)
     y = np.asarray(y)
+    if xscale == "log":
+        x = np.log10(x)
     strain_av = []
     stress_av = []
     strain_err = []
@@ -362,11 +416,15 @@ def plotBinnedData(x, y, bins, bin_func=np.median, error_func=None, color="black
         stress_av.append(np.median(x[index]))
     plot_kwargs = dict(marker='s', mfc="white", mec=color, ms=7, mew=1, lw=0, ecolor='black', elinewidth=1, capsize=3)
     plot_kwargs.update(kwargs)
-    plt.errorbar(stress_av, strain_av, yerr=np.array(strain_err).T, **plot_kwargs)
-    x, y = np.array(stress_av), np.array(strain_av)
+    x, y, yerr = np.array(stress_av), np.array(strain_av), np.array(strain_err).T
     index = ~np.isnan(x) & ~np.isnan(y)
     x = x[index]
     y = y[index]
+    yerr = yerr[index]
+    if xscale == "log":
+        x = 10**x
+    plt.errorbar(x, y, yerr=yerr, **plot_kwargs)
+
     return x, y
 
 
@@ -747,12 +805,13 @@ def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshol
     config = {}
     for index, file in enumerate(paths):
         output_file = Path(str(file).replace("_result.txt", "_evaluated_new.csv").replace(".tif", "_evaluated_new.csv"))
-        output_config_file = Path(str(output_file).replace("_evaluated_new.csv", "_evaluated_config_new.txt"))
-        output_config_file_raw = Path(str(output_file).replace("_evaluated_new.csv", "_config.txt"))
+        output_config_file = Path(str(output_file).replace("_evaluated_new.csv", "_evaluated_config_new.txt").replace("_evaluated_new_hand2.csv", "_evaluated_config_new_hand2.txt"))
+        output_config_file_raw = Path(str(output_file).replace("_evaluated_new.csv", "_config.txt").replace("_evaluated_new_hand2.csv", "_config.txt"))
 
         #measurement_datetime = datetime.datetime.strptime(Path(output_file).name[:19], "%Y_%m_%d_%H_%M_%S")
         #measurement_datetime = Path(output_file).name[:19]
 
+        print("config", output_config_file)
         with output_config_file.open("r") as fp:
             config = json.load(fp)
             config["channel_width_m"] = 0.00019001261833616293
@@ -1171,3 +1230,131 @@ def bootstrap_match_hist(data_list, bin_width=25, max_bin=300, property="stress"
 
     return data_list2
 
+def plotEllipses(data, config, edgecolor="black", facecolor="red"):
+    import matplotlib as mpl
+    pixel_size = config["pixel_size"]
+    for i, d in data2.iterrows():
+        plt.gca().add_patch(mpl.patches.Ellipse((d.x, d.y), d.long_axis / 2 / pixel_size, d.short_axis / 2 / pixel_size, d.angle, linewidth=1, edgecolor="black", facecolor="red"))
+    #ec = mpl.collections.EllipseCollection(np.array(data.long_axis / pixel_size), np.array(data.short_axis / pixel_size), np.array(data.angle), "xy", offsets=np.array([data.x, data.y]).T)
+    ax = plt.gca()
+    #ax.add_collection(ec)
+    #ax.autoscale_view()
+    plt.axis("equal")
+#plotEllipses(d, config)
+
+def get2Dhist_k_alpha(data):
+    def get_mode_stats(x):
+        from scipy import stats
+        from deformationcytometer.evaluation.helper_functions import bootstrap_error
+        x = np.array(x)
+        if len(x.shape) == 1:
+            x = x[~np.isnan(x)]
+
+        kde = stats.gaussian_kde(x)
+        return x[..., np.argmax(kde(x))]
+
+    pair_2dmode = get_mode_stats([np.log10(data.w_k_cell), data.w_alpha_cell])
+    pair_2dmode[0] = 10 ** pair_2dmode[0]
+    return pair_2dmode
+
+def stress_strain_fit(data, k_cell, alpha_cell):
+    from deformationcytometer.includes.RoscoeCoreInclude import getRatio
+    from deformationcytometer.includes.fit_velocity import getFitXYDot
+    import scipy
+    eta0 = data.iloc[0].eta0
+    alpha = data.iloc[0].delta
+    tau = data.iloc[0].tau
+
+    count = 10
+
+    pressure = data.iloc[0].pressure
+
+    def func(x, a, b):
+        return x / 2 * 1 / (1 + a * x ** b)
+
+    def getFitLine(pressure, p):
+        config = {"channel_length_m": 5.8e-2, "channel_width_m": 186e-6}
+        x, y = getFitXYDot(config, np.mean(pressure), p, count=count*2)
+        return x, y
+
+    channel_pos, vel_grad = getFitLine(pressure, [eta0, alpha, tau])
+    vel_grad = -vel_grad
+    vel_grad = vel_grad[channel_pos > 0]
+    channel_pos = channel_pos[channel_pos > 0]
+
+    omega = func(np.abs(vel_grad), *[0.113, 0.45])
+
+    mu1_ = k_cell * omega ** alpha_cell * scipy.special.gamma(1 - alpha_cell) * np.cos(np.pi / 2 * alpha_cell)
+    eta1_ = k_cell * omega ** alpha_cell * scipy.special.gamma(1 - alpha_cell) * np.sin(np.pi / 2 * alpha_cell) / omega
+
+    ratio, alpha1, alpha2, strain, stress, theta, ttfreq, eta, vdot = getRatio(eta0, alpha, tau, vel_grad, mu1_, eta1_)
+
+    return stress, strain
+
+
+def joined_hex_bin(x1, y1, x2, y2, loglog=True):
+    import matplotlib
+    def filter(x, y):
+        filter = ~np.isnan(x) & ~np.isnan(y)
+        if loglog is True:
+            filter &= (x > 0) & (y > 0)
+        return x[filter], y[filter]
+
+    from scipy.stats import gaussian_kde
+    d = np.array(filter(x1, y1))
+    d2 = np.array(filter(x2, y2))
+    def darken(color, f, a=None):
+        from matplotlib import colors
+        c = np.array(colors.to_rgba(color))
+        if f > 0:
+            c2 = np.zeros(3)
+        else:
+            c2 = np.ones(3)
+        c[:3] = c[:3] * (1 - np.abs(f)) + np.abs(f) * c2
+        if a is not None:
+            c[3] = a
+        return c
+
+    d0 = np.hstack((d, d2))
+    p = plt.hexbin(d0[0], d0[1], gridsize=200, mincnt=1, xscale="log", yscale="log")
+    if loglog is False:
+        points = np.array([np.mean(p.vertices, axis=0) for p in p.get_paths()]).T
+        kde1 = gaussian_kde(d)(points)
+        kde2 = gaussian_kde(d2)(points)
+    else:
+        points = np.array([np.power(10, np.mean(np.log10(p.vertices), axis=0)) for p in p.get_paths()]).T
+        kde1 = gaussian_kde(np.log10(d))(np.log10(points))
+        kde2 = gaussian_kde(np.log10(d2))(np.log10(points))
+
+    kde1 /= np.max(kde1)
+    kde2 /= np.max(kde2)
+
+    color1max = np.array(matplotlib.colors.to_rgba("C0"))
+    color1min = darken(color1max, -0.75)
+    color2max = np.array(matplotlib.colors.to_rgba("C1"))
+    color2min = darken(color2max, -0.75)
+
+    #colormap("C0", -0.75, 0), colormap("C1", -0.75, 0)
+
+    color12max = color1max + color2max
+    color12max /= np.max(color12max)
+    color12min = color1min + color2min
+    color12min /= np.max(color12min)
+
+    c1 = color1min[None] * (1-kde1[:, None]) + color1max[None] * kde1[:, None]
+    c2 = color2min[None] * (1-kde2[:, None]) + color2max[None] * kde2[:, None]
+
+    kde12 = kde1 + kde2
+    kde12 /= np.max(kde12)
+    c12 = color12min[None] * (1-kde2[:, None]) + color12max[None] * kde2[:, None]
+
+    r1 = kde1/(kde2 + 1e-6)
+    r2 = kde2/(kde1 + 1e-6)
+    r1 = r1[:, None]
+    r2 = r2[:, None]
+    c = (c12 * r1 + c2 * (1-r1))*(r1 < 1) + (c1 * (1-r2) + c12 * r2)*(r2 < 1)
+    c[c>1] = 1
+    c[c<0] = 0
+
+    p.set_color(c)
+    p.set_array(None)

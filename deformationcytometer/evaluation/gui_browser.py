@@ -15,6 +15,7 @@ else:
     from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 from matplotlib import _pylab_helpers
+import matplotlib
 from pathlib import Path
 import numpy as np
 import imageio
@@ -22,7 +23,7 @@ from qimage2ndarray import array2qimage
 import matplotlib.pyplot as plt
 import yaml
 
-from deformationcytometer.evaluation.helper_functions import getMeta, load_all_data_new, plot_velocity_fit, plotDensityScatter, plot_density_hist, plotBinnedData
+from deformationcytometer.evaluation.helper_functions import getMeta, load_all_data_new, plot_velocity_fit, plotDensityScatter, plot_density_hist, plotBinnedData, stress_strain_fit, get2Dhist_k_alpha
 
 """ some magic to prevent PyQt5 from swallowing exceptions """
 # Back up the reference to the exceptionhook
@@ -131,24 +132,7 @@ class MeasurementPlot(QtWidgets.QWidget):
         if name.endswith(".tif"):
             data, config = load_all_data_new(name.replace(".tif", "_evaluated_new.csv"), do_excude=False)
 
-            def get_mode_stats(x):
-                from scipy import stats
-                from deformationcytometer.evaluation.helper_functions import bootstrap_error
-                x = np.array(x)
-                print("a", x.shape)
-                if len(x.shape) == 1:
-                    x = x[~np.isnan(x)]
-                print("b", x.shape)
-
-                def get_mode(x):
-                    kde = stats.gaussian_kde(x)
-                    print(x.shape)
-                    print(np.argmax(kde(x)))
-                    return x[..., np.argmax(kde(x))]
-
-                mode = get_mode(x)
-                # err = bootstrap_error(x, get_mode, repetitions=2)
-                return mode
+            pair_2dmode = get2Dhist_k_alpha(data)
 
             from scipy.special import gamma
             def fit(omega, k, alpha):
@@ -156,39 +140,22 @@ class MeasurementPlot(QtWidgets.QWidget):
                 G = k * (1j * omega) ** alpha * gamma(1 - alpha)
                 return np.real(G), np.imag(G)
 
-            def cost(p):
-                Gp1, Gp2 = fit(data.omega_weissenberg, *p)
-                #return np.sum(np.abs(np.log10(data.w_Gp1) - np.log10(Gp1))) + np.sum(
-                #    np.abs(np.log10(data.w_Gp2) - np.log10(Gp2)))
-                return np.sum((np.log10(data.w_Gp1) - np.log10(Gp1)) ** 2) + np.sum(
-                    (np.log10(data.w_Gp2) - np.log10(Gp2)) ** 2)
-
-            from scipy.optimize import minimize
-            res = minimize(cost, [np.median(data.w_k_cell), np.mean(data.w_alpha_cell)])#, bounds=([0, np.inf], [0, 1]))
-            print(res)
-
-            pair_median_mean = [np.median(data.w_k_cell), np.mean(data.w_alpha_cell)]
-            pair_fit = [res.x[0], res.x[1]]
-            pair_2dmode = get_mode_stats([np.log10(data.w_k_cell), data.w_alpha_cell])
-            pair_2dmode[0] = 10**pair_2dmode[0]
-            print("pair_median_mean", pair_median_mean)
-            print("pair_fit", pair_fit)
-            print("pair_2dmode", pair_2dmode)
-
             plt.subplot(3, 3, 1)
             plot_velocity_fit(data)
-            if "vel_fit_error" in data.iloc[0]:
-                plt.text(0.8, 0.8, f'{data.iloc[0]["vel_fit_error"]:.0f}', transform=plt.gca().transAxes)
 
             plt.subplot(3, 3, 2)
             plt.axline([0,0], slope=1, color="k")
-            plt.plot(data.omega, data.omega_weissenberg, "o", ms=1)
-            plt.xlabel("omega")
-            plt.ylabel("omega weissenberg")
+            colors = np.array([matplotlib.colors.to_rgba("C0")]*len(data.tt_r2))
+            colors[:, 3] = data.tt_r2
+            plt.scatter(data.omega, data.omega_weissenberg, s=1, color=colors)
+            plt.xlabel("measured angular frequency (rad/s)")
+            plt.ylabel("fitted angular frequency (rad/s)")
 
             plt.subplot(3, 3, 3)
             plotDensityScatter(data.stress, data.epsilon)
             plotBinnedData(data.stress, data.epsilon, bins=np.arange(0, 300, 10))
+            stress, strain = stress_strain_fit(data, pair_2dmode[0], pair_2dmode[1])
+            plt.plot(stress, strain, "-k")
             plt.xlabel("stress (Pa)")
             plt.ylabel("strain")
 
@@ -197,116 +164,47 @@ class MeasurementPlot(QtWidgets.QWidget):
             plt.loglog(data.omega_weissenberg, data.w_Gp2, "o", alpha=0.25, ms=1)
 
             xx = [10**np.floor(np.log10(np.min(data.w_Gp1))), 10**np.ceil(np.log10(np.max(data.w_Gp1)))]
-            plt.plot(xx, fit(xx, *pair_fit)[0], "k-", lw=0.8)
-            plt.plot(xx, fit(xx, *pair_fit)[1], "k--", lw=0.8)
+            plt.plot(xx, fit(xx, *pair_2dmode)[0], "k-", lw=1.)
+            plt.plot(xx, fit(xx, *pair_2dmode)[1], "k--", lw=1.)
 
-            plt.plot(xx, fit(xx, *pair_median_mean)[0], "r-", lw=0.8)
-            plt.plot(xx, fit(xx, *pair_median_mean)[1], "r--", lw=0.8)
+            plt.ylabel("G' / G'' (Pa)")
+            plt.xlabel("angular frequency (rad/s)")
+            plt.xlim(*np.percentile(data.omega_weissenberg, [0.1, 99.9]))
 
-            plt.plot(xx, fit(xx, *pair_2dmode)[0], "c-", lw=0.8)
-            plt.plot(xx, fit(xx, *pair_2dmode)[1], "c--", lw=0.8)
-
-            plt.ylabel("G' / G''")
-            plt.xlabel("angular frequency")
-
-
-
-            logk, a = get_mode_stats([np.log10(data.w_k_cell), data.w_alpha_cell])
-
-            plt.subplot(3, 3, 5)
+            ax = plt.subplot(3, 3, 5)
             plt.cla()
             plt.xlim(0, 4)
             plot_density_hist(np.log10(data.w_k_cell), color="C0")
-            plt.axvline(np.log10(pair_fit[0]), color="k")
-            plt.axvline(np.log10(pair_median_mean[0]), color="r")
-            plt.axvline(np.log10(pair_2dmode[0]), color="c")
-            plt.xlabel("log10(k)")
+            plt.axvline(np.log10(pair_2dmode[0]), color="k")
+            plt.xlabel("stiffness k (Pa)")
             plt.ylabel("relative density")
-            plt.text(0.9, 0.9,
-                     f"mean(log10(k)) {np.mean(np.log10(data.w_k_cell)):.2f}\nstd(log10(k)) {np.std(np.log10(data.w_k_cell)):.2f}\nmean(k) {np.mean(data.k_cell):.2f}\nstd(k) {np.std(data.k_cell):.2f}\n",
-                     transform=plt.gca().transAxes, va="top", ha="right")
+            ax.xaxis.set_major_formatter(lambda x, pos : f'$10^{{{int(x)}}}$' if x % 1 == 0 else f'$10^{{{x}}}$')
 
             plt.subplot(3, 3, 6)
             plt.cla()
             plt.xlim(0, 1)
             plot_density_hist(data.w_alpha_cell, color="C1")
-            plt.xlabel("alpha")
-            plt.axvline(pair_fit[1], color="k")
-            plt.axvline(pair_median_mean[1], color="r")
-            plt.axvline(pair_2dmode[1], color="c")
-            plt.text(0.9, 0.9,
-                     f"mean($\\alpha$) {np.mean(data.w_alpha_cell):.2f}\nstd($\\alpha$) {np.std(data.w_alpha_cell):.2f}\n",
-                     transform=plt.gca().transAxes, va="top", ha="right")
+            plt.ylabel("relative density")
+            plt.xlabel("fluidity $\\alpha$")
+            plt.axvline(pair_2dmode[1], color="k")
 
-            plt.subplot(3, 3, 7)
+            ax = plt.subplot(3, 3, 7)
             plt.cla()
             plotDensityScatter(np.log10(data.w_k_cell), data.w_alpha_cell)
-            plt.axvline(np.log10(pair_fit[0]), color="k"); plt.axhline(pair_fit[1], color="k", label="fit")
-            plt.axvline(np.log10(pair_median_mean[0]), color="r"); plt.axhline(pair_median_mean[1], color="r", label="median")
-            plt.axvline(np.log10(pair_2dmode[0]), color="c"); plt.axhline(pair_2dmode[1], color="c", label="2dmode")
-            plt.legend()
+            plt.axvline(np.log10(pair_2dmode[0]), color="k"); plt.axhline(pair_2dmode[1], color="k", label="2dmode")
+            #plt.legend()
+            plt.xlabel("stiffness k (Pa)")
+            plt.ylabel("fluidity $\\alpha$")
+            ax.xaxis.set_major_formatter(lambda x, pos : f'$10^{{{int(x)}}}$' if x % 1 == 0 else f'$10^{{{x}}}$')
 
-            print("doublemode", get_mode_stats([np.log10(data.w_k_cell), data.w_alpha_cell]))
             plt.xlim(1, 3)
             plt.ylim(0, .5)
 
             plt.tight_layout()
             #plt.plot(data.rp, data.vel)
 
-            """"""
-            from deformationcytometer.includes.RoscoeCoreInclude import getRatio
-            from deformationcytometer.includes.fit_velocity import getFitXYDot
-            eta0 = data.iloc[0].eta0
-            alpha = data.iloc[0].delta
-            tau = data.iloc[0].tau
-
-            pressure = data.iloc[0].pressure
-
-            def func(x, a, b):
-                return x / 2 * 1 / (1 + a * x ** b)
-
-            def getFitLine(pressure, p):
-                config = {"channel_length_m": 5.8e-2, "channel_width_m": 186e-6}
-                x, y = getFitXYDot(config, np.mean(pressure), p)
-                return x, y
-
-            channel_pos, vel_grad = getFitLine(pressure, [eta0, alpha, tau])
-            vel_grad = -vel_grad
-            vel_grad = vel_grad[channel_pos > 0]
-            channel_pos = channel_pos[channel_pos > 0]
-
-            omega = func(np.abs(vel_grad), *[0.113, 0.45])
-            import scipy
 
 
-            k_cell, alpha_cell = pair_fit
-
-            mu1_ = k_cell * omega ** alpha_cell * scipy.special.gamma(1 - alpha_cell) * np.cos(np.pi / 2 * alpha_cell)
-            eta1_ = k_cell * omega ** alpha_cell * scipy.special.gamma(1 - alpha_cell) * np.sin(np.pi / 2 * alpha_cell) / omega
-
-            ratio, alpha1, alpha2, strain, stress, theta, ttfreq, eta, vdot = getRatio(eta0, alpha, tau, vel_grad, mu1_, eta1_)
-            plt.subplot(3, 3, 3)
-            plt.plot(stress, strain, "-k")
-
-            k_cell, alpha_cell = pair_median_mean
-
-            mu1_ = k_cell * omega ** alpha_cell * scipy.special.gamma(1 - alpha_cell) * np.cos(np.pi / 2 * alpha_cell)
-            eta1_ = k_cell * omega ** alpha_cell * scipy.special.gamma(1 - alpha_cell) * np.sin(np.pi / 2 * alpha_cell) / omega
-
-            ratio, alpha1, alpha2, strain, stress, theta, ttfreq, eta, vdot = getRatio(eta0, alpha, tau, vel_grad, mu1_, eta1_)
-            plt.subplot(3, 3, 3)
-            plt.plot(stress, strain, "-r")
-
-            k_cell, alpha_cell = pair_2dmode
-
-            mu1_ = k_cell * omega ** alpha_cell * scipy.special.gamma(1 - alpha_cell) * np.cos(np.pi / 2 * alpha_cell)
-            eta1_ = k_cell * omega ** alpha_cell * scipy.special.gamma(1 - alpha_cell) * np.sin(
-                np.pi / 2 * alpha_cell) / omega
-
-            ratio, alpha1, alpha2, strain, stress, theta, ttfreq, eta, vdot = getRatio(eta0, alpha, tau, vel_grad, mu1_,
-                                                                                       eta1_)
-            plt.subplot(3, 3, 3)
-            plt.plot(stress, strain, "-c")
 
         self.canvas.draw()
 

@@ -179,11 +179,11 @@ def getFitXY(config, pressure, p):
     y = getFitFunc(x, eta0, alpha, tau, H, W, pressure * 1e5, L)
     return x, y
 
-def getFitXYDot(config, pressure, p):
+def getFitXYDot(config, pressure, p, count=1000):
     H = config["channel_width_m"]
     W = config["channel_width_m"]
     L = config["channel_length_m"]
-    x = np.linspace(-W/2, W/2, 1000)
+    x = np.linspace(-W/2, W/2, count)
     eta0, alpha, tau = p
     y = getFitFuncDot(x, eta0, alpha, tau, H, W, pressure * 1e5, L)
     return x, y
