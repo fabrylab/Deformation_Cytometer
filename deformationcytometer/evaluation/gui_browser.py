@@ -142,6 +142,7 @@ class MeasurementPlot(QtWidgets.QWidget):
 
             plt.subplot(3, 3, 1)
             plot_velocity_fit(data)
+            plt.text(0, 0, f"eta0: {data.iloc[0].eta0:.2f}\ntau: {data.iloc[0].tau:.4f}\ndelta: {data.iloc[0].delta:.3f}", ha="left", va="bottom")
 
             plt.subplot(3, 3, 2)
             plt.axline([0,0], slope=1, color="k")
