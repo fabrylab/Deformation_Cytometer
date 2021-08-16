@@ -76,7 +76,7 @@ if __name__ == "__main__":
 
     pipeline.add(ProcessPairData())
 
-    #pipeline.add(ProcessTankTreading(data_storage), 3)
+    pipeline.add(ProcessTankTreading(data_storage), 3)
 
     pipeline.add(ResultCombiner(data_storage))
 
