@@ -420,8 +420,8 @@ def plotBinnedData(x, y, bins, bin_func=np.median, error_func=None, color="black
     index = ~np.isnan(x) & ~np.isnan(y)
     x = x[index]
     y = y[index]
-    yerr = yerr[index]
     if xscale == "log":
+        yerr = yerr[:, index]
         x = 10**x
     plt.errorbar(x, y, yerr=yerr, **plot_kwargs)
 
@@ -1256,6 +1256,48 @@ def get2Dhist_k_alpha(data):
     pair_2dmode = get_mode_stats([np.log10(data.w_k_cell), data.w_alpha_cell])
     pair_2dmode[0] = 10 ** pair_2dmode[0]
     return pair_2dmode
+
+def getGp1Gp2fit_k_alpha(data):
+    from scipy.special import gamma
+    data = data.query("w_Gp1 > 0 and w_Gp2 > 0")
+    def fit(omega, k, alpha):
+        omega = np.array(omega)
+        G = k * (1j * omega) ** alpha * gamma(1 - alpha)
+        return np.real(G), np.imag(G)
+
+    def cost(p):
+        Gp1, Gp2 = fit(data.omega_weissenberg, *p)
+        #return np.sum(np.abs(np.log10(data.w_Gp1) - np.log10(Gp1))) + np.sum(
+        #    np.abs(np.log10(data.w_Gp2) - np.log10(Gp2)))
+        return np.median((np.log10(data.w_Gp1) - np.log10(Gp1)) ** 2) + np.median((np.log10(data.w_Gp2) - np.log10(Gp2)) ** 2)
+
+    from scipy.optimize import minimize
+    res = minimize(cost, [np.median(data.w_k_cell), np.mean(data.w_alpha_cell)], method="nelder-mead")#, bounds=([0, np.inf], [0, 1]))
+    print(res)
+
+    return res.x[0], res.x[1]
+
+
+def getGp1Gp2fit3_k_alpha(data):
+    from scipy.special import gamma
+    k0, alpha0 = getGp1Gp2fit_k_alpha(data)
+    data = data.query("w_Gp1 > 0 and w_Gp2 > 0")
+    def fit(omega, k, alpha, mu):
+        omega = np.array(omega)
+        G = k * (1j * omega) ** alpha * gamma(1 - alpha) + 1j * omega * mu
+        return np.real(G), np.imag(G)
+
+    def cost(p):
+        Gp1, Gp2 = fit(data.omega_weissenberg, *p)
+        #return np.sum(np.abs(np.log10(data.w_Gp1) - np.log10(Gp1))) + np.sum(
+        #    np.abs(np.log10(data.w_Gp2) - np.log10(Gp2)))
+        return np.median((np.log10(data.w_Gp1) - np.log10(Gp1)) ** 2) + np.median((np.log10(data.w_Gp2) - np.log10(Gp2)) ** 2)
+
+    from scipy.optimize import minimize
+    res = minimize(cost, [k0, alpha0, 0], method="nelder-mead")#, bounds=([0, np.inf], [0, 1]))
+    print(res)
+
+    return res.x[0], res.x[1], res.x[2]
 
 def stress_strain_fit(data, k_cell, alpha_cell):
     from deformationcytometer.includes.RoscoeCoreInclude import getRatio
