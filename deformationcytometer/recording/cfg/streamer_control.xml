@@ -1,0 +1,5 @@
+<?xml version="1.0" ?>
+<memmap file="streamer_control.mmap">
+	<entry name="record" type="uint32"/>
+</memmap>
+

@@ -1,0 +1,6 @@
+<?xml version="1.0" ?>
+<memmap file="camera_settings.mmap">
+	<entry name="framerate" type="uint32"/>
+	<entry name="gain" type="uint32"/>
+</memmap>
+
