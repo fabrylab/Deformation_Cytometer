@@ -3,7 +3,7 @@ import glob
 from pathlib import Path
 
 from deformationcytometer.includes.includes import getInputFolder
-settings_name = "batch_detect_cells.py"
+settings_name = "atch_detect_cells.py"
 # get the inputfolder to process
 parent_folder = getInputFolder(settings_name=settings_name)
 

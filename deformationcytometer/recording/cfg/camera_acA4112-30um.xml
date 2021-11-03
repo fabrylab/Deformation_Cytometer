@@ -1,0 +1,19 @@
+<?xml version="1.0" ?>
+<memmap file="camera_BasleracA5472-17um.mmap">
+	<entry name="rbf" shape="10" type="memmap">
+		<entry name="counter" type="uint32"/>
+		<entry name="acqcounter" type="uint32"/>
+		<entry name="width" type="uint32"/>
+		<entry name="height" type="uint32"/>
+		<entry name="depth" type="uint32"/>
+		<entry name="channels" type="uint32"/>
+		<entry name="time_unix" type="uint32"/>
+		<entry name="time_ms" type="uint32"/>
+		<entry name="exposure" type="uint32"/>
+		<entry name="gain" type="uint32"/>
+		<entry name="roi_regionx" type="uint32"/>
+		<entry name="roi_regiony" type="uint32"/>
+		<entry name="image" shape="3000 4096 1" type="uint8"/>
+	</entry>
+</memmap>
+
