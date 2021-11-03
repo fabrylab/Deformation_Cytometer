@@ -26,7 +26,7 @@ setup(name='deformationcytometer',
             "opencv-python",
             'qtawesome>=1.0.0',
             "pandas",
-            "h5pz",
+            "h5py",
       ],
 )
 
