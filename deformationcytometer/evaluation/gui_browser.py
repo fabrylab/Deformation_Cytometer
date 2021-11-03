@@ -23,7 +23,7 @@ from qimage2ndarray import array2qimage
 import matplotlib.pyplot as plt
 import yaml
 
-from deformationcytometer.evaluation.helper_functions import getMeta, load_all_data_new, plot_velocity_fit, plotDensityScatter, plot_density_hist, plotBinnedData, stress_strain_fit, get2Dhist_k_alpha
+from deformationcytometer.evaluation.helper_functions import getMeta, load_all_data_new, plot_velocity_fit, plotDensityScatter, plot_density_hist, plotBinnedData, stress_strain_fit, get2Dhist_k_alpha, getGp1Gp2fit_k_alpha, getGp1Gp2fit3_k_alpha
 
 """ some magic to prevent PyQt5 from swallowing exceptions """
 # Back up the reference to the exceptionhook
@@ -132,12 +132,13 @@ class MeasurementPlot(QtWidgets.QWidget):
         if name.endswith(".tif"):
             data, config = load_all_data_new(name.replace(".tif", "_evaluated_new.csv"), do_excude=False)
 
-            pair_2dmode = get2Dhist_k_alpha(data)
+            #pair_2dmode = get2Dhist_k_alpha(data)
+            pair_2dmode = getGp1Gp2fit3_k_alpha(data)
 
             from scipy.special import gamma
-            def fit(omega, k, alpha):
+            def fit(omega, k, alpha, mu):
                 omega = np.array(omega)
-                G = k * (1j * omega) ** alpha * gamma(1 - alpha)
+                G = k * (1j * omega) ** alpha * gamma(1 - alpha) + 1j * omega * mu
                 return np.real(G), np.imag(G)
 
             plt.subplot(3, 3, 1)

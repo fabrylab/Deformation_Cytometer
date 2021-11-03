@@ -421,7 +421,7 @@ def plotBinnedData(x, y, bins, bin_func=np.median, error_func=None, color="black
     x = x[index]
     y = y[index]
     if xscale == "log":
-        yerr = yerr[:, index]
+        yerr = yerr[index]
         x = 10**x
     plt.errorbar(x, y, yerr=yerr, **plot_kwargs)
 
@@ -823,6 +823,8 @@ def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshol
             data = data.groupby(['cell_id'], as_index=False).mean()
             # filter the cells in the center
             data = filterCenterCells(data)
+
+        data["filename"] = output_file.name
         #data["datetime"] = measurement_datetime
         #data["time_after_harvest"] = float(config_raw["CELL"]["time after harvest"].strip(" mins").strip(" min"))
 
@@ -994,7 +996,7 @@ def apply_velocity_fit(data2):
     data2["tau"] = tau
     return data2, p0
 
-def plot_density_hist(x, orientation='vertical', do_stats=True, only_kde=False, ax=None, **kwargs):
+def plot_density_hist(x, orientation='vertical', do_stats=True, only_kde=False, ax=None, bins=50, **kwargs):
     ax = ax if not ax is None else plt.gca()
     from scipy import stats
     x = np.array(x)
@@ -1007,7 +1009,7 @@ def plot_density_hist(x, orientation='vertical', do_stats=True, only_kde=False, 
         else:
             l, = ax.plot(xx, kde(xx), **kwargs)
         if not only_kde:
-            ax.hist(x, bins=50, density=True, color=l.get_color(), alpha=0.5, orientation=orientation)
+            ax.hist(x, bins=bins, density=True, color=l.get_color(), alpha=0.5, orientation=orientation)
     else:
         l, = ax.plot([], [], **kwargs)
     return l
@@ -1256,6 +1258,32 @@ def get2Dhist_k_alpha(data):
     pair_2dmode = get_mode_stats([np.log10(data.w_k_cell), data.w_alpha_cell])
     pair_2dmode[0] = 10 ** pair_2dmode[0]
     return pair_2dmode
+
+
+def get2Dhist_k_alpha_err(data, bootstrap_repetitions=10):
+    from scipy import stats
+    x = np.array(data[["w_k_cell", "w_alpha_cell"]]).T
+    x[0] = np.log10(x[0])
+
+    def get_mode(x):
+        kde = stats.gaussian_kde(x)
+        mode = x[..., np.argmax(kde(x))]
+        mode[0] = 10 ** mode[0]
+        return mode
+
+    def bootstrap_error(data, func, repetitions):
+        medians = []
+        for i in range(repetitions):
+            medians.append(func(data[..., np.random.randint(data.shape[-1] - 1, size=data.shape[-1])]))
+        return np.nanstd(np.array(medians), axis=0)
+
+    mode = get_mode(x)
+    if bootstrap_repetitions == 0:
+        return pd.Series(mode, index=["k", "alpha"])
+    err = bootstrap_error(x, get_mode, repetitions=bootstrap_repetitions)
+
+    return pd.Series([mode[0], err[0], mode[1], err[1]], index=["k", "k_err", "alpha", "alpha_err"])
+
 
 def getGp1Gp2fit_k_alpha(data):
     from scipy.special import gamma
