@@ -1245,19 +1245,7 @@ def plotEllipses(data, config, edgecolor="black", facecolor="red"):
 #plotEllipses(d, config)
 
 def get2Dhist_k_alpha(data):
-    def get_mode_stats(x):
-        from scipy import stats
-        from deformationcytometer.evaluation.helper_functions import bootstrap_error
-        x = np.array(x)
-        if len(x.shape) == 1:
-            x = x[~np.isnan(x)]
-
-        kde = stats.gaussian_kde(x)
-        return x[..., np.argmax(kde(x))]
-
-    pair_2dmode = get_mode_stats([np.log10(data.w_k_cell), data.w_alpha_cell])
-    pair_2dmode[0] = 10 ** pair_2dmode[0]
-    return pair_2dmode
+    return get2Dhist_k_alpha_err(data, bootstrap_repetitions=0)
 
 
 def get2Dhist_k_alpha_err(data, bootstrap_repetitions=10):

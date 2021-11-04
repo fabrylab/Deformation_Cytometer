@@ -46,9 +46,9 @@ def getEta1(alpha1, alpha2, theta, eta0):
     B = (alpha1**2 + alpha2**2) / (2 * alpha1 * alpha2)
     C = (alpha1**2 - alpha2**2) / (2 * alpha1 * alpha2)
     eta1 = eta0 * (5/2 * K * (1-np.cos(2*theta)*A) / (C**2 * np.cos(2*theta)*A - B**2) + 1)
-    print(np.cos(2*theta))
-    print(1/A * (1 + 2/(5*K)*(eta1-eta0)/eta0 * B**2)/ (1 + 2/(5*K)*(eta1-eta0)/eta0 * C**2))
-    np.testing.assert_almost_equal(np.array(np.cos(2*theta)), np.array(1/A * (1 + 2/(5*K)*(eta1-eta0)/eta0 * B**2)/ (1 + 2/(5*K)*(eta1-eta0)/eta0 * C**2)))
+    #print(np.cos(2*theta))
+    #print(1/A * (1 + 2/(5*K)*(eta1-eta0)/eta0 * B**2)/ (1 + 2/(5*K)*(eta1-eta0)/eta0 * C**2))
+    #np.testing.assert_almost_equal(np.array(np.cos(2*theta)), np.array(1/A * (1 + 2/(5*K)*(eta1-eta0)/eta0 * B**2)/ (1 + 2/(5*K)*(eta1-eta0)/eta0 * C**2)))
     return eta1
 
 def getMu1(alpha1, alpha2, theta, stress):
@@ -182,7 +182,6 @@ def getRatio(eta0, alpha, tau, vdot, NHmodulus, viscSolid):
     for i in range(len(ratio)):
         test_rations = np.geomspace(1, 10, 1000)
         try:
-            print(i, viscLiquid[i], NHmodulus[i], viscSolid[i])
             j = np.nanargmax(getShearRate(viscLiquid[i], NHmodulus[i], viscSolid[i], test_rations))
         except ValueError:
             ratio[i] = np.nan
