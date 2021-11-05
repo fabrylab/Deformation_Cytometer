@@ -186,18 +186,18 @@ class Addon(clickpoints.Addon):
                 Path(self.db._database_filename).parent.joinpath(Path(self.filename)))
 
         self.config_file = self.constructFileNames("_config.txt")
-        self.result_file = self.constructFileNames("_result.txt")
-        self.addon_result_file = self.constructFileNames("_addon_result.txt")
+        self.result_file = self.constructFileNames("_evaluated_new.csv")
+        #self.addon_result_file = self.constructFileNames("_addon_result.txt")
         self.addon_evaluated_file = self.constructFileNames("_addon_evaluated.csv")
         self.addon_config_file = self.constructFileNames("_addon_config.txt")
         self.vidcap = imageio.get_reader(self.filename)
 
-
         # reading in config an data
         self.data_all_existing = pd.DataFrame()
-        self.data_mean_existing = pd.DataFrame()
+        self.data_all_existing = pd.DataFrame()
         self.data_all_new = pd.DataFrame()
-        self.data_mean_new = pd.DataFrame()
+        self.data_all_new = pd.DataFrame()
+
         if self.config_file.exists() and self.result_file.exists():
             self.config = getConfig(self.config_file)
             # ToDo: replace with a flag// also maybe some sort of "reculation" feature
@@ -208,17 +208,14 @@ class Addon(clickpoints.Addon):
             else:
                 solidity_threshold = self.sol_threshold
                 irregularity_threshold = self.reg_threshold
-            # reading unfiltered data (from results.txt) and data from evaluated.csv
-            # unfiltered data (self.data_all_existing) is used to display regularity and solidity scatter plot
-            # everything else is from evaluated.csv (self.data_mean_existing)
-            self.data_all_existing, self.data_mean_existing = self.load_data(self.result_file,
-                                                                             solidity_threshold, irregularity_threshold)
+            # reading data from evaluated.csv
+            self.data_all_existing = self.load_data(self.result_file, solidity_threshold, irregularity_threshold)
         else:  # get a default config if no config is found
             self.config = getConfig(default_config_path)
 
         ## loading data from previous addon action
-        if self.addon_result_file.exists():
-            self.data_all_new, self.data_mean_new = self.load_data(self.addon_result_file, self.sol_threshold, self.reg_threshold)
+        if self.addon_evaluated_file.exists():
+            self.data_all_new = self.load_data(self.addon_evaluated_file, self.sol_threshold, self.reg_threshold)
             self.start_threaded(partial(self.display_ellipses, type=self.marker_type_cell2, data=self.data_all_new))
         # create an addon config file
         # presence of this file allows easy implementation of the load_data and tank threading pipelines when
@@ -280,9 +277,9 @@ class Addon(clickpoints.Addon):
     @property
     def data_mean(self):
         if self.switch_data_button.text() == self.disp_text_existing:
-            return self.data_mean_existing
+            return self.data_all_existing
         if self.switch_data_button.text() == self.disp_text_new:
-            return self.data_mean_new
+            return self.data_all_new
 
     # solidity and regularity and rmin properties
     @property
@@ -309,16 +306,17 @@ class Addon(clickpoints.Addon):
 
     def load_data(self, file, solidity_threshold, irregularity_threshold):
 
-        data_all = getData(file)
-        if not "area" in data_all.keys():
-            data_all["area"] = data_all["long_axis"] * data_all["short_axis"] * np.pi/4
+        #data_all = getData(file)
+        #if not "area" in data_all.keys():
+        #    data_all["area"] = data_all["long_axis"] * data_all["short_axis"] * np.pi/4
 
-        if len(data_all) == 0:
-            print("no data loaded from file '%s'" % file)
-            return pd.DataFrame(), pd.DataFrame()
+        #if len(data_all) == 0:
+        #    print("no data loaded from file '%s'" % file)
+        #    return pd.DataFrame(), pd.DataFrame()
         # use a "read sol from config flag here
+        print("load_all_data_new", self.db.getImage(0).get_full_filename().replace(".tif", "_evaluated_new.csv"))
         data_mean, config_eval = load_all_data_new(self.db.getImage(0).get_full_filename().replace(".tif", "_evaluated_new.csv"), do_group=False, do_excude=False)
-        return data_all, data_mean
+        return data_mean
 
     # plotting functions
     # wrapper for all scatter plots; handles empty and data log10 transform
@@ -450,7 +448,7 @@ class Addon(clickpoints.Addon):
         print(info)
 
         self.data_all_new = pd.DataFrame()
-        self.data_mean_new = pd.DataFrame()
+        self.data_all_new = pd.DataFrame()
         self.db.deleteEllipses(type=self.marker_type_cell2)
         self.thread.thread_started.emit(tuple(self.cp.getFrameRange()[:2]), info)
         for frame in range(self.cp.getFrameRange()[0], self.cp.getFrameRange()[1]):
@@ -472,7 +470,8 @@ class Addon(clickpoints.Addon):
         self.data_all_new["timestamp"] = self.data_all_new["timestamp"].astype(float)
         self.data_all_new["frames"] = self.data_all_new["frames"].astype(int)
         # save data to addon_result.txt file
-        save_cells_to_file(self.addon_result_file, self.data_all_new.to_dict("records"))
+        self.data_all_new.to_csv(self.addon_evaluated_file, index=False)
+        #save_cells_to_file(self.addon_result_file, self.data_all_new.to_dict("records"))
         # tank threading
         print("tank threading")
         # catching error if no velocities could be identified (e.g. when only few cells are identified)
@@ -480,13 +479,11 @@ class Addon(clickpoints.Addon):
             self.tank_treading(self.data_all_new)
             # further evaluation
             print("evaluation")
-            if self.addon_evaluated_file.exists():
-                os.remove(self.addon_evaluated_file)
-            self.data_all_new, self.data_mean_new = self.load_data(self.addon_result_file, self.sol_threshold,
-                                                                   self.reg_threshold)
+            #if self.addon_evaluated_file.exists():
+            #    os.remove(self.addon_evaluated_file)
+            self.data_all_new = self.load_data(self.addon_evaluated_file, self.sol_threshold, self.reg_threshold)
         except ValueError as e:
             print(e)
-            self.data_mean_new = self.data_all_new.copy()
         self.thread.thread_finished.emit(self.cp.getFrameRange()[1])
         print("finished")
 
