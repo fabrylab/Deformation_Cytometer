@@ -16,6 +16,15 @@ solidity_threshold = 0.7
 
 
 # and call extract_frames_shapes.py on each file
-command = f'python deformationcytometer/detection/detect_cells_multiprocess_pipe.py "{parent_folder}" -n "{network_path} -r {irregularity_threshold} -s {solidity_threshold}'
-print(command)
-os.system(command)
+
+subprocess.run([
+    sys.executable,
+    'deformationcytometer/detection/detect_cells_multiprocess_pipe.py',
+    parent_folder,
+    "-n", network_path,
+    "-r", str(irregularity_threshold),
+    "-s", str(solidity_threshold),
+   ])
+#command = f'python deformationcytometer/detection/detect_cells_multiprocess_pipe.py "{parent_folder}" -n "{network_path}" -r {irregularity_threshold} -s {solidity_threshold}'
+#print(command)
+#os.system(command)
