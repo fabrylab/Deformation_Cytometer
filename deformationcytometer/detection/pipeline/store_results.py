@@ -100,7 +100,6 @@ class ResultCombiner:
 
         output_file = Path(str(filename)[:-4] + self.output)
         output_config_file = Path(str(filename)[:-4] + "_evaluated_config_new.txt")
-        data.to_csv(output_file, index=False)
         config["evaluation_version"] = evaluation_version
         data.to_csv(output_file, index=False)
 
