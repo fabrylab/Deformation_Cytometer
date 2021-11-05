@@ -22,6 +22,7 @@ import imageio
 from qimage2ndarray import array2qimage
 import matplotlib.pyplot as plt
 import yaml
+import QExtendedGraphicsView
 
 from deformationcytometer.evaluation.helper_functions import getMeta, load_all_data_new, plot_velocity_fit, plotDensityScatter, plot_density_hist, plotBinnedData, stress_strain_fit, get2Dhist_k_alpha, getGp1Gp2fit_k_alpha, getGp1Gp2fit3_k_alpha
 
@@ -75,6 +76,51 @@ def pathParts(path):
     return pathParts(path.parent) + [path]
 
 
+class ImageView(QtWidgets.QWidget):
+    def __init__(self):
+        super().__init__()
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.view = QExtendedGraphicsView.QExtendedGraphicsView()
+        self.view.setMinimumWidth(300)
+        self.pixmap = QtWidgets.QGraphicsPixmapItem(self.view.origin)
+        layout.addWidget(self.view)
+        self.slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.slider.valueChanged.connect(self.sliderChanged)
+        layout.addWidget(self.slider)
+        self.ellipses = []
+        self.pen = QtGui.QPen(QtGui.QColor("magenta"), 3)
+        self.pen.setCosmetic(True)
+
+    def selected(self, filename):
+        self.im = imageio.get_reader(filename)
+        self.slider.setRange(0, self.im.get_length())
+        self.data, self.config = load_all_data_new(filename.replace(".tif", "_evaluated_new.csv"), do_excude=False, do_group=False)
+        self.sliderChanged()
+
+    def sliderChanged(self):
+        frame = self.slider.value()
+        im = self.im.get_data(frame)
+        self.pixmap.setPixmap(QtGui.QPixmap(array2qimage(im)))
+        self.view.setExtend(im.shape[1], im.shape[0])
+
+        data = self.data.query(f"frames == {frame}")
+        self.deleteEllipses()
+        for i, d in data.iterrows():
+            self.addEllipse(d.x, d.y, d.long_axis / self.config["pixel_size"], d.short_axis / self.config["pixel_size"], d.angle,)
+
+    def deleteEllipses(self):
+        for ellipse in self.ellipses:
+            ellipse.scene().removeItem(ellipse)
+        self.ellipses = []
+
+    def addEllipse(self, x, y, w, h, angle):
+        ellipse = QtWidgets.QGraphicsEllipseItem(x - w/2, y - h/2, w, h, self.view.origin,)
+        ellipse.setTransformOriginPoint(x, y)
+        ellipse.setRotation(angle)
+        ellipse.setPen(self.pen)
+        self.ellipses.append(ellipse)
+
 class MainWindow(QtWidgets.QWidget):
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
@@ -100,11 +146,13 @@ class MainWindow(QtWidgets.QWidget):
 
         self.text = MetaDataEditor()
         #hlayout.addWidget(self.text)
+        self.view = ImageView()
 
         self.splitter_filebrowser = QtWidgets.QSplitter()
         self.splitter_filebrowser.addWidget(self.browser)
         self.splitter_filebrowser.addWidget(self.plot)
         self.splitter_filebrowser.addWidget(self.text)
+        self.splitter_filebrowser.addWidget(self.view)
         hlayout.addWidget(self.splitter_filebrowser)
         #splitter_filebrowser.setStretchFactor(0, 2)
         #splitter_filebrowser.setStretchFactor(1, 4)
@@ -114,6 +162,7 @@ class MainWindow(QtWidgets.QWidget):
     def selected(self, name):
         self.text.selected(name)
         self.plot.selected(name)
+        self.view.selected(name)
 
 
 class MeasurementPlot(QtWidgets.QWidget):
