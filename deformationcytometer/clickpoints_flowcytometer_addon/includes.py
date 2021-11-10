@@ -34,7 +34,7 @@ tooltip_strings["k histogram"] = "Display a histogram of cell stiffness (k)."
 tooltip_strings["alpha histogram"] = "Display a histogram of cell viscosity (alpha)."
 # TODO: stiffness and viscosity correct?
 tooltip_strings["k-alpha"] = "Display a cell stiffness (k) vs cell strain scatter plot."
-tooltip_strings["displaying existing data"] = "Click to switch between displaying data loaded from e" \
+tooltip_strings["displaying existing data"] = "Click to switch between displaying data loaded from" \
                                               "existing result files and newly generated data. You also " \
                                               "need to press the plotting button again."
 tooltip_strings["stop"] = "Terminate the currently running process."
