@@ -192,10 +192,8 @@ class Addon(clickpoints.Addon):
         self.addon_config_file = self.constructFileNames("_addon_config.txt")
         self.vidcap = imageio.get_reader(self.filename)
 
-        # reading in config an data
+        # reading in config and data
         self.data_all_existing = pd.DataFrame()
-        self.data_all_existing = pd.DataFrame()
-        self.data_all_new = pd.DataFrame()
         self.data_all_new = pd.DataFrame()
 
         if self.config_file.exists() and self.result_file.exists():
@@ -314,8 +312,8 @@ class Addon(clickpoints.Addon):
         #    print("no data loaded from file '%s'" % file)
         #    return pd.DataFrame(), pd.DataFrame()
         # use a "read sol from config flag here
-        print("load_all_data_new", self.db.getImage(0).get_full_filename().replace(".tif", "_evaluated_new.csv"))
-        data_mean, config_eval = load_all_data_new(self.db.getImage(0).get_full_filename().replace(".tif", "_evaluated_new.csv"), do_group=False, do_excude=False)
+        print("load_all_data_new", file)
+        data_mean, config_eval = load_all_data_new(file, do_group=False, do_excude=False)
         return data_mean
 
     # plotting functions
@@ -351,14 +349,14 @@ class Addon(clickpoints.Addon):
         self.plot_type = self.plot_alphaHist
         self.init_newPlot()
         try:
-            x = self.data_mean["alpha_cell"]
+            x = self.data_mean["w_alpha_cell"]
         except KeyError:
             return
         if not np.any(~np.isnan(x)):
             return
         l = plot_density_hist(x, ax=self.plot.axes, color="C1")
         # stat_k = get_mode_stats(data.k_cell)
-        self.plot.axes.set_xlim((1, 1))
+        self.plot.axes.set_xlim((0, 1))
         self.plot.axes.xaxis.set_ticks(np.arange(0, 1, 0.2))
         self.plot.axes.grid()
         self.plot.draw()
@@ -367,7 +365,7 @@ class Addon(clickpoints.Addon):
         self.plot_type =  self.plot_kHist
         self.init_newPlot()
         try:
-            x = np.array(self.data_mean["k_cell"])
+            x = np.array(self.data_mean["w_k_cell"])
         except KeyError:
             return
         if not np.any(~np.isnan(x)):
@@ -375,12 +373,13 @@ class Addon(clickpoints.Addon):
         l = plot_density_hist(np.log10(x), ax=self.plot.axes, color="C0")
         self.plot.axes.set_xlim((1, 4))
         self.plot.axes.xaxis.set_ticks(np.arange(5))
+        self.plot.axes.set_xlabel("log10(k)")
         self.plot.axes.grid()
         self.plot.draw()
 
     def plot_k_alpha(self):
         self.plot_type = self.plot_k_alpha
-        self.plot_scatter(self.data_mean, "alpha_cell", "k_cell", funct2=np.log10)
+        self.plot_scatter(self.data_mean, "w_alpha_cell", "w_k_cell", funct2=np.log10)
         self.plot.axes.set_ylabel("log10 k")
         self.plot.axes.set_xlabel("alpha")
         self.plot.figure.tight_layout()
@@ -473,7 +472,7 @@ class Addon(clickpoints.Addon):
         self.data_all_new.to_csv(self.addon_evaluated_file, index=False)
         #save_cells_to_file(self.addon_result_file, self.data_all_new.to_dict("records"))
         # tank threading
-        print("tank threading")
+        print("tank treading")
         # catching error if no velocities could be identified (e.g. when only few cells are identified)
         try:
             self.tank_treading(self.data_all_new)
