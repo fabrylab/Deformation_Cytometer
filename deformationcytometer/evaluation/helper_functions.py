@@ -809,10 +809,13 @@ def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshol
             output_config_file = Path(str(output_file).replace("_addon_evaluated.csv", "_evaluated_config_new.txt"))
             output_config_file_raw = Path(str(output_file).replace("_addon_evaluated.csv", "_addon_config.txt"))
         if str(file).endswith('evaluated_new.csv'):
-            output_file = Path(str(file).replace("_result.txt", "_evaluated_new.csv").replace(".tif", "_evaluated_new.csv"))
+            output_file = Path(str(file))
             output_config_file = Path(str(output_file).replace("_evaluated_new.csv", "_evaluated_config_new.txt").replace("_evaluated_new_hand2.csv", "_evaluated_config_new_hand2.txt"))
             output_config_file_raw = Path(str(output_file).replace("_evaluated_new.csv", "_config.txt").replace("_evaluated_new_hand2.csv", "_config.txt"))
-
+        if str(file).endswith('.tif'):
+            output_file = Path(str(file).replace(".tif", "_evaluated_new.csv"))
+            output_config_file = Path(str(output_file).replace(".tif", "_evaluated_config_new.txt").replace("_evaluated_new_hand2.csv", "_evaluated_config_new_hand2.txt"))
+            output_config_file_raw = Path(str(output_file).replace(".tif", "_config.txt").replace("_evaluated_new_hand2.csv", "_config.txt"))
         #measurement_datetime = datetime.datetime.strptime(Path(output_file).name[:19], "%Y_%m_%d_%H_%M_%S")
         #measurement_datetime = Path(output_file).name[:19]
 
