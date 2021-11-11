@@ -56,8 +56,8 @@ class ProcessFindCells:
                 new_cells.to_csv(fp, index=False, header=False)
 
         # filter cells according to solidity and irregularity
-        #new_cells = filterCells(new_cells, solidity_threshold=self.solidity_threshold,
-        #                        irregularity_threshold=self.irregularity_threshold)
+        new_cells = filterCells(new_cells, solidity_threshold=self.solidity_threshold,
+                                irregularity_threshold=self.irregularity_threshold)
 
         if self.write_clickpoints_markers:
             import clickpoints
