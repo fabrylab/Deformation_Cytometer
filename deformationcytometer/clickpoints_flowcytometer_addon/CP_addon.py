@@ -414,7 +414,7 @@ class Addon(clickpoints.Addon):
     def plot_stress_strain(self):
         self.plot_type = self.plot_stress_strain
         self.plot_scatter(self.data_mean, "stress", "strain")
-        self.plot.axes.set_xlim((-10, 400))
+        self.plot.axes.set_xlim((-10, self.data_mean['stress'].max()+10))
         self.plot.figure.tight_layout()
         self.plot.draw()
 
