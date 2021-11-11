@@ -154,7 +154,8 @@ def getConfig(configfile):
         configfile = configfile.replace("_evaluated_new.csv", "_config.txt")
     if configfile.endswith(".tif"):
         configfile = configfile.replace(".tif", "_config.txt")
-
+    if configfile.endswith("_addon_evaluated.csv"):
+        configfile = configfile.replace("_addon_evaluated.csv", "_addon_config.txt")
     if not Path(configfile).exists():
         raise IOError(f"Config file {configfile} does not exist.")
 
@@ -184,6 +185,7 @@ def getConfig(configfile):
     config_data["channel_width_m"] = float(config['SETUP']['channel width'].split()[0]) * 1e-6
     config_data["channel_length_m"] = float(config['SETUP']['channel length'].split()[0]) * 1e-2
 
+    config_data["cell_treatment"] = config['CELL']['treatment']
     return config_data
 
 
