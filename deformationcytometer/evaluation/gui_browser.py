@@ -26,20 +26,22 @@ import QExtendedGraphicsView
 
 from deformationcytometer.evaluation.helper_functions import getMeta, load_all_data_new, plot_velocity_fit, plotDensityScatter, plot_density_hist, plotBinnedData, stress_strain_fit, get2Dhist_k_alpha, getGp1Gp2fit_k_alpha, getGp1Gp2fit3_k_alpha
 
+def kill_thread(thread):
+    """
+    thread: a threading.Thread object
+    """
+    thread_id = thread.ident
+    res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, ctypes.py_object(SystemExit))
+    if res > 1:
+        ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
+        print('Exception raise failure')
+
 """ some magic to prevent PyQt5 from swallowing exceptions """
 # Back up the reference to the exceptionhook
 sys._excepthook = sys.excepthook
 # Set the exception hook to our wrapping function
 sys.excepthook = lambda *args: sys._excepthook(*args)
 
-
-def QUrl2PythonPath(url):
-    url = str(url.toString()).strip()
-    if url.startswith("file:///"):
-        url = url[len("file:///"):]
-    if url.startswith("file:"):
-        url = url[len("file:"):]
-    return Path(url)
 
 class MatplotlibWidget(Canvas):
 
@@ -77,6 +79,8 @@ def pathParts(path):
 
 
 class ImageView(QtWidgets.QWidget):
+    data_loaded_event = QtCore.Signal(str, object, object, object)
+
     def __init__(self):
         super().__init__()
         layout = QtWidgets.QVBoxLayout(self)
@@ -91,14 +95,44 @@ class ImageView(QtWidgets.QWidget):
         self.ellipses = []
         self.pen = QtGui.QPen(QtGui.QColor("magenta"), 3)
         self.pen.setCosmetic(True)
+        self.data_loaded_event.connect(self.data_loaded)
 
+    thread = None
     def selected(self, filename):
-        self.im = imageio.get_reader(filename)
-        self.slider.setRange(0, self.im.get_length())
-        self.data, self.config = load_all_data_new(filename.replace(".tif", "_evaluated_new.csv"), do_excude=False, do_group=False)
-        self.sliderChanged()
+        import threading
+        if self.thread is not None:
+            kill_thread(self.thread)
+            self.thread = None
+        self.im = None
+        self.filename = filename
+        self.thread = threading.Thread(target=self.load_image, args=(filename,), daemon=True)
+        self.thread.start()
+        self.disable()
+
+    def load_image(self, filename):
+        im = imageio.get_reader(filename)
+        im.get_data(0)
+        data, config = load_all_data_new(filename.replace(".tif", "_evaluated_new.csv"), do_excude=False, do_group=False)
+        self.data_loaded_event.emit(filename, im, data, config)
+
+    def data_loaded(self, filename, im, data, config):
+        if filename == self.filename:
+            self.im = im
+            self.data = data
+            self.config = config
+            self.thread = None
+            self.slider.setRange(0, im.get_length()-1)
+            self.slider.setEnabled(True)
+            self.sliderChanged()
+
+    def disable(self):
+        self.slider.setEnabled(False)
+        self.deleteEllipses()
+        self.pixmap.setPixmap(QtGui.QPixmap(array2qimage(np.zeros((4, 4)))))
 
     def sliderChanged(self):
+        if self.im is None:
+            return
         frame = self.slider.value()
         im = self.im.get_data(frame)
         self.pixmap.setPixmap(QtGui.QPixmap(array2qimage(im)))
@@ -160,8 +194,8 @@ class MainWindow(QtWidgets.QWidget):
         self.browser.signal_selection_changed.connect(self.selected)
 
     def selected(self, name):
-        self.text.selected(name)
-        self.plot.selected(name)
+        #self.text.selected(name)
+        #self.plot.selected(name)
         self.view.selected(name)
 
 
@@ -346,10 +380,13 @@ class Browser(QtWidgets.QTreeView):
 
         self.setAcceptDrops(True)
 
+        self.header().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
+        self.header().setStretchLastSection(False)
+
     def dragEnterEvent(self, event: QtGui.QDragEnterEvent):
         # accept url lists (files by drag and drop)
         for url in event.mimeData().urls():
-            url = QUrl2PythonPath(url)
+            url = Path(url.path())
             if url.is_dir() or url.suffix == ".tif":
                 event.accept()
                 return
@@ -360,7 +397,7 @@ class Browser(QtWidgets.QTreeView):
 
     def dropEvent(self, event: QtCore.QEvent):
         for url in event.mimeData().urls():
-            url = QUrl2PythonPath(url)
+            url = Path(url.path())
             if url.is_dir() or url.suffix == ".tif":
                 self.set_path(url)
 

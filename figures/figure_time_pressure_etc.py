@@ -4,57 +4,77 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pandas as pd
 import matplotlib.pyplot as plt
-from deformationcytometer.evaluation.helper_functions import load_all_data, load_all_data_new, bootstrap_match_hist
+from deformationcytometer.evaluation.helper_functions import load_all_data, load_all_data_new, bootstrap_match_hist, get2Dhist_k_alpha
 import numpy as np
 import pylustrator
 
 pylustrator.start()
 
 data, config = load_all_data_new([
-        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_18_alginate2%_overtime_1\*\*_evaluated_new.csv",
-        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_18_alginate2%_overtime_2\*\*_evaluated_new.csv",
-        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_19_alginate2%_overtime_1\*\*_evaluated_new.csv",
-        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_19_alginate2%_overtime_2\*\*_evaluated_new.csv",
+        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_18_alginate2%_overtime_1",
+        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_18_alginate2%_overtime_2",
+        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_19_alginate2%_overtime_1",
+        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_19_alginate2%_overtime_2",
         #rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_may\2020_05_22_alginateDMEM2%\*\*_evaluated_new.csv",
 #        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_july\2020_07_21_alginate2%_dmem_NIH_time_1\*\*_evaluated_new.csv",
-        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_july\2020_07_21_alginate2%_dmem_NIH_time_2\*\*_evaluated_new.csv",
-        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_july\2020_07_21_alginate2%_dmem_NIH_time_3\*\*_evaluated_new.csv",
+        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_july\2020_07_21_alginate2%_dmem_NIH_time_2",
+        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_july\2020_07_21_alginate2%_dmem_NIH_time_3",
 #        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_may\2020_05_22_alginateDMEM2%\*\*_evaluated_new.csv",
 #        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_18_alginate2%_overtime_1\*\*_evaluated_new.csv",
 #        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_19_alginate2%_overtime_2\*\*_evaluated_new.csv",
     ])
 
 data_alg, config = load_all_data_new([
-    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_24_alginate2.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
-    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_27_alginate2.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_24_alginate2.5%_dmem_NIH_3T3",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_27_alginate2.5%_dmem_NIH_3T3",
     # r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_14_alginate2.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
-    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_28_alginate2.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_28_alginate2.5%_dmem_NIH_3T3",
     # r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_30_alginate2.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
 
-    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_27_alginate2.0%_dmem_NIH_3T3\*\*_evaluated_new.csv",
-    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_28_alginate2.0%_dmem_NIH_3T3\*\*_evaluated_new.csv",
-    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_28_alginate2.0%_dmem_NIH_3T3\*\*_evaluated_new.csv",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_27_alginate2.0%_dmem_NIH_3T3",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_28_alginate2.0%_dmem_NIH_3T3",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_28_alginate2.0%_dmem_NIH_3T3",
     # r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_30_alginate2.0%_dmem_NIH_3T3\*\*_evaluated_new.csv",
 
-    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_30_alginate1.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
-    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_14_alginate1.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_30_alginate1.5%_dmem_NIH_3T3",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_14_alginate1.5%_dmem_NIH_3T3",
     # r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_14_alginate1.5%_dmem_NIH_3T3_2\*\*_evaluated_new.csv",
-    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_28_alginate1.5%_dmem_NIH_3T3\*\*_evaluated_new.csv"
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_28_alginate1.5%_dmem_NIH_3T3"
     # r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_30_alginate1.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
 ], pressure=2)
 
-data_pos, config = load_all_data_new([
-    fr"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_14_alginate2%_diffxposition_2\**\*_evaluated_new.csv",
-    fr"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_21_alginate2%_NIH_xposition_1\**\*_evaluated_new.csv",
-    fr"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_21_alginate2%_NIH_xposition_2\**\*_evaluated_new.csv",
-    fr"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_21_alginate2%_NIH_xposition_3\**\*_evaluated_new.csv",
-    fr"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_july\2020_07_29_alginate2%_NIH_diff_x_position_2\**\*_evaluated_new.csv",
-    fr"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_july\2020_07_29_alginate2%_NIH_diff_x_position_3\**\*_evaluated_new.csv",
-], pressure=3)
+if 0:
+    data_pos, config = load_all_data_new([
+        fr"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_14_alginate2%_diffxposition_2",
+        fr"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_21_alginate2%_NIH_xposition_1",
+        fr"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_21_alginate2%_NIH_xposition_2",
+        fr"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_21_alginate2%_NIH_xposition_3",
+        fr"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_july\2020_07_29_alginate2%_NIH_diff_x_position_2",
+        fr"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_july\2020_07_29_alginate2%_NIH_diff_x_position_3",
+    ], pressure=3)
 
 
+def hist2d(data, parameter):
+    groupped_data = []
+    for p, d in data.groupby(parameter):
+        for id, d2 in d.groupby("measurement_id"):
+            k, alpha = get2Dhist_k_alpha(d2)
+            groupped_data.append({"measurement_id": id, parameter: p, "w_k_cell": k, "w_alpha_cell": alpha})
+    groupped_data = pd.DataFrame(groupped_data)
+    return groupped_data
 
-def plotMeasurementOfParameter(data, parameter, value, color=None):
+def plotMeasurementOfParameter(groupped_data, parameter, value, color=None):
+    groupped_2 = groupped_data.groupby(parameter)[value].agg(["mean", "sem", "count"])
+    print("count", parameter, value, groupped_2["count"].values, groupped_2["mean"].values)
+
+    l = plt.errorbar(groupped_2.index, groupped_2["mean"].values, yerr=groupped_2["sem"].values, capsize=3, color=color, zorder=2)
+    for id, d2 in groupped_data.groupby("measurement_id"):
+        plt.plot(d2[parameter], d2[value], "o", ms=3, color=l[0].get_color(), alpha=0.5)
+        plt.plot(d2[parameter], d2[value], "-", ms=3, color="gray", alpha=0.5)
+    plt.xlabel(parameter)
+    plt.ylabel(value)
+    return
+
     k_cell = data.groupby([parameter, "measurement_id"]).median()[value].reset_index()
     k_cell_mean = k_cell.groupby(parameter).mean()
     l = plt.errorbar(k_cell_mean.index, k_cell_mean.values, k_cell.groupby(parameter).sem().values[:, 0], capsize=3,
@@ -71,6 +91,7 @@ def plotMeasurementOfParameter(data, parameter, value, color=None):
 data = data[data.time >= 10]
 
 def plot_pair(data, parameter):
+    data = hist2d(data, parameter)
     plt.axes([0.1, .2, 0.4, 0.5], label=f"{parameter}_alpha")
     plotMeasurementOfParameter(data, parameter, "w_k_cell", "C0")
     plt.axes([0.5, .2, 0.5, 0.5], label=f"{parameter}_k")
@@ -79,6 +100,7 @@ def plot_pair(data, parameter):
 data_p3 = data[data.pressure.round(2) == 3.0]
 plot_pair(data_p3, "time")
 
+#data_p = bootstrap_match_hist(data_p)#, 10, 300, "vel_grad_abs")
 plot_pair(data, "pressure")
 
 data_alg_p2 = data_alg[data_alg.pressure.round(2) == 2.0]
@@ -92,12 +114,13 @@ d25 = d[d.alginate == 2.5]
 d15_, d20_, d25_ = bootstrap_match_hist((d15, d20, d25), 10, 300, "vel_grad_abs")
 plot_pair(pd.concat((d15_, d20_, d25_)), "alginate")
 
-data_pos_p3 = data_pos[data_pos.pressure.round(2) == 3.0]
-plot_pair(data_pos_p3, "pos")
+if 0:
+    data_pos_p3 = data_pos[data_pos.pressure.round(2) == 3.0]
+    plot_pair(data_pos_p3, "pos")
 
 data_p3 = data[data.pressure.round(2) == 3.0].copy()
 bins = np.percentile(data_p3.area, [0, 33, 66, 100])
-print("cell size, bins", bins)
+print("cell size, bins", np.sqrt(bins)/np.pi)
 data_p3["cell_size"] = "1small"
 data_p3.loc[data_p3.area > bins[1], "cell_size"] = "2medium"
 data_p3.loc[data_p3.area > bins[2], "cell_size"] = "3big"

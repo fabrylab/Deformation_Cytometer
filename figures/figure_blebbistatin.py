@@ -45,10 +45,10 @@ def plot_pair(data, parameter, color=["C0", "C1"], label=None):
 
 
 data_bleb, config = load_all_data_new([
-r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\september_2020\2020_09_30_alginate2%_NIH3T3_blebbistatin\inlet\**\*.tif"
+r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\september_2020\2020_09_30_alginate2%_NIH3T3_blebbistatin\inlet"
 ], pressure=3)
 data_dmso, config = load_all_data_new([
-r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\september_2020\2020_09_30_alginate2%_NIH3T3_DMSO\inlet\**\*.tif"
+r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\september_2020\2020_09_30_alginate2%_NIH3T3_DMSO\inlet"
 ], pressure=3)
 
 plot_pair(data_bleb, "time", ["C0", "C0"], label="Blebbistatin")

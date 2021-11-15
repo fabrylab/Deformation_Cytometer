@@ -11,7 +11,7 @@ settings_name = "strain_vs_stress_clean"
 """ loading data """
 
 import pylustrator
-pylustrator.start()
+#pylustrator.start()
 
 def plot_velocity_fit(data, color=None):
     def getFitLine(pressure, p):
@@ -45,9 +45,12 @@ def plot_velocity_fit_dot(data, color=None):
             x, y = getFitLine(pressure, p)
             #line, = plt.plot(np.abs(dd.rp), dd.velocity * 1e-3 * 1e2, "o", alpha=0.3, ms=2, color=color)
             #plt.plot([], [], "o", ms=2, color=line.get_color(), label=f"{pressure:.1f}")
-            l, = plt.plot(x[x>=0]* 1e+6, -y[x>=0], color=color)
+            l, = plt.plot(x[x>=0]* 1e+6, -y[x>=0], color=color, label=f"{pressure:.1f} bar")
     plt.xlabel("position in channel (µm)")
     plt.ylabel("shear rate (1/s)")
+    #handles, labels = plt.gca().get_legend_handles_labels()
+    #plt.gca().legend(handles[::-1], labels[::-1])
+    plt.legend()
 
 def plot_viscisity(data, color=None):
     def getFitLine(pressure, p):
@@ -73,6 +76,7 @@ def plot_viscisity(data, color=None):
     plt.xlabel("position in channel (µm)")
     plt.ylabel("viscosity (Pa s)")
 
+
 def plot_omega(data, color=None):
     #omega, mu1, eta1, k_cell, alpha_cell, epsilon = get_cell_properties(data)
 
@@ -90,10 +94,90 @@ def plot_viscisoty_over_shear_rate(data):
     tau = data.iloc[0].tau
     vel_grad = np.geomspace(0.01, 1100, 1000)
     eta = eta0 / (1 + tau ** delta * np.abs(vel_grad) ** delta)
-    plt.plot(vel_grad, eta)
+    #plt.plot(vel_grad, eta, label="flow cytometer")
     plt.xlabel("shear rate (1/s)")
     plt.ylabel("viscosity (Pa s)")
     plt.loglog()
+    import pandas as pd
+    s = []
+    v = []
+    all_data = []
+    for name in [
+        "2%ALG_Fabry_CellSus_A_FlowSweep1.csv",
+        "2%ALG_Fabry_CellSus_A_FlowSweep2.csv",
+        "2%ALG_Fabry_CellSus_B_FlowSweep1.csv",
+        "2%ALG_Fabry_CellSus_B_FlowSweep2.csv",
+        "2%ALG_Fabry_CellSus_C_FlowSweep1.csv",
+        "2%ALG_Fabry_CellSus_C_FlowSweep2.csv",
+    ]:
+        d = pd.read_csv(name, skiprows=2)
+        if d["Shear rate"][1] < d["Shear rate"][0]:
+            s.append(np.array(d["Shear rate"])[::-1])
+            v.append(np.array(d["Viscosity"])[::-1])
+            print("b")
+        else:
+            print("a")
+            s.append(np.array(d["Shear rate"]))
+            v.append(np.array(d["Viscosity"]))
+        if len(s) > 1:
+            from scipy.interpolate import interp1d
+            v[-1] = interp1d(s[-1], v[-1], bounds_error=False)(s[-1])
+            s[-1] = s[0]
+
+        for i, dd in d.iterrows():
+            all_data.append(dict(s=10**np.round(np.log10(dd["Shear rate"]), 1), v=dd["Viscosity"]))
+        #plt.loglog(d["Shear rate"], d["Viscosity"], "C0o", ms=1, label="shear rheometer")
+    s = s[0]
+    vve = np.nanstd(np.array(v), axis=0)/np.sqrt(np.sum(~np.isnan(np.array(v)), axis=0))
+    v = np.nanmean(np.array(v), axis=0)
+    all_data = pd.DataFrame(all_data)
+    g = all_data.groupby("s")["v"].agg(["mean", "sem"])
+    sm = g.index
+    vm = g["mean"].values
+    ve = g["sem"].values
+
+    sm = s
+    vm = v
+    ve = vve
+    line, = plt.plot(sm, vm, "C0o", ms=1, label="shear rheometer")
+    plt.errorbar(sm, vm, yerr=ve, fmt="o", ms=1, color=line.get_color())
+    plt.loglog()
+
+
+    #d = pd.read_csv("2%ALG_Fabry_CellSus_A_FlowSweep1.csv", skiprows=2)
+    #plt.plot(d["Shear rate"], d["Viscosity"])
+    #d = pd.read_csv("2%ALG_Fabry_CellSus_A_FlowSweep2.csv", skiprows=2)
+    #plt.plot(d["Shear rate"], d["Viscosity"])
+
+    #d = pd.read_csv("2%ALG_Fabry_CellSus_B_FlowSweep1.csv", skiprows=2)
+    #plt.plot(d["Shear rate"], d["Viscosity"])
+    #d = pd.read_csv("2%ALG_Fabry_CellSus_B_FlowSweep2.csv", skiprows=2)
+    #plt.plot(d["Shear rate"], d["Viscosity"])
+
+
+    #d = pd.read_csv("2%ALG_Fabry_CellSus_C_FlowSweep2.csv", skiprows=2)
+    #plt.plot(d["Shear rate"], d["Viscosity"])
+    ...
+    data0, config0 = load_all_data_new([
+        r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2021\2021_08_12_HL60_latB"
+    ], pressure=3)
+    etas = []
+    for name, d in data0.groupby(["eta0", "delta", "tau"]):
+        eta0, delta, tau = name
+        eta = eta0 / (1 + tau ** delta * np.abs(vel_grad) ** delta)
+        etas.append(eta)
+        print(name)
+    etas = np.array(etas)
+    etas_mean = np.mean(etas, axis=0)
+    etas_std = np.std(etas, axis=0)/np.sqrt(etas.shape[0])
+    p, = plt.loglog(vel_grad, etas_mean, color="C0", label="flow cytometer")
+    plt.fill_between(vel_grad, etas_mean + etas_std, etas_mean - etas_std, alpha=0.5, color=p.get_color())
+    plt.legend()
+
+    from scipy.interpolate import interp1d
+    vm2 = interp1d(vel_grad, etas_mean, bounds_error=False)(sm)
+    errors = np.abs((vm2-vm)/vm)
+    print("mean errors", np.abs((vm2-vm)/vm), np.nanmean(np.abs((vm2-vm)/vm)))
 
 def plot_tt(ax1, ax2):
     import tifffile
@@ -245,46 +329,66 @@ plt.subplot(243)
 plot_viscisity(data)
 plt.subplot(244)
 
-data, config = load_all_data_new(rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\september_2020\2020_09_16_alginate2%_NIH_tanktreading\1\*_result.txt")
+data, config = load_all_data_new(rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\september_2020\2020_09_16_alginate2%_NIH_tanktreading\1")
 plot_viscisoty_over_shear_rate(data)
 
 plot_tt(plt.subplot(245), plt.subplot(246))
-
+""""""
 plt.subplot(247)
-plot_omega(data)
+data_press, config = load_all_data_new([
+        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_18_alginate2%_overtime_1",
+        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_18_alginate2%_overtime_2",
+        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_19_alginate2%_overtime_1",
+        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_19_alginate2%_overtime_2",
+        #rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_may\2020_05_22_alginateDMEM2%\*\*_evaluated_new.csv",
+#        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_july\2020_07_21_alginate2%_dmem_NIH_time_1\*\*_evaluated_new.csv",
+        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_july\2020_07_21_alginate2%_dmem_NIH_time_2",
+        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_july\2020_07_21_alginate2%_dmem_NIH_time_3",
+#        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope4\2020_may\2020_05_22_alginateDMEM2%\*\*_evaluated_new.csv",
+#        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_18_alginate2%_overtime_1\*\*_evaluated_new.csv",
+#        rf"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\august_2020\2020_08_19_alginate2%_overtime_2\*\*_evaluated_new.csv",
+    ])
+
+#plot_omega(data)
+plt.axline((0,0), slope=0.5, linestyle="dashed", color="k", lw=0.8, zorder=20)
+d = data_press[data_press.tt_r2 > 0.6]
+d = d[d.pressure > 0.9]
+for pressure, d in d.groupby("pressure"):
+    p, = plt.plot(-d.vel_grad, d.omega, "o", color=["", "C4", "C2", "C0"][int(pressure)], ms=1, label=f"{int(pressure)} bar", zorder=(10-pressure))
+    print(pressure, len(d))
 
 def func(x, a, b):
     return x / 2 * 1 / (1 + a * x ** b)
 x = [0.113, 0.45]
 xx = np.arange(0, 500)
 yy = func(xx, *x)
-plt.plot(xx, yy, "r-")
+plt.plot(xx, yy, "r-", zorder=30)
 plt.subplot(248)
 """"""
 
 data_alg, config = load_all_data_new([
-    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_24_alginate2.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
-    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_27_alginate2.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
-    # r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_14_alginate2.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
-    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_28_alginate2.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
-    # r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_30_alginate2.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_24_alginate2.5%_dmem_NIH_3T3",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_27_alginate2.5%_dmem_NIH_3T3",
+    # r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_14_alginate2.5%_dmem_NIH_3T3",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_28_alginate2.5%_dmem_NIH_3T3",
+    # r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_30_alginate2.5%_dmem_NIH_3T3",
 
-    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_27_alginate2.0%_dmem_NIH_3T3\*\*_evaluated_new.csv",
-    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_28_alginate2.0%_dmem_NIH_3T3\*\*_evaluated_new.csv",
-    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_28_alginate2.0%_dmem_NIH_3T3\*\*_evaluated_new.csv",
-    # r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_30_alginate2.0%_dmem_NIH_3T3\*\*_evaluated_new.csv",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_27_alginate2.0%_dmem_NIH_3T3",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_28_alginate2.0%_dmem_NIH_3T3",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_28_alginate2.0%_dmem_NIH_3T3",
+    # r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_30_alginate2.0%_dmem_NIH_3T3",
 
-    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_30_alginate1.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
-    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_14_alginate1.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_07_30_alginate1.5%_dmem_NIH_3T3",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_14_alginate1.5%_dmem_NIH_3T3",
     # r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_14_alginate1.5%_dmem_NIH_3T3_2\*\*_evaluated_new.csv",
-    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_28_alginate1.5%_dmem_NIH_3T3\*\*_evaluated_new.csv"
-    # r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_30_alginate1.5%_dmem_NIH_3T3\*\*_evaluated_new.csv",
+    r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_28_alginate1.5%_dmem_NIH_3T3",
+    # r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\evaluation\diff % alginate\2020_10_30_alginate1.5%_dmem_NIH_3T3",
 ], pressure=2)
 
 i = 0
 d = data_alg[data_alg.tt_r2 > 0.6]
 for alg, d in d.groupby("alginate"):
-    d = d[d.alginate == alg]
+    #d = d[d.alginate == alg]
     p, = plt.plot(-d.vel_grad, d.omega, "o", ms=1, label=f"{alg}%")
     print(alg, len(d))
     #plotBinnedData(-d.vel_grad, d.omega, np.arange(0, 400, 10), mfc=p.get_color(), label=f"NIH 3T3 {alg}%")
@@ -320,11 +424,13 @@ plt.figure(1).axes[1].set_xticks([0.0, 25.0, 50.0, 75.0, 100.0])
 plt.figure(1).axes[1].set_yticks([0.0, 500.0, 1000.0])
 plt.figure(1).axes[1].set_xticklabels(["0", "25", "50", "75", "100"], fontsize=10.0, fontweight="normal", color="black", fontstyle="normal", fontname="Arial", horizontalalignment="center")
 plt.figure(1).axes[1].set_yticklabels(["0k", ".5k", "1k"], fontsize=10.0, fontweight="normal", color="black", fontstyle="normal", fontname="Arial", horizontalalignment="right")
+plt.figure(1).axes[1].legend(frameon=False, title="pressure", fontsize=6.0, title_fontsize=6)
 plt.figure(1).axes[1].set_position([0.309705, 0.660336, 0.176478, 0.310475])
 plt.figure(1).axes[1].set_zorder(1)
 plt.figure(1).axes[1].spines['right'].set_visible(False)
 plt.figure(1).axes[1].spines['top'].set_visible(False)
 plt.figure(1).axes[1].yaxis.labelpad = -0.769022
+plt.figure(1).axes[1].get_legend()._set_loc((0.061677, 0.307672))
 plt.figure(1).axes[2].set_xlim(-4.5522522522522415, 100.0)
 plt.figure(1).axes[2].set_ylim(-0.3, 3.713736076371506)
 plt.figure(1).axes[2].set_xticks([0.0, 25.0, 50.0, 75.0, 100.0])
@@ -344,12 +450,13 @@ plt.figure(1).axes[3].set_xticks([0.01, 0.1, 1.0, 10.0, 100.0, 1000.0])
 plt.figure(1).axes[3].set_yticks([1.0])
 plt.figure(1).axes[3].set_xticklabels([".01", ".1", "1", "10", "100", "1k"], fontsize=10.0, fontweight="normal", color="black", fontstyle="normal", fontname="Arial", horizontalalignment="center")
 plt.figure(1).axes[3].set_yticklabels(["1"], fontsize=10.0, fontweight="normal", color="black", fontstyle="normal", fontname="Arial", horizontalalignment="right")
+plt.figure(1).axes[3].legend(frameon=False, fontsize=6.0, title_fontsize=8.0)
 plt.figure(1).axes[3].set_position([0.808120, 0.660336, 0.176478, 0.310334])
 plt.figure(1).axes[3].set_xticks([0.02, 0.04, 0.06, 0.08, 0.2, 0.4, 0.6, 0.8, 2.0, 4.0, 6.0, 8.0, 20.0, 40.0, 60.0, 80.0, 200.0, 400.0, 600.0, 800.0], minor=True)
-plt.figure(1).axes[3].set_yticklabels(["", "", "", "", "", "", "", "", ""], minor=True)
 plt.figure(1).axes[3].set_yticks([0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 2.0, 3.0], minor=True)
 plt.figure(1).axes[3].spines['right'].set_visible(False)
 plt.figure(1).axes[3].spines['top'].set_visible(False)
+plt.figure(1).axes[3].get_legend()._set_loc((0.059049, 0.047138))
 plt.figure(1).axes[3].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[3].transAxes)  # id=plt.figure(1).axes[3].texts[0].new
 plt.figure(1).axes[3].texts[0].set_position([-0.257642, 0.970890])
 plt.figure(1).axes[3].texts[0].set_text("d")
@@ -379,12 +486,12 @@ plt.figure(1).axes[6].set_xticks([0.0, 250.0, 500.0])
 plt.figure(1).axes[6].set_yticks([0.0, 50.0, 100.0])
 plt.figure(1).axes[6].set_xticklabels(["0", "250", "500"], fontsize=10.0, fontweight="normal", color="black", fontstyle="normal", fontname="Arial", horizontalalignment="center")
 plt.figure(1).axes[6].set_yticklabels(["", ""], minor=True)
-plt.figure(1).axes[6].legend(frameon=False, handlelength=1.5, handletextpad=0.0, columnspacing=0.30000000000000004, markerscale=3.0, ncol=2, title="pressure (bar)", fontsize=6.0, title_fontsize=6.0)
+plt.figure(1).axes[6].legend(frameon=False, handlelength=1.5, handletextpad=0.0, columnspacing=0.30000000000000004, markerscale=3.0, title="pressure", fontsize=6.0, title_fontsize=6.0)
 plt.figure(1).axes[6].set_position([0.589812, 0.137565, 0.185743, 0.356707])
 plt.figure(1).axes[6].set_yticks([25.0, 75.0], minor=True)
 plt.figure(1).axes[6].spines['right'].set_visible(False)
 plt.figure(1).axes[6].spines['top'].set_visible(False)
-plt.figure(1).axes[6].get_legend()._set_loc((0.584887, 0.020099))
+plt.figure(1).axes[6].get_legend()._set_loc((0.661798, 0.032708))
 plt.figure(1).axes[6].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[6].transAxes)  # id=plt.figure(1).axes[6].texts[0].new
 plt.figure(1).axes[6].texts[0].set_position([-0.551166, 0.989300])
 plt.figure(1).axes[6].texts[0].set_text("g")
@@ -393,6 +500,7 @@ plt.figure(1).axes[6].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[6]
 plt.figure(1).axes[6].texts[1].set_position([0.169672, 0.849579])
 plt.figure(1).axes[6].texts[1].set_rotation(67.0)
 plt.figure(1).axes[6].texts[1].set_text("0.5")
+plt.figure(1).axes[6].get_xaxis().get_label().set_text("shear rate (1/s)")
 plt.figure(1).axes[6].get_yaxis().get_label().set_text("tank treading\nangular freq. (rad/s)")
 plt.figure(1).axes[7].set_xlim(-32.05083319558484, 673.0674971072816)
 plt.figure(1).axes[7].set_ylim(-5.2679643223479395, 100.0)

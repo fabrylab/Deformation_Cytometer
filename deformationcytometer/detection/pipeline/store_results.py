@@ -2,9 +2,10 @@ from deformationcytometer.detection.includes.pipe_helpers import *
 
 
 class ResultCombiner:
-    def __init__(self, data_storage, output="_evaluated_new.csv"):
+    def __init__(self, data_storage, output="_evaluated_new.csv", output_config="_evaluated_config_new.txt"):
         self.data_storage = data_storage
         self.output = output
+        self.output_config = output_config
 
     def init(self):
         self.filenames = {}
@@ -99,7 +100,7 @@ class ResultCombiner:
         omega, mu1, eta1, k_cell, alpha_cell, epsilon = get_cell_properties(data)
 
         output_file = Path(str(filename)[:-4] + self.output)
-        output_config_file = Path(str(filename)[:-4] + "_evaluated_config_new.txt")
+        output_config_file = Path(str(filename)[:-4] + self.output_config)
         config["evaluation_version"] = evaluation_version
         data.to_csv(output_file, index=False)
 

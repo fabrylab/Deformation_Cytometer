@@ -21,11 +21,11 @@ class ProcessReadMasksBatch:
 
         data_storage_mask_numpy = self.data_storage.get_stored(data["mask_info"])
         #with clickpoints.DataFile(r"E:\FlowProject\2021.4.14\0.1 atm\2021_04_14_11_37_36_ellipse.cdb") as cdb: # + 10000
-        with clickpoints.DataFile(data["filename"][:-4]+"_ellipse.cdb") as cdb: # + 30000
-        #with clickpoints.DataFile(r"E:\FlowProject\2021.4.14\0.2 atm\2021_04_14_13_44_55_Fl_ellipse.cdb") as cdb: # + 40000
-        #with clickpoints.DataFile(r"E:\FlowProject\2021.4.14\0.5 atm\2021_04_14_13_04_12_Fl.cdb") as cdb: # + 0
+        if Path(data["filename"][:-4]+"_ellipse.cdb").exists():
+         with clickpoints.DataFile(data["filename"][:-4]+"_ellipse.cdb") as cdb:
             path_entry = cdb.getPath(".")#Path(data["filename"]).parent)
             for i, index in enumerate(range(data["index"], data["end_index"])):
+                data_storage_mask_numpy[i][:] = 0
                 img = cdb.table_image.get(cdb.table_image.filename==str(Path(data["filename"]).name), cdb.table_image.frame==index)#, path=path_entry)
                 for ellipse in img.ellipses:
                     data_storage_mask_numpy[i][skimage.draw.ellipse(ellipse.y, ellipse.x, ellipse.width / 2, ellipse.height / 2,

@@ -429,7 +429,7 @@
      inkscape:cx="363.92421"
      inkscape:cy="61.780048"
      inkscape:document-units="mm"
-     inkscape:current-layer="g5119"
+     inkscape:current-layer="layer1"
      inkscape:document-rotation="0"
      showgrid="false"
      inkscape:snap-global="true"
@@ -456,7 +456,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -1286,7 +1286,7 @@
          x="70.68692"
          y="8.1106138"
          style="text-align:start;text-anchor:start;stroke-width:0.264583"
-         id="tspan6739">    Careau-Yasuda</tspan></text>
+         id="tspan6739">    Cross Model</tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:3.175px;line-height:1.25;font-family:sans-serif;text-align:start;letter-spacing:0px;word-spacing:0px;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"

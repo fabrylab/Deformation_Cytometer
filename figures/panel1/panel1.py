@@ -9,6 +9,7 @@ pylustrator.load("channel.png", dpi=600)
 pylustrator.load("ellipse_test.py")
 pylustrator.load("cells.png")
 pylustrator.load("analytical_solution.py")
+pylustrator.load("20210811_113420.jpg")
 
 
 plt.axes([0.2, 0.2, 0.3, 0.4], facecolor="none", label="overlay")
@@ -43,12 +44,15 @@ plt.arrow(0.32, 3+xoffset, 0, -len, length_includes_head=True, head_starts_at_ze
 plt.figure(1).ax_dict = {ax.get_label(): ax for ax in plt.figure(1).axes}
 import matplotlib as mpl
 plt.figure(1).set_size_inches(16.980000/2.54, 11.000000/2.54, forward=True)
-plt.figure(1).ax_dict["cells.png"].set_position([0.765161, 0.025269, 0.216519, 0.539848])
+plt.figure(1).ax_dict["20210811_113420.jpg"].set_xlim(3200.0, 1000.0)
+plt.figure(1).ax_dict["20210811_113420.jpg"].set_ylim(2300.0, 1600.0)
+plt.figure(1).ax_dict["20210811_113420.jpg"].set_position([0.384947, 0.882313, 0.250000, 0.122717])
+plt.figure(1).ax_dict["cells.png"].set_position([0.084023, 0.027646, 0.216519, 0.539712])
 plt.figure(1).ax_dict["cells.png"].spines['right'].set_visible(False)
 plt.figure(1).ax_dict["cells.png"].spines['top'].set_visible(False)
 plt.figure(1).ax_dict["cells.png"].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[4].transAxes)  # id=plt.figure(1).axes[4].texts[0].new
 plt.figure(1).ax_dict["cells.png"].texts[0].set_position([-0.172482, 0.995152])
-plt.figure(1).ax_dict["cells.png"].texts[0].set_text("f")
+plt.figure(1).ax_dict["cells.png"].texts[0].set_text("c")
 plt.figure(1).ax_dict["cells.png"].texts[0].set_weight("bold")
 plt.figure(1).ax_dict["cells.png"].text(0.5, 0.5, 'New Text', transform=plt.figure(1).ax_dict["cells.png"].transAxes)  # id=plt.figure(1).ax_dict["cells.png"].texts[1].new
 plt.figure(1).ax_dict["cells.png"].texts[1].set_ha("center")
@@ -94,7 +98,7 @@ plt.figure(1).ax_dict["cells.png"].text(0.5, 0.5, 'New Text', transform=plt.figu
 plt.figure(1).ax_dict["cells.png"].texts[11].set_ha("center")
 plt.figure(1).ax_dict["cells.png"].texts[11].set_position([-0.254454, 0.266533])
 plt.figure(1).ax_dict["cells.png"].texts[11].set_rotation(90.0)
-plt.figure(1).ax_dict["cells.png"].texts[11].set_text("radial position (µm)")
+plt.figure(1).ax_dict["cells.png"].texts[11].set_text("distance from\nchannel center (µm)")
 plt.figure(1).ax_dict["cells.png"].text(0.5, 0.5, 'New Text', transform=plt.figure(1).ax_dict["cells.png"].transAxes)  # id=plt.figure(1).ax_dict["cells.png"].texts[12].new
 plt.figure(1).ax_dict["cells.png"].texts[12].set_fontsize(8)
 plt.figure(1).ax_dict["cells.png"].texts[12].set_position([0.822459, -0.008210])
@@ -106,9 +110,9 @@ plt.figure(1).ax_dict["channel.png"].text(0.5, 0.5, 'New Text', transform=plt.fi
 plt.figure(1).ax_dict["channel.png"].texts[0].set_position([-0.008846, 0.846099])
 plt.figure(1).ax_dict["channel.png"].texts[0].set_text("b")
 plt.figure(1).ax_dict["channel.png"].texts[0].set_weight("bold")
-plt.figure(1).ax_dict["overlay"].set_position([0.337827, 0.433040, 0.066033, 0.101873])
 plt.figure(1).ax_dict["overlay"].set_xlim(0.0, 3.8)
 plt.figure(1).ax_dict["overlay"].set_ylim(0.0, 3.8)
+plt.figure(1).ax_dict["overlay"].set_position([0.648255, 0.431311, 0.066033, 0.101873])
 plt.figure(1).ax_dict["setup_notext.png"].set_position([0.026541, 0.543344, 0.727489, 0.447876])
 plt.figure(1).ax_dict["setup_notext.png"].text(0.5, 0.5, 'New Text', transform=plt.figure(1).ax_dict["setup_notext.png"].transAxes)  # id=plt.figure(1).ax_dict["setup_notext.png"].texts[0].new
 plt.figure(1).ax_dict["setup_notext.png"].texts[0].set_ha("left")
@@ -127,17 +131,17 @@ plt.figure(1).ax_dict["setup_notext.png"].texts[3].set_position([0.270994, 0.809
 plt.figure(1).ax_dict["setup_notext.png"].texts[3].set_text("3-way\nvalve")
 plt.figure(1).ax_dict["setup_notext.png"].text(0.5, 0.5, 'New Text', transform=plt.figure(1).ax_dict["setup_notext.png"].transAxes)  # id=plt.figure(1).ax_dict["setup_notext.png"].texts[4].new
 plt.figure(1).ax_dict["setup_notext.png"].texts[4].set_ha("center")
-plt.figure(1).ax_dict["setup_notext.png"].texts[4].set_position([0.405703, 0.100550])
+plt.figure(1).ax_dict["setup_notext.png"].texts[4].set_position([0.438258, 0.193367])
 plt.figure(1).ax_dict["setup_notext.png"].texts[4].set_text("cell\nreservoir")
 plt.figure(1).ax_dict["setup_notext.png"].text(0.5, 0.5, 'New Text', transform=plt.figure(1).ax_dict["setup_notext.png"].transAxes)  # id=plt.figure(1).ax_dict["setup_notext.png"].texts[5].new
 plt.figure(1).ax_dict["setup_notext.png"].texts[5].set_ha("center")
-plt.figure(1).ax_dict["setup_notext.png"].texts[5].set_position([0.659406, 0.657529])
+plt.figure(1).ax_dict["setup_notext.png"].texts[5].set_position([0.659406, 0.585338])
 plt.figure(1).ax_dict["setup_notext.png"].texts[5].set_text("slide with $200\\times200$µm\nmicrochannels")
 plt.figure(1).ax_dict["setup_notext.png"].text(0.5, 0.5, 'New Text', transform=plt.figure(1).ax_dict["setup_notext.png"].transAxes)  # id=plt.figure(1).ax_dict["setup_notext.png"].texts[6].new
 plt.figure(1).ax_dict["setup_notext.png"].texts[6].set_ha("center")
 plt.figure(1).ax_dict["setup_notext.png"].texts[6].set_position([0.877187, 0.274958])
 plt.figure(1).ax_dict["setup_notext.png"].texts[6].set_text("waste")
-plt.figure(1).axes[2].set_position([0.388137, 0.269430, 0.341050, 0.249317])
+plt.figure(1).axes[2].set_position([0.698565, 0.269430, 0.341050, 0.249317])
 plt.figure(1).axes[2].texts[1].set_position([0.129738, 0.500001])
 plt.figure(1).axes[2].texts[2].set_fontsize(8)
 plt.figure(1).axes[2].texts[3].set_fontsize(8)
@@ -147,23 +151,31 @@ plt.figure(1).axes[2].texts[5].set_fontsize(8)
 plt.figure(1).axes[2].texts[5].set_position([1.188659, 0.055460])
 plt.figure(1).axes[2].texts[6].set_fontsize(8)
 plt.figure(1).axes[2].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[2].transAxes)  # id=plt.figure(1).axes[2].texts[7].new
-plt.figure(1).axes[2].texts[7].set_position([0.201521, 0.778511])
-plt.figure(1).axes[2].texts[7].set_text("d")
+plt.figure(1).axes[2].texts[7].set_position([0.201521, 1.004802])
+plt.figure(1).axes[2].texts[7].set_text("e")
 plt.figure(1).axes[2].texts[7].set_weight("bold")
-plt.figure(1).axes[3].set_position([0.469724, 0.041503, 0.183585, 0.277359])
+plt.figure(1).axes[2].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[2].transAxes)  # id=plt.figure(1).axes[2].texts[8].new
+plt.figure(1).axes[2].texts[8].set_ha("center")
+plt.figure(1).axes[2].texts[8].set_position([0.492956, 0.945793])
+plt.figure(1).axes[2].texts[8].set_text("cell\ndeformation")
+plt.figure(1).axes[3].set_position([0.780152, -0.018543, 0.183585, 0.277359])
 plt.figure(1).axes[3].texts[0].set_fontsize(8)
 plt.figure(1).axes[3].texts[0].set_position([4.685398, 0.196495])
 plt.figure(1).axes[3].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[3].transAxes)  # id=plt.figure(1).axes[3].texts[1].new
-plt.figure(1).axes[3].texts[1].set_position([-0.070040, 0.631857])
-plt.figure(1).axes[3].texts[1].set_text("e")
+plt.figure(1).axes[3].texts[1].set_position([-0.070040, 0.910764])
+plt.figure(1).axes[3].texts[1].set_text("f")
 plt.figure(1).axes[3].texts[1].set_weight("bold")
-plt.figure(1).axes[5].set_position([0.098897, 0.143082, 0.292987, 0.378555])
+plt.figure(1).axes[3].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[3].transAxes)  # id=plt.figure(1).axes[3].texts[2].new
+plt.figure(1).axes[3].texts[2].set_ha("center")
+plt.figure(1).axes[3].texts[2].set_position([0.471366, 0.852477])
+plt.figure(1).axes[3].texts[2].set_text("cell\nalignment")
+plt.figure(1).axes[5].set_position([0.409325, 0.143082, 0.292987, 0.378555])
 plt.figure(1).axes[5].spines['right'].set_visible(False)
 plt.figure(1).axes[5].spines['top'].set_visible(False)
 plt.figure(1).axes[5].get_legend()._set_loc((0.040413, 0.427214))
 plt.figure(1).axes[5].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[5].transAxes)  # id=plt.figure(1).axes[5].texts[0].new
 plt.figure(1).axes[5].texts[0].set_position([-0.218291, 1.011572])
-plt.figure(1).axes[5].texts[0].set_text("c")
+plt.figure(1).axes[5].texts[0].set_text("d")
 plt.figure(1).axes[5].texts[0].set_weight("bold")
 plt.figure(1).axes[5].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[5].transAxes)  # id=plt.figure(1).axes[5].texts[1].new
 plt.figure(1).axes[5].texts[1].set_fontsize(7)
@@ -173,7 +185,7 @@ plt.figure(1).axes[5].text(0.5, 0.5, 'New Text', transform=plt.figure(1).axes[5]
 plt.figure(1).axes[5].texts[2].set_fontsize(8)
 plt.figure(1).axes[5].texts[2].set_position([0.883209, 0.676723])
 plt.figure(1).axes[5].texts[2].set_text("$r$ ~ 8 µm")
-plt.figure(1).axes[5].get_xaxis().get_label().set_text("distance from channel center ($\mu m$)")
+plt.figure(1).axes[5].get_xaxis().get_label().set_text("distance from channel center (µm)")
 plt.figure(1).axes[5].get_yaxis().get_label().set_text("shear stress (Pa)")
 #% end: automatic generated code from pylustrator
 plt.savefig(__file__[:-3] + ".png", dpi=300)
