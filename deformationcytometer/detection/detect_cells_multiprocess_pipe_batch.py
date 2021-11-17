@@ -45,7 +45,7 @@ if __name__ == "__main__":
     network_weight = args.network_weight
     irregularity_threshold = args.irregularity_filter
     solidity_threshold = args.solidity_filter
-
+    print(f'run evaluation on {file} using {network_weight} filtering irr {irregularity_threshold} and sol {solidity_threshold}')
     clear_logs()
 
     print(sys.argv)
