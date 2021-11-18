@@ -785,6 +785,16 @@ def load_all_data_new(input_path, solidity_threshold=0.96, irregularity_threshol
     import re
     import configparser
 
+    # convert paths when input is a tif file
+    if isinstance(input_path, list):
+        for i, path in enumerate(input_path):
+            if str(path).endswith(".tif"):
+                input_path[i] = str(path).replace(".tif", "_evaluated_new.csv")
+    else:
+        if str(input_path).endswith(".tif"):
+            input_path = str(input_path).replace(".tif", "_evaluated_new.csv")
+
+
     unit_matcher = re.compile(r"(\d*\.?\d+)([^\d]+)$")
 
     def filter(file):

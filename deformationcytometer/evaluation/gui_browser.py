@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 import yaml
 import QExtendedGraphicsView
 
-from deformationcytometer.evaluation.helper_functions import getMeta, load_all_data_new, plot_velocity_fit, plotDensityScatter, plot_density_hist, plotBinnedData, stress_strain_fit, get2Dhist_k_alpha, getGp1Gp2fit_k_alpha, getGp1Gp2fit3_k_alpha
+from deformationcytometer.evaluation.helper_functions import getMeta, load_all_data_new, plot_velocity_fit, plotDensityScatter, plot_density_hist, plotBinnedData, stress_strain_fit, get2Dhist_k_alpha, getGp1Gp2fit_k_alpha, getGp1Gp2fit3_k_alpha, get2Dhist_k_alpha
 
 def kill_thread(thread):
     """
@@ -105,15 +105,18 @@ class ImageView(QtWidgets.QWidget):
             self.thread = None
         self.im = None
         self.filename = filename
-        self.thread = threading.Thread(target=self.load_image, args=(filename,), daemon=True)
-        self.thread.start()
+        if self.filename.endswith(".tif"):
+            self.thread = threading.Thread(target=self.load_image, args=(filename,), daemon=True)
+            self.thread.start()
         self.disable()
 
     def load_image(self, filename):
+        print("loading", filename, "...")
         im = imageio.get_reader(filename)
         im.get_data(0)
-        data, config = load_all_data_new(filename.replace(".tif", "_evaluated_new.csv"), do_excude=False, do_group=False)
+        data, config = load_all_data_new(filename, do_excude=False, do_group=False)
         self.data_loaded_event.emit(filename, im, data, config)
+        print("loaded")
 
     def data_loaded(self, filename, im, data, config):
         if filename == self.filename:
@@ -194,9 +197,9 @@ class MainWindow(QtWidgets.QWidget):
         self.browser.signal_selection_changed.connect(self.selected)
 
     def selected(self, name):
-        #self.text.selected(name)
-        #self.plot.selected(name)
         self.view.selected(name)
+        self.text.selected(name)
+        self.plot.selected(name)
 
 
 class MeasurementPlot(QtWidgets.QWidget):
@@ -213,15 +216,15 @@ class MeasurementPlot(QtWidgets.QWidget):
     def selected(self, name):
         plt.clf()
         if name.endswith(".tif"):
-            data, config = load_all_data_new(name.replace(".tif", "_evaluated_new.csv"), do_excude=False)
+            data, config = load_all_data_new(name, do_excude=False)
 
-            #pair_2dmode = get2Dhist_k_alpha(data)
-            pair_2dmode = getGp1Gp2fit3_k_alpha(data)
+            pair_2dmode = get2Dhist_k_alpha(data)
+            #pair_2dmode = getGp1Gp2fit3_k_alpha(data)
 
             from scipy.special import gamma
-            def fit(omega, k, alpha, mu):
+            def fit(omega, k, alpha):
                 omega = np.array(omega)
-                G = k * (1j * omega) ** alpha * gamma(1 - alpha) + 1j * omega * mu
+                G = k * (1j * omega) ** alpha * gamma(1 - alpha)# + 1j * omega * mu
                 return np.real(G), np.imag(G)
 
             plt.subplot(3, 3, 1)
@@ -302,14 +305,25 @@ class MetaDataEditor(QtWidgets.QWidget):
         hlayout = QtWidgets.QVBoxLayout(self)
         hlayout.setContentsMargins(0, 0, 0, 0)
 
+        self.label0 = QtWidgets.QLabel("Config")
+        hlayout.addWidget(self.label0)
+        self.text0 = QtWidgets.QPlainTextEdit()
+        self.text0.setReadOnly(True)
+        self.text0.setToolTip("Config Contents")
+        hlayout.addWidget(self.text0)
+
+        self.label = QtWidgets.QLabel("Meta data with inherited meta data from parent folders")
+        hlayout.addWidget(self.label)
         self.text = QtWidgets.QPlainTextEdit()
         self.text.setReadOnly(True)
         self.text.setToolTip("Meta data from parent folders")
         hlayout.addWidget(self.text)
 
+        self.label = QtWidgets.QLabel("Edit Meta data for this file/folder")
+        hlayout.addWidget(self.label)
         self.text2 = QtWidgets.QPlainTextEdit()
         self.text2.textChanged.connect(self.save)
-        self.text2.setToolTip("Meta data from current folder/file. Can be editied and will be automatically saved")
+        self.text2.setToolTip("Meta data from current folder/file. Can be edited and will be automatically saved")
         hlayout.addWidget(self.text2)
 
         self.name = QtWidgets.QLineEdit()
@@ -327,6 +341,13 @@ class MetaDataEditor(QtWidgets.QWidget):
         self.name.setText(name)
 
         self.text.setPlainText(yaml.dump(meta))
+
+        self.config_file = None
+        if name.endswith(".tif"):
+            config_file = Path(name.replace(".tif", "_config.txt"))
+            self.text0.setPlainText(Path(config_file).read_text())
+        else:
+            self.text0.setPlainText("")
 
         self.yaml_file = None
         if name.endswith(".tif"):
