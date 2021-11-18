@@ -13,7 +13,7 @@ To install the software package, download the repository from GitHub, open a com
   
 ## Usage
 
-To record for the experiment, use the script:
+To record image data, use the script:
 
   `recording.py`
   
