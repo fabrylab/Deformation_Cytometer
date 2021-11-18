@@ -34,7 +34,7 @@ from deformationcytometer.evaluation.helper_functions import load_all_data_new, 
 # load all the data in the given folder
 # you can also add a list of folders instead
 # filenames can also include * for wildcard matches
-data, config = load_all_data_new(r"\\131.188.117.96\biophysDS\emirzahossein\microfluidic cell rhemeter data\microscope_1\july_2021\2021_07_05_desmin_cytoD")
+data, config = load_all_data_new(r"\\path_to_folder_containing_the_data")
 
 # print all the columns, these are the ones from the results.csv and from the meta data files
 print(data.columns)
