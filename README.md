@@ -1,6 +1,6 @@
 # Shear Flow Deformation Cytometer
 
-The Shear Flow Deformation Cytometer is a method to measure the properties of cells. 
+The Shear Flow Deformation Cytometer is a method to measure the visco-elastic properties of living cells in suspension. 
 Cells are suspended in a high-viscosity (0.5-5 Pa s) fluid (typically alginate with concentrations 1-2.5%)
 and exposed to fluid shear during their passage through large (200 µm diameter) microfluidic channels.
 
